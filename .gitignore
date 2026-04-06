@@ -1,0 +1,5 @@
+.env
+.talky
+__pycache__/
+*.pyc
+.streamlit/
