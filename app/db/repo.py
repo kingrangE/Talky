@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from app.db.models import Conversation, Message, PromptVersion, Rating, Report, User
 from app.db.postgres import session_scope
@@ -215,6 +215,93 @@ def get_rating(conversation_id: str) -> dict[str, Any] | None:
         if row is None:
             return None
         return {"stars": row.stars, "comment": row.comment}
+
+
+def count_unconsumed_ratings() -> tuple[int, dict[int, int]]:
+    """별점 진화에 아직 반영되지 않은 ratings 의 수와 분포."""
+    with session_scope() as s:
+        rows = s.scalars(
+            select(Rating).where(Rating.consumed_for_evolution.is_(False))
+        ).all()
+        dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for r in rows:
+            dist[int(r.stars)] = dist.get(int(r.stars), 0) + 1
+        return len(rows), dist
+
+
+def get_unconsumed_rated_reports(*, top_n: int, order: str = "desc") -> list[dict[str, Any]]:
+    """별점 미반영 conversations 중 상위/하위 N개 (보고서 포함)."""
+    with session_scope() as s:
+        order_col = (
+            Rating.stars.desc() if order == "desc" else Rating.stars.asc()
+        )
+        stmt = (
+            select(Rating, Report)
+            .join(Report, Rating.conversation_id == Report.conversation_id)
+            .where(Rating.consumed_for_evolution.is_(False))
+            .order_by(order_col)
+            .limit(top_n)
+        )
+        out: list[dict[str, Any]] = []
+        for rating, report in s.execute(stmt).all():
+            out.append(
+                {
+                    "stars": int(rating.stars),
+                    "comment": rating.comment,
+                    "summary": report.summary,
+                    "strengths": (report.strengths or {}).get("items", []),
+                    "weaknesses": (report.weaknesses or {}).get("items", []),
+                }
+            )
+        return out
+
+
+def insert_prompt_version(
+    *,
+    content: str,
+    rationale: str | None,
+    parent_id: str | None,
+    diff_summary: list[str] | None = None,
+    activate: bool = True,
+) -> str:
+    pid = _to_uuid(parent_id) if parent_id else None
+    rationale_full = rationale or ""
+    if diff_summary:
+        rationale_full = (
+            rationale_full + "\n\nDiff:\n" + "\n".join(f"- {d}" for d in diff_summary)
+        ).strip()
+
+    with session_scope() as s:
+        max_v = s.scalar(select(func.coalesce(func.max(PromptVersion.version), 0)))
+        new_version = int(max_v or 0) + 1
+
+        if activate:
+            s.execute(
+                update(PromptVersion)
+                .where(PromptVersion.active.is_(True))
+                .values(active=False)
+            )
+
+        pv = PromptVersion(
+            version=new_version,
+            content=content,
+            rationale=rationale_full or None,
+            parent_id=pid,
+            active=activate,
+        )
+        s.add(pv)
+        s.flush()
+        return str(pv.id)
+
+
+def mark_unconsumed_ratings_consumed() -> int:
+    with session_scope() as s:
+        result = s.execute(
+            update(Rating)
+            .where(Rating.consumed_for_evolution.is_(False))
+            .values(consumed_for_evolution=True)
+        )
+        return result.rowcount or 0
 
 
 def load_messages(conversation_id: str) -> list[dict[str, Any]]:
