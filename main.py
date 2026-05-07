@@ -1,3 +1,5 @@
+import hashlib
+
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -13,6 +15,7 @@ from app.db.repo import (
     update_conversation_title,
 )
 from app.settings import get_settings
+from app.ui.audio_widget import mic_input
 
 load_dotenv()
 cfg = get_settings()
@@ -51,6 +54,10 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "editing_conv_id" not in st.session_state:
     st.session_state.editing_conv_id = None
+if "pending_audio" not in st.session_state:
+    st.session_state.pending_audio = None
+if "last_voice_hash" not in st.session_state:
+    st.session_state.last_voice_hash = None
 
 with st.sidebar:
     st.markdown("### Settings")
@@ -64,6 +71,7 @@ with st.sidebar:
         cid = create_conversation(user_id=USER_ID)
         st.session_state.conversation_id = cid
         st.session_state.messages = []
+        st.session_state.pending_audio = None
         st.rerun()
 
     conversations = list_conversations(user_id=USER_ID)
@@ -98,6 +106,7 @@ with st.sidebar:
                 ):
                     st.session_state.conversation_id = cid
                     st.session_state.messages = load_messages(cid)
+                    st.session_state.pending_audio = None
                     st.rerun()
             with col2:
                 with st.popover(""):
@@ -109,6 +118,7 @@ with st.sidebar:
                         if st.session_state.conversation_id == cid:
                             st.session_state.conversation_id = None
                             st.session_state.messages = []
+                            st.session_state.pending_audio = None
                         st.rerun()
 
     st.markdown(
@@ -132,16 +142,16 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
 
-if "recording" not in st.session_state:
-    st.session_state.recording = False
+def _ensure_conversation(seed_text: str) -> str:
+    if st.session_state.conversation_id is None:
+        title = seed_text[:30] + ("..." if len(seed_text) > 30 else "")
+        cid = create_conversation(title=title, user_id=USER_ID)
+        st.session_state.conversation_id = cid
+    return st.session_state.conversation_id
 
 
-def _stream_graph(state_input: dict):
-    """LangGraph 의 LLM 노드에서 발생하는 token chunk 를 yield."""
+def _stream_text_turn(state_input: dict):
     for chunk, _meta in GRAPH.stream(state_input, stream_mode="messages"):
         text = getattr(chunk, "content", None)
         if text:
@@ -149,20 +159,18 @@ def _stream_graph(state_input: dict):
 
 
 def handle_user_message(prompt: str) -> None:
-    if st.session_state.conversation_id is None:
-        title = prompt[:30] + ("..." if len(prompt) > 30 else "")
-        cid = create_conversation(title=title, user_id=USER_ID)
-        st.session_state.conversation_id = cid
+    st.session_state.pending_audio = None
+    cid = _ensure_conversation(prompt)
 
     st.session_state.messages.append({"role": "user", "content": prompt})
-    save_message(st.session_state.conversation_id, "user", prompt)
+    save_message(cid, "user", prompt)
 
     history = [
         {"role": m["role"], "content": m["content"]}
         for m in st.session_state.messages[:-1]
     ]
     state_input = {
-        "conversation_id": st.session_state.conversation_id,
+        "conversation_id": cid,
         "user_id": str(USER_ID),
         "prompt_version_id": PROMPT_VERSION_ID,
         "system_prompt": SYSTEM_PROMPT,
@@ -171,48 +179,72 @@ def handle_user_message(prompt: str) -> None:
     }
 
     with st.chat_message("assistant"):
-        response = st.write_stream(_stream_graph(state_input))
+        response = st.write_stream(_stream_text_turn(state_input))
 
     st.session_state.messages.append({"role": "assistant", "content": response})
-    save_message(st.session_state.conversation_id, "assistant", response)
+    save_message(cid, "assistant", response)
     if len(st.session_state.messages) == 2:
         title = prompt[:30] + ("..." if len(prompt) > 30 else "")
-        update_conversation_title(st.session_state.conversation_id, title)
+        update_conversation_title(cid, title)
 
 
-with st.container():
-    if st.session_state.recording:
-        if st.button(
-            "⏹ Stop Recording", key="voice_stop", type="primary", use_container_width=True
-        ):
-            st.session_state.recording = False
-            # Phase C 에서 STT 연결.
-            prompt = ""
-            if prompt:
-                handle_user_message(prompt)
-            st.rerun()
-    else:
-        if st.button("🎤 Tap to Speak", key="voice_start", use_container_width=True):
-            st.session_state.recording = True
-            st.rerun()
+def handle_voice_message(audio_bytes: bytes) -> None:
+    history = [
+        {"role": m["role"], "content": m["content"]}
+        for m in st.session_state.messages
+    ]
+    state_input = {
+        "conversation_id": st.session_state.conversation_id or "",
+        "user_id": str(USER_ID),
+        "prompt_version_id": PROMPT_VERSION_ID,
+        "system_prompt": SYSTEM_PROMPT,
+        "audio_bytes": audio_bytes,
+        "history": history,
+    }
+    with st.spinner("듣는 중..."):
+        result = GRAPH.invoke(state_input)
 
-text_prompt = st.chat_input("Type a message (mic comes in Phase C)")
+    user_text = (result.get("user_text") or "").strip()
+    ai_reply = result.get("ai_reply") or ""
+    audio_reply = result.get("audio_reply")
+    language = result.get("language")
+
+    if not user_text:
+        st.warning("음성을 인식하지 못했어요. 다시 말씀해 주세요.")
+        return
+
+    cid = _ensure_conversation(user_text)
+    st.session_state.messages.append({"role": "user", "content": user_text})
+    save_message(cid, "user", user_text, language=language)
+    st.session_state.messages.append({"role": "assistant", "content": ai_reply})
+    save_message(cid, "assistant", ai_reply, language=language)
+
+    if len(st.session_state.messages) == 2:
+        title = user_text[:30] + ("..." if len(user_text) > 30 else "")
+        update_conversation_title(cid, title)
+
+    st.session_state.pending_audio = audio_reply
+
+
+# --- Voice 입력 (텍스트 입력보다 먼저 처리해서 history 가 새 메시지를 포함하게) ---
+audio_bytes = mic_input()
+if audio_bytes:
+    h = hashlib.sha1(audio_bytes).hexdigest()
+    if st.session_state.last_voice_hash != h:
+        st.session_state.last_voice_hash = h
+        handle_voice_message(audio_bytes)
+
+# --- 히스토리 표시 ---
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# --- 응답 자동 재생 ---
+if st.session_state.pending_audio:
+    st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
+
+# --- 텍스트 입력 (fallback) ---
+text_prompt = st.chat_input("Type a message")
 if text_prompt:
     handle_user_message(text_prompt)
     st.rerun()
-
-st.markdown(
-    """
-<style>
-[data-testid="stBottomBlockContainer"] {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 1rem 2rem;
-    background: var(--background-color);
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
