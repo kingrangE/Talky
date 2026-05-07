@@ -1,3 +1,25 @@
-streamlit
-openai
-python-dotenv
+streamlit==1.40.*
+pydantic==2.*
+pydantic-settings==2.*
+python-dotenv==1.*
+
+# Postgres
+sqlalchemy==2.*
+psycopg[binary]==3.*
+alembic==1.*
+
+# LangGraph / LangChain (Phase B)
+langgraph==0.2.*
+langchain==0.3.*
+langchain-core==0.3.*
+langchain-community==0.3.*
+langchain-ollama==0.2.*
+langchain-openai==0.2.*
+
+# Phase C 이후 (사전 설치 권장):
+# pgvector==0.3.*
+# neo4j==5.*
+# faster-whisper==1.0.*
+# piper-tts==1.2.*
+# soundfile==0.12.*
+# fastembed==0.4.*
