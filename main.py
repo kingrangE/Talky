@@ -11,7 +11,6 @@ from app.db.repo import (
     get_active_prompt,
     list_conversations,
     load_messages,
-    save_message,
     update_conversation_title,
 )
 from app.settings import get_settings
@@ -145,7 +144,7 @@ with st.sidebar:
 
 def _ensure_conversation(seed_text: str) -> str:
     if st.session_state.conversation_id is None:
-        title = seed_text[:30] + ("..." if len(seed_text) > 30 else "")
+        title = (seed_text[:30] + ("..." if len(seed_text) > 30 else "")) if seed_text else "New Conversation"
         cid = create_conversation(title=title, user_id=USER_ID)
         st.session_state.conversation_id = cid
     return st.session_state.conversation_id
@@ -163,7 +162,7 @@ def _render_message(m: dict) -> None:
                 st.markdown(m["better_expression"])
 
 
-def _persist_turn(
+def _push_session_messages(
     cid: str,
     user_text: str,
     ai_reply: str,
@@ -171,36 +170,24 @@ def _persist_turn(
     english_expression: str | None,
     better_expression: str | None,
 ) -> None:
-    user_msg = {
-        "role": "user",
-        "content": user_text,
-        "language": language,
-        "english_expression": english_expression,
-        "better_expression": None,
-    }
-    st.session_state.messages.append(user_msg)
-    save_message(
-        cid,
-        "user",
-        user_text,
-        language=language,
-        english_expression=english_expression,
+    """graph 의 persist 노드가 DB 저장을 처리하므로, 여기선 화면용 세션 상태만 갱신."""
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": user_text,
+            "language": language,
+            "english_expression": english_expression,
+            "better_expression": None,
+        }
     )
-
-    assistant_msg = {
-        "role": "assistant",
-        "content": ai_reply,
-        "language": language,
-        "english_expression": None,
-        "better_expression": better_expression,
-    }
-    st.session_state.messages.append(assistant_msg)
-    save_message(
-        cid,
-        "assistant",
-        ai_reply,
-        language=language,
-        better_expression=better_expression,
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": ai_reply,
+            "language": language,
+            "english_expression": None,
+            "better_expression": better_expression,
+        }
     )
 
     if len(st.session_state.messages) == 2:
@@ -231,7 +218,7 @@ def handle_user_message(prompt: str) -> None:
     with st.spinner("생각 중..."):
         result = _invoke_turn(state_input)
 
-    _persist_turn(
+    _push_session_messages(
         cid,
         user_text=result.get("user_text", prompt),
         ai_reply=result.get("ai_reply") or "",
@@ -242,12 +229,13 @@ def handle_user_message(prompt: str) -> None:
 
 
 def handle_voice_message(audio_bytes: bytes) -> None:
+    cid = _ensure_conversation("")
     history = [
         {"role": m["role"], "content": m["content"]}
         for m in st.session_state.messages
     ]
     state_input = {
-        "conversation_id": st.session_state.conversation_id or "",
+        "conversation_id": cid,
         "user_id": str(USER_ID),
         "prompt_version_id": PROMPT_VERSION_ID,
         "system_prompt": SYSTEM_PROMPT,
@@ -262,8 +250,7 @@ def handle_voice_message(audio_bytes: bytes) -> None:
         st.warning("음성을 인식하지 못했어요. 다시 말씀해 주세요.")
         return
 
-    cid = _ensure_conversation(user_text)
-    _persist_turn(
+    _push_session_messages(
         cid,
         user_text=user_text,
         ai_reply=result.get("ai_reply") or "",
