@@ -4,6 +4,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from app.agents.conversation_graph import build_conversation_graph
+from app.agents.ending_graph import build_ending_graph
 from app.db.repo import (
     create_conversation,
     delete_conversation,
@@ -15,6 +16,7 @@ from app.db.repo import (
 )
 from app.settings import get_settings
 from app.ui.audio_widget import mic_input
+from app.ui.report_view import render_report
 
 load_dotenv()
 cfg = get_settings()
@@ -32,6 +34,7 @@ def _bootstrap() -> dict:
         "system_prompt": prompt["content"],
         "prompt_version_id": prompt["id"],
         "graph": build_conversation_graph(),
+        "ending_graph": build_ending_graph(),
     }
 
 
@@ -40,6 +43,7 @@ SYSTEM_PROMPT = boot["system_prompt"]
 PROMPT_VERSION_ID = boot["prompt_version_id"]
 USER_ID = boot["user_id"]
 GRAPH = boot["graph"]
+ENDING_GRAPH = boot["ending_graph"]
 
 MODEL_LABEL = cfg.OPENAI_MODEL if cfg.use_openai else cfg.MODEL_NAME
 SERVER_LABEL = "OpenAI" if cfg.use_openai else cfg.OLLAMA_BASE_URL
@@ -57,6 +61,8 @@ if "pending_audio" not in st.session_state:
     st.session_state.pending_audio = None
 if "last_voice_hash" not in st.session_state:
     st.session_state.last_voice_hash = None
+if "show_report_for" not in st.session_state:
+    st.session_state.show_report_for = None
 
 with st.sidebar:
     st.markdown("### Settings")
@@ -71,7 +77,29 @@ with st.sidebar:
         st.session_state.conversation_id = cid
         st.session_state.messages = []
         st.session_state.pending_audio = None
+        st.session_state.show_report_for = None
         st.rerun()
+
+    if (
+        st.session_state.conversation_id is not None
+        and st.session_state.show_report_for is None
+        and st.session_state.messages
+    ):
+        if st.button(
+            "End Conversation",
+            type="primary",
+            use_container_width=True,
+            key="end_conv",
+        ):
+            with st.spinner("보고서 생성 중..."):
+                ENDING_GRAPH.invoke(
+                    {
+                        "conversation_id": st.session_state.conversation_id,
+                        "user_id": str(USER_ID),
+                    }
+                )
+            st.session_state.show_report_for = st.session_state.conversation_id
+            st.rerun()
 
     conversations = list_conversations(user_id=USER_ID)
     for conv in conversations:
@@ -106,6 +134,9 @@ with st.sidebar:
                     st.session_state.conversation_id = cid
                     st.session_state.messages = load_messages(cid)
                     st.session_state.pending_audio = None
+                    st.session_state.show_report_for = (
+                        cid if conv.get("ended_at") else None
+                    )
                     st.rerun()
             with col2:
                 with st.popover(""):
@@ -118,6 +149,7 @@ with st.sidebar:
                             st.session_state.conversation_id = None
                             st.session_state.messages = []
                             st.session_state.pending_audio = None
+                            st.session_state.show_report_for = None
                         st.rerun()
 
     st.markdown(
@@ -262,21 +294,23 @@ def handle_voice_message(audio_bytes: bytes) -> None:
     st.session_state.pending_audio = result.get("audio_reply")
 
 
-# Voice 입력 처리 (history 그리기 전에 — 새 메시지가 화면에 즉시 보이게)
-audio_bytes = mic_input()
-if audio_bytes:
-    h = hashlib.sha1(audio_bytes).hexdigest()
-    if st.session_state.last_voice_hash != h:
-        st.session_state.last_voice_hash = h
-        handle_voice_message(audio_bytes)
+if st.session_state.show_report_for:
+    render_report(st.session_state.show_report_for, PROMPT_VERSION_ID)
+else:
+    audio_bytes = mic_input()
+    if audio_bytes:
+        h = hashlib.sha1(audio_bytes).hexdigest()
+        if st.session_state.last_voice_hash != h:
+            st.session_state.last_voice_hash = h
+            handle_voice_message(audio_bytes)
 
-for message in st.session_state.messages:
-    _render_message(message)
+    for message in st.session_state.messages:
+        _render_message(message)
 
-if st.session_state.pending_audio:
-    st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
+    if st.session_state.pending_audio:
+        st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
 
-text_prompt = st.chat_input("Type a message")
-if text_prompt:
-    handle_user_message(text_prompt)
-    st.rerun()
+    text_prompt = st.chat_input("Type a message")
+    if text_prompt:
+        handle_user_message(text_prompt)
+        st.rerun()
