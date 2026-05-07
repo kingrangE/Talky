@@ -1,11 +1,17 @@
 import hashlib
 
 import streamlit as st
-from dotenv import load_dotenv
 
-from app.agents.conversation_graph import build_conversation_graph
-from app.agents.ending_graph import build_ending_graph
-from app.db.repo import (
+# set_page_config 는 다른 streamlit 호출보다 먼저 실행되어야 함.
+# (cache_resource 의 기본 spinner 가 첫 streamlit 명령으로 카운트되므로
+#  bootstrap 호출 전에 호출.)
+st.set_page_config(page_title="Talky")
+
+from dotenv import load_dotenv  # noqa: E402
+
+from app.agents.conversation_graph import build_conversation_graph  # noqa: E402
+from app.agents.ending_graph import build_ending_graph  # noqa: E402
+from app.db.repo import (  # noqa: E402
     create_conversation,
     delete_conversation,
     ensure_default_user,
@@ -14,9 +20,9 @@ from app.db.repo import (
     load_messages,
     update_conversation_title,
 )
-from app.settings import get_settings
-from app.ui.audio_widget import mic_input
-from app.ui.report_view import render_report
+from app.settings import get_settings  # noqa: E402
+from app.ui.audio_widget import mic_input  # noqa: E402
+from app.ui.report_view import render_report  # noqa: E402
 
 load_dotenv()
 cfg = get_settings()
@@ -63,7 +69,6 @@ def _build_state_input(*, cid: str, **extra) -> dict:
         **extra,
     }
 
-st.set_page_config(page_title="Talky")
 st.title("Talky - English Conversation AI Agent")
 
 if "conversation_id" not in st.session_state:
