@@ -15,19 +15,21 @@ class GraphState(TypedDict, total=False):
     conversation_id: str
     user_id: str
     prompt_version_id: Optional[str]
+    user_message_id: Optional[str]
+    assistant_message_id: Optional[str]
 
     # 입력
-    audio_bytes: Optional[bytes]   # Phase C 부터
+    audio_bytes: Optional[bytes]
     user_text: str
-    language: Optional[Literal["ko", "en"]]   # Phase C 부터
+    language: Optional[Literal["ko", "en"]]
     history: list[HistoryItem]
     system_prompt: str
 
-    # 회상 (Phase E 부터)
+    # 회상 (Phase E)
     retrieved_memory: list[dict[str, Any]]
 
     # 출력
     ai_reply: str
-    english_expression: Optional[str]   # Phase D — 한국어 입력 시
-    better_expression: Optional[str]    # Phase D — 영어 입력 시
-    audio_reply: Optional[bytes]        # Phase C — TTS wav
+    english_expression: Optional[str]
+    better_expression: Optional[str]
+    audio_reply: Optional[bytes]

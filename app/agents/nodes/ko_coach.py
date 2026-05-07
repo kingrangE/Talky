@@ -14,14 +14,32 @@ KO_COACH_SUFFIX = """
 - english_expression: 사용자가 방금 말한 한국어 문장을 영어로 자연스럽게 표현한 한 줄
 """
 
+MEMORY_HEADER = "\n\n[참고할 이전 대화 메모리]\n"
+
 
 class KoCoachOutput(BaseModel):
     reply: str = Field(description="한국어 응답")
     english_expression: str = Field(description="사용자 마지막 한국어 발화의 영어 표현")
 
 
+def _format_memory(memory: list[dict]) -> str:
+    if not memory:
+        return ""
+    lines = []
+    for item in memory[:8]:
+        topic = item.get("topic", "")
+        text = (item.get("text") or "").replace("\n", " ").strip()
+        if not text:
+            continue
+        lines.append(f"- ({topic}) {text}")
+    return MEMORY_HEADER + "\n".join(lines) if lines else ""
+
+
 def _build_messages(state: GraphState) -> list:
-    msgs = [SystemMessage(content=state["system_prompt"] + "\n\n" + KO_COACH_SUFFIX)]
+    system = state["system_prompt"] + "\n\n" + KO_COACH_SUFFIX
+    system += _format_memory(state.get("retrieved_memory") or [])
+
+    msgs = [SystemMessage(content=system)]
     for m in state.get("history", []):
         if m["role"] == "user":
             msgs.append(HumanMessage(content=m["content"]))

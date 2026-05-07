@@ -7,10 +7,26 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from app.agents.state import GraphState
 from app.llm.factory import get_chat_llm
 
+MEMORY_HEADER = "\n\n[Earlier related memory]\n"
+
+
+def _format_memory(memory: list[dict]) -> str:
+    if not memory:
+        return ""
+    lines = []
+    for item in memory[:8]:
+        topic = item.get("topic", "")
+        text = (item.get("text") or "").replace("\n", " ").strip()
+        if not text:
+            continue
+        lines.append(f"- ({topic}) {text}")
+    return MEMORY_HEADER + "\n".join(lines) if lines else ""
+
 
 def en_reply_node(state: GraphState) -> dict:
     llm = get_chat_llm()
-    msgs: list = [SystemMessage(content=state["system_prompt"])]
+    system = state["system_prompt"] + _format_memory(state.get("retrieved_memory") or [])
+    msgs: list = [SystemMessage(content=system)]
     for m in state.get("history", []):
         if m["role"] == "user":
             msgs.append(HumanMessage(content=m["content"]))
