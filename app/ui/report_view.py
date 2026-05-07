@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.agents.evolve_graph import run_evolve_if_needed
 from app.db.repo import get_rating, get_report, save_rating
 
 
@@ -58,5 +59,9 @@ def render_report(conversation_id: str, prompt_version_id: str | None) -> None:
                     stars=int(stars) + 1,  # st.feedback 은 0~4 반환
                     comment=(comment.strip() or None) if comment else None,
                 )
+                with st.spinner("프롬프트 진화 점검 중..."):
+                    new_pid = run_evolve_if_needed()
+                if new_pid:
+                    st.toast("📈 system prompt 가 새 버전으로 진화되었습니다.")
             st.session_state.show_report_for = None
             st.rerun()
