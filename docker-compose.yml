@@ -1,0 +1,75 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.app
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      OLLAMA_BASE_URL: http://ollama:11434
+      NEO4J_URI: bolt://neo4j:7687
+      AUDIO_CACHE_DIR: /cache
+    ports:
+      - "8501:8501"
+    volumes:
+      - whisper-cache:/cache/whisper
+      - tts-cache:/cache/tts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      MODEL_NAME: ${MODEL_NAME:-skt/A.X-4.0-Light}
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+      - ./Modelfile:/work/Modelfile:ro
+      - ./model:/work/model:ro
+      - ./docker/ollama-init.sh:/ollama-init.sh:ro
+    entrypoint: ["/bin/bash", "/ollama-init.sh"]
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-talky}
+      POSTGRES_USER: ${POSTGRES_USER:-talky}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-talky}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-talky} -d ${POSTGRES_DB:-talky}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-talky-dev-pw}
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j-data:/data
+      - ./docker/neo4j-init.cypher:/init.cypher:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  ollama-data:
+  pg-data:
+  neo4j-data:
+  whisper-cache:
+  tts-cache:
