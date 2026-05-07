@@ -151,23 +151,74 @@ def _ensure_conversation(seed_text: str) -> str:
     return st.session_state.conversation_id
 
 
-def _stream_text_turn(state_input: dict):
-    for chunk, _meta in GRAPH.stream(state_input, stream_mode="messages"):
-        text = getattr(chunk, "content", None)
-        if text:
-            yield text
+def _render_message(m: dict) -> None:
+    with st.chat_message(m["role"]):
+        st.markdown(m["content"])
+        if m["role"] == "user" and m.get("english_expression"):
+            st.markdown(
+                f"> 💡 **영어로는:** {m['english_expression']}"
+            )
+        if m["role"] == "assistant" and m.get("better_expression"):
+            with st.expander("✨ 참고하세요!"):
+                st.markdown(m["better_expression"])
+
+
+def _persist_turn(
+    cid: str,
+    user_text: str,
+    ai_reply: str,
+    language: str | None,
+    english_expression: str | None,
+    better_expression: str | None,
+) -> None:
+    user_msg = {
+        "role": "user",
+        "content": user_text,
+        "language": language,
+        "english_expression": english_expression,
+        "better_expression": None,
+    }
+    st.session_state.messages.append(user_msg)
+    save_message(
+        cid,
+        "user",
+        user_text,
+        language=language,
+        english_expression=english_expression,
+    )
+
+    assistant_msg = {
+        "role": "assistant",
+        "content": ai_reply,
+        "language": language,
+        "english_expression": None,
+        "better_expression": better_expression,
+    }
+    st.session_state.messages.append(assistant_msg)
+    save_message(
+        cid,
+        "assistant",
+        ai_reply,
+        language=language,
+        better_expression=better_expression,
+    )
+
+    if len(st.session_state.messages) == 2:
+        title = user_text[:30] + ("..." if len(user_text) > 30 else "")
+        update_conversation_title(cid, title)
+
+
+def _invoke_turn(state_input: dict) -> dict:
+    return GRAPH.invoke(state_input)
 
 
 def handle_user_message(prompt: str) -> None:
     st.session_state.pending_audio = None
     cid = _ensure_conversation(prompt)
 
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    save_message(cid, "user", prompt)
-
     history = [
         {"role": m["role"], "content": m["content"]}
-        for m in st.session_state.messages[:-1]
+        for m in st.session_state.messages
     ]
     state_input = {
         "conversation_id": cid,
@@ -177,15 +228,17 @@ def handle_user_message(prompt: str) -> None:
         "user_text": prompt,
         "history": history,
     }
+    with st.spinner("생각 중..."):
+        result = _invoke_turn(state_input)
 
-    with st.chat_message("assistant"):
-        response = st.write_stream(_stream_text_turn(state_input))
-
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    save_message(cid, "assistant", response)
-    if len(st.session_state.messages) == 2:
-        title = prompt[:30] + ("..." if len(prompt) > 30 else "")
-        update_conversation_title(cid, title)
+    _persist_turn(
+        cid,
+        user_text=result.get("user_text", prompt),
+        ai_reply=result.get("ai_reply") or "",
+        language=result.get("language"),
+        english_expression=result.get("english_expression"),
+        better_expression=result.get("better_expression"),
+    )
 
 
 def handle_voice_message(audio_bytes: bytes) -> None:
@@ -202,31 +255,27 @@ def handle_voice_message(audio_bytes: bytes) -> None:
         "history": history,
     }
     with st.spinner("듣는 중..."):
-        result = GRAPH.invoke(state_input)
+        result = _invoke_turn(state_input)
 
     user_text = (result.get("user_text") or "").strip()
-    ai_reply = result.get("ai_reply") or ""
-    audio_reply = result.get("audio_reply")
-    language = result.get("language")
-
     if not user_text:
         st.warning("음성을 인식하지 못했어요. 다시 말씀해 주세요.")
         return
 
     cid = _ensure_conversation(user_text)
-    st.session_state.messages.append({"role": "user", "content": user_text})
-    save_message(cid, "user", user_text, language=language)
-    st.session_state.messages.append({"role": "assistant", "content": ai_reply})
-    save_message(cid, "assistant", ai_reply, language=language)
+    _persist_turn(
+        cid,
+        user_text=user_text,
+        ai_reply=result.get("ai_reply") or "",
+        language=result.get("language"),
+        english_expression=result.get("english_expression"),
+        better_expression=result.get("better_expression"),
+    )
 
-    if len(st.session_state.messages) == 2:
-        title = user_text[:30] + ("..." if len(user_text) > 30 else "")
-        update_conversation_title(cid, title)
-
-    st.session_state.pending_audio = audio_reply
+    st.session_state.pending_audio = result.get("audio_reply")
 
 
-# --- Voice 입력 (텍스트 입력보다 먼저 처리해서 history 가 새 메시지를 포함하게) ---
+# Voice 입력 처리 (history 그리기 전에 — 새 메시지가 화면에 즉시 보이게)
 audio_bytes = mic_input()
 if audio_bytes:
     h = hashlib.sha1(audio_bytes).hexdigest()
@@ -234,16 +283,12 @@ if audio_bytes:
         st.session_state.last_voice_hash = h
         handle_voice_message(audio_bytes)
 
-# --- 히스토리 표시 ---
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    _render_message(message)
 
-# --- 응답 자동 재생 ---
 if st.session_state.pending_audio:
     st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
 
-# --- 텍스트 입력 (fallback) ---
 text_prompt = st.chat_input("Type a message")
 if text_prompt:
     handle_user_message(text_prompt)
