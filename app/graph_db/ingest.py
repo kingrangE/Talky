@@ -147,3 +147,42 @@ def ingest_turn(
     except Exception as exc:
         log.warning("ingest_turn skipped: %s", exc)
         return False
+
+
+def _ingest_topics_tx(tx, conversation_id: str, topics: list[str]) -> None:
+    for name in topics:
+        tx.run(
+            """
+            MERGE (t:Topic {name: $name})
+            WITH t
+            MATCH (c:Conversation {id: $cid})
+            MERGE (c)-[:ABOUT]->(t)
+            """,
+            name=name,
+            cid=conversation_id,
+        )
+    for i, a in enumerate(topics):
+        for b in topics[i + 1 :]:
+            tx.run(
+                """
+                MATCH (x:Topic {name: $a}), (y:Topic {name: $b})
+                MERGE (x)-[r:RELATED_TO]-(y)
+                  ON CREATE SET r.weight = 1
+                  ON MATCH  SET r.weight = r.weight + 1
+                """,
+                a=a,
+                b=b,
+            )
+
+
+def ingest_topics(*, conversation_id: str, topics: list[str]) -> bool:
+    cleaned = [t.strip().lower() for t in topics if t and t.strip()]
+    if not cleaned or not ensure_schema():
+        return False
+    try:
+        with get_driver().session() as s:
+            s.execute_write(_ingest_topics_tx, conversation_id, cleaned)
+        return True
+    except Exception as exc:
+        log.warning("ingest_topics skipped: %s", exc)
+        return False
