@@ -21,7 +21,9 @@ faster-whisper==1.0.*
 piper-tts==1.2.*
 soundfile==0.12.*
 
-# Phase D 이후 (사전 설치 권장):
+# Graph DB (Phase E)
+neo4j==5.*
+
+# Phase G 이후 (사전 설치 권장):
 # pgvector==0.3.*
-# neo4j==5.*
 # fastembed==0.4.*
