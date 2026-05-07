@@ -25,28 +25,43 @@ cfg = get_settings()
 @st.cache_resource
 def _bootstrap() -> dict:
     user_id = ensure_default_user()
-    prompt = get_active_prompt()
-    if prompt is None:
+    if get_active_prompt() is None:
         st.error("Active system prompt not found. Run: python -m app.db.seed")
         st.stop()
     return {
         "user_id": user_id,
-        "system_prompt": prompt["content"],
-        "prompt_version_id": prompt["id"],
         "graph": build_conversation_graph(),
         "ending_graph": build_ending_graph(),
     }
 
 
 boot = _bootstrap()
-SYSTEM_PROMPT = boot["system_prompt"]
-PROMPT_VERSION_ID = boot["prompt_version_id"]
 USER_ID = boot["user_id"]
 GRAPH = boot["graph"]
 ENDING_GRAPH = boot["ending_graph"]
 
+
+def _active_prompt() -> dict:
+    """매 turn 마다 활성 prompt 를 새로 로드 (메타-LLM 진화 즉시 반영)."""
+    p = get_active_prompt()
+    if p is None:
+        st.error("Active system prompt not found. Run: python -m app.db.seed")
+        st.stop()
+    return p
+
 MODEL_LABEL = cfg.OPENAI_MODEL if cfg.use_openai else cfg.MODEL_NAME
 SERVER_LABEL = "OpenAI" if cfg.use_openai else cfg.OLLAMA_BASE_URL
+
+
+def _build_state_input(*, cid: str, **extra) -> dict:
+    active = _active_prompt()
+    return {
+        "conversation_id": cid,
+        "user_id": str(USER_ID),
+        "prompt_version_id": active["id"],
+        "system_prompt": active["content"],
+        **extra,
+    }
 
 st.set_page_config(page_title="Talky")
 st.title("Talky - English Conversation AI Agent")
@@ -239,14 +254,7 @@ def handle_user_message(prompt: str) -> None:
         {"role": m["role"], "content": m["content"]}
         for m in st.session_state.messages
     ]
-    state_input = {
-        "conversation_id": cid,
-        "user_id": str(USER_ID),
-        "prompt_version_id": PROMPT_VERSION_ID,
-        "system_prompt": SYSTEM_PROMPT,
-        "user_text": prompt,
-        "history": history,
-    }
+    state_input = _build_state_input(cid=cid, user_text=prompt, history=history)
     with st.spinner("생각 중..."):
         result = _invoke_turn(state_input)
 
@@ -266,14 +274,9 @@ def handle_voice_message(audio_bytes: bytes) -> None:
         {"role": m["role"], "content": m["content"]}
         for m in st.session_state.messages
     ]
-    state_input = {
-        "conversation_id": cid,
-        "user_id": str(USER_ID),
-        "prompt_version_id": PROMPT_VERSION_ID,
-        "system_prompt": SYSTEM_PROMPT,
-        "audio_bytes": audio_bytes,
-        "history": history,
-    }
+    state_input = _build_state_input(
+        cid=cid, audio_bytes=audio_bytes, history=history
+    )
     with st.spinner("듣는 중..."):
         result = _invoke_turn(state_input)
 
@@ -295,7 +298,7 @@ def handle_voice_message(audio_bytes: bytes) -> None:
 
 
 if st.session_state.show_report_for:
-    render_report(st.session_state.show_report_for, PROMPT_VERSION_ID)
+    render_report(st.session_state.show_report_for, _active_prompt()["id"])
 else:
     audio_bytes = mic_input()
     if audio_bytes:
