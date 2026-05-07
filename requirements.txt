@@ -16,10 +16,12 @@ langchain-community==0.3.*
 langchain-ollama==0.2.*
 langchain-openai==0.2.*
 
-# Phase C 이후 (사전 설치 권장):
+# Audio (Phase C)
+faster-whisper==1.0.*
+piper-tts==1.2.*
+soundfile==0.12.*
+
+# Phase D 이후 (사전 설치 권장):
 # pgvector==0.3.*
 # neo4j==5.*
-# faster-whisper==1.0.*
-# piper-tts==1.2.*
-# soundfile==0.12.*
 # fastembed==0.4.*
