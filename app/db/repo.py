@@ -12,7 +12,7 @@ from typing import Any
 
 from sqlalchemy import select, update
 
-from app.db.models import Conversation, Message, PromptVersion, User
+from app.db.models import Conversation, Message, PromptVersion, Rating, Report, User
 from app.db.postgres import session_scope
 from app.settings import get_settings
 
@@ -133,6 +133,88 @@ def save_message(
         s.add(msg)
         s.flush()
         return str(msg.id)
+
+
+def save_report(
+    *,
+    conversation_id: str,
+    summary: str,
+    strengths: list[str],
+    weaknesses: list[str],
+    vocab_learned: list[str],
+) -> str:
+    cid = _to_uuid(conversation_id)
+    with session_scope() as s:
+        existing = s.scalars(select(Report).where(Report.conversation_id == cid)).first()
+        if existing is not None:
+            existing.summary = summary
+            existing.strengths = {"items": strengths}
+            existing.weaknesses = {"items": weaknesses}
+            existing.vocab_learned = {"items": vocab_learned}
+            s.flush()
+            return str(existing.id)
+        report = Report(
+            conversation_id=cid,
+            summary=summary,
+            strengths={"items": strengths},
+            weaknesses={"items": weaknesses},
+            vocab_learned={"items": vocab_learned},
+        )
+        s.add(report)
+        s.flush()
+        return str(report.id)
+
+
+def get_report(conversation_id: str) -> dict[str, Any] | None:
+    cid = _to_uuid(conversation_id)
+    with session_scope() as s:
+        row = s.scalars(select(Report).where(Report.conversation_id == cid)).first()
+        if row is None:
+            return None
+        return {
+            "summary": row.summary,
+            "strengths": (row.strengths or {}).get("items", []),
+            "weaknesses": (row.weaknesses or {}).get("items", []),
+            "vocab_learned": (row.vocab_learned or {}).get("items", []),
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+
+
+def save_rating(
+    *,
+    conversation_id: str,
+    prompt_version_id: str | None,
+    stars: int,
+    comment: str | None = None,
+) -> str:
+    cid = _to_uuid(conversation_id)
+    pvid = _to_uuid(prompt_version_id) if prompt_version_id else None
+    with session_scope() as s:
+        existing = s.scalars(select(Rating).where(Rating.conversation_id == cid)).first()
+        if existing is not None:
+            existing.stars = stars
+            existing.comment = comment
+            existing.prompt_version_id = pvid
+            s.flush()
+            return str(existing.id)
+        rating = Rating(
+            conversation_id=cid,
+            prompt_version_id=pvid,
+            stars=stars,
+            comment=comment,
+        )
+        s.add(rating)
+        s.flush()
+        return str(rating.id)
+
+
+def get_rating(conversation_id: str) -> dict[str, Any] | None:
+    cid = _to_uuid(conversation_id)
+    with session_scope() as s:
+        row = s.scalars(select(Rating).where(Rating.conversation_id == cid)).first()
+        if row is None:
+            return None
+        return {"stars": row.stars, "comment": row.comment}
 
 
 def load_messages(conversation_id: str) -> list[dict[str, Any]]:
