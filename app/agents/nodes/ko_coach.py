@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
-from app.llm.factory import get_chat_llm
+from app.llm.factory import get_structured_llm
 
 KO_COACH_SUFFIX = """
 [중요] 사용자가 방금 한국어로 말했습니다. 아래 JSON 스키마로 응답하세요.
@@ -50,7 +50,7 @@ def _build_messages(state: GraphState) -> list:
 
 
 def ko_coach_node(state: GraphState) -> dict:
-    llm = get_chat_llm().with_structured_output(KoCoachOutput)
+    llm = get_structured_llm(KoCoachOutput)
     out: KoCoachOutput = llm.invoke(_build_messages(state))
     return {
         "ai_reply": out.reply,

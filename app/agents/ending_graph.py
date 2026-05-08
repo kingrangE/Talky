@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.db.repo import load_messages, mark_conversation_ended, save_report
 from app.graph_db.ingest import ingest_topics
-from app.llm.factory import get_chat_llm
+from app.llm.factory import get_structured_llm
 
 
 class EndingState(TypedDict, total=False):
@@ -65,7 +65,7 @@ def summarize_node(state: EndingState) -> dict:
         }
 
     history_text = "\n".join(f"[{m['role']}] {m['content']}" for m in history)
-    llm = get_chat_llm(temperature=0.3).with_structured_output(ReportPayload)
+    llm = get_structured_llm(ReportPayload, temperature=0.3)
     out: ReportPayload = llm.invoke(
         [
             SystemMessage(content=SUMMARIZE_PROMPT),

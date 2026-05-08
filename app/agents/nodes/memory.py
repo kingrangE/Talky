@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
 from app.graph_db.recall import recall_related
-from app.llm.factory import get_chat_llm
+from app.llm.factory import get_structured_llm
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def _extract_topics(text: str) -> list[str]:
     if not text or len(text) < 4:
         return []
     try:
-        llm = get_chat_llm(temperature=0.0).with_structured_output(TopicCandidates)
+        llm = get_structured_llm(TopicCandidates, temperature=0.0)
         out: TopicCandidates = llm.invoke(
             [SystemMessage(content=TOPIC_PROMPT), HumanMessage(content=text)]
         )

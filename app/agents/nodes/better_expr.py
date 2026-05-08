@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
-from app.llm.factory import get_chat_llm
+from app.llm.factory import get_structured_llm
 
 BETTER_EXPR_PROMPT = """You are an English coach. Rewrite the user's most recent English sentence in a more natural / idiomatic way while keeping the meaning identical.
 
@@ -24,7 +24,7 @@ class BetterExpressionOutput(BaseModel):
 
 
 def better_expr_node(state: GraphState) -> dict:
-    llm = get_chat_llm().with_structured_output(BetterExpressionOutput)
+    llm = get_structured_llm(BetterExpressionOutput)
     out: BetterExpressionOutput = llm.invoke(
         [
             SystemMessage(content=BETTER_EXPR_PROMPT),

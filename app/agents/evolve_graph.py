@@ -26,7 +26,7 @@ from app.db.repo import (
     insert_prompt_version,
     mark_unconsumed_ratings_consumed,
 )
-from app.llm.factory import get_chat_llm
+from app.llm.factory import get_structured_llm
 from app.settings import get_settings
 
 log = logging.getLogger(__name__)
@@ -113,7 +113,7 @@ def meta_compose_node(state: EvolveState) -> dict:
         "low_rated_conversations": state.get("low_rated") or [],
         "rating_distribution": state.get("rating_distribution") or {},
     }
-    llm = get_chat_llm(temperature=0.4).with_structured_output(EvolveOutput)
+    llm = get_structured_llm(EvolveOutput, temperature=0.4)
     out: EvolveOutput = llm.invoke(
         [
             SystemMessage(content=META_PROMPT),
