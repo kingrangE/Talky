@@ -81,6 +81,8 @@ if "pending_audio" not in st.session_state:
     st.session_state.pending_audio = None
 if "last_voice_hash" not in st.session_state:
     st.session_state.last_voice_hash = None
+if "voice_turn" not in st.session_state:
+    st.session_state.voice_turn = 0
 if "show_report_for" not in st.session_state:
     st.session_state.show_report_for = None
 
@@ -305,18 +307,21 @@ def handle_voice_message(audio_bytes: bytes) -> None:
 if st.session_state.show_report_for:
     render_report(st.session_state.show_report_for, _active_prompt()["id"])
 else:
-    audio_bytes = mic_input()
+    audio_bytes = mic_input(key=f"voice_input_{st.session_state.voice_turn}")
     if audio_bytes:
         h = hashlib.sha1(audio_bytes).hexdigest()
         if st.session_state.last_voice_hash != h:
             st.session_state.last_voice_hash = h
             handle_voice_message(audio_bytes)
+            st.session_state.voice_turn += 1
+            st.rerun()
 
     for message in st.session_state.messages:
         _render_message(message)
 
     if st.session_state.pending_audio:
         st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
+        st.session_state.pending_audio = None
 
     text_prompt = st.chat_input("Type a message")
     if text_prompt:
