@@ -1,4 +1,7 @@
-"""TTS 노드. 음성 입력이었던 turn 에 대해서만 합성."""
+"""TTS 노드. 음성 입력이었던 turn 에 대해서만 합성.
+
+AI 응답은 항상 영어이므로 voice 도 항상 영어 (`en`) 로 합성한다.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +15,7 @@ def tts_node(state: GraphState) -> dict:
     reply = state.get("ai_reply")
     if not reply:
         return {}
-    lang = state.get("language") or "en"
-    wav = synthesize(reply, lang)
+    wav = synthesize(reply, "en")
+    if wav is None:
+        return {}
     return {"audio_reply": wav}

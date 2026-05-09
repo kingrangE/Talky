@@ -7,6 +7,13 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from app.agents.state import GraphState
 from app.llm.factory import get_chat_llm
 
+NATIVE_SUFFIX = (
+    "\n\nReply ONLY in English. Sound like a native speaker chatting with a friend: "
+    "contractions, natural fillers, idioms, and current everyday phrasing — not "
+    "textbook English. Keep it short (1–3 sentences) and end with a follow-up "
+    "question to keep the chat going."
+)
+
 MEMORY_HEADER = "\n\n[Earlier related memory]\n"
 
 
@@ -25,7 +32,11 @@ def _format_memory(memory: list[dict]) -> str:
 
 def en_reply_node(state: GraphState) -> dict:
     llm = get_chat_llm()
-    system = state["system_prompt"] + _format_memory(state.get("retrieved_memory") or [])
+    system = (
+        state["system_prompt"]
+        + NATIVE_SUFFIX
+        + _format_memory(state.get("retrieved_memory") or [])
+    )
     msgs: list = [SystemMessage(content=system)]
     for m in state.get("history", []):
         if m["role"] == "user":
