@@ -91,7 +91,7 @@ def should_evolve_node(state: EvolveState) -> dict:
 
 def fetch_node(state: EvolveState) -> dict:
     if not state.get("proceed"):
-        return {}
+        return {"proceed": False}
     high = get_unconsumed_rated_reports(top_n=3, order="desc")
     low = get_unconsumed_rated_reports(top_n=3, order="asc")
     current = get_active_prompt()
@@ -106,7 +106,7 @@ def fetch_node(state: EvolveState) -> dict:
 
 def meta_compose_node(state: EvolveState) -> dict:
     if not state.get("proceed"):
-        return {}
+        return {"proceed": False}
     payload = {
         "current_system_prompt": state["current_prompt"]["content"],
         "high_rated_conversations": state.get("high_rated") or [],
@@ -129,7 +129,7 @@ def meta_compose_node(state: EvolveState) -> dict:
 
 def validate_node(state: EvolveState) -> dict:
     if not state.get("proceed"):
-        return {}
+        return {"proceed": False}
     content = (state.get("new_prompt_content") or "").strip()
     if not (MIN_LEN <= len(content) <= MAX_LEN):
         log.warning("evolve rejected: length %d out of [%d,%d]", len(content), MIN_LEN, MAX_LEN)
@@ -137,12 +137,12 @@ def validate_node(state: EvolveState) -> dict:
     if not any(kw in content for kw in REQUIRED_KEYWORDS):
         log.warning("evolve rejected: missing required role keyword")
         return {"proceed": False}
-    return {}
+    return {"proceed": True}
 
 
 def insert_node(state: EvolveState) -> dict:
     if not state.get("proceed"):
-        return {}
+        return {"proceed": False}
     new_id = insert_prompt_version(
         content=state["new_prompt_content"],
         rationale=state.get("rationale"),
