@@ -24,11 +24,11 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "talky"
     POSTGRES_USER: str = "talky"
-    POSTGRES_PASSWORD: str = "talky"
+    POSTGRES_PASSWORD: str
 
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "talky-dev-pw"
+    NEO4J_PASSWORD: str
 
     APP_USER_ID: str = ""
     EVOLVE_BATCH: int = 5
