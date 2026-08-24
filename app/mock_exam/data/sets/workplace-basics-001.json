@@ -1,0 +1,184 @@
+{
+  "id": "workplace-basics-001",
+  "version": "1.0.0",
+  "title": "Workplace Communication Basics",
+  "target": "Intermediate to upper-intermediate English speakers",
+  "status": "approved",
+  "questions": [
+    {
+      "number": 1,
+      "question_type": "read_aloud",
+      "direction": "Read the text aloud as clearly as you can.",
+      "prompt": "Thank you for visiting the Riverside Community Center. The front desk is open from eight thirty in the morning until six in the evening. Visitors who reserved a meeting room should check in at least ten minutes before their scheduled time.",
+      "preparation_seconds": 45,
+      "response_seconds": 45,
+      "rubric_anchors": ["intelligible pronunciation", "natural intonation and stress", "complete reading"]
+    },
+    {
+      "number": 2,
+      "question_type": "read_aloud",
+      "direction": "Read the text aloud as clearly as you can.",
+      "prompt": "Due to scheduled maintenance, the east parking lot will be closed on Thursday afternoon. Employees may use the visitor parking area beside the main entrance. Please remove all vehicles from the east lot before noon.",
+      "preparation_seconds": 45,
+      "response_seconds": 45,
+      "rubric_anchors": ["intelligible pronunciation", "natural intonation and stress", "complete reading"]
+    },
+    {
+      "number": 3,
+      "question_type": "describe_picture",
+      "direction": "Describe the picture in as much detail as you can.",
+      "prompt": "Describe the picture on the screen.",
+      "preparation_seconds": 45,
+      "response_seconds": 30,
+      "asset_id": "office-presentation",
+      "rubric_anchors": ["people and setting", "visible actions", "organized description"],
+      "expected_facts": ["several people are seated indoors", "a presentation or discussion is taking place", "people are paying attention"]
+    },
+    {
+      "number": 4,
+      "question_type": "describe_picture",
+      "direction": "Describe the picture in as much detail as you can.",
+      "prompt": "Describe the picture on the screen.",
+      "preparation_seconds": 45,
+      "response_seconds": 30,
+      "asset_id": "outdoor-market",
+      "rubric_anchors": ["market setting", "people and merchandise", "spatial organization"],
+      "expected_facts": ["people are at an outdoor market", "goods are displayed on tables", "customers are browsing the stalls"]
+    },
+    {
+      "number": 5,
+      "question_type": "respond_question",
+      "direction": "Respond to the question.",
+      "prompt": "How often do you use a shared workspace, such as a library or a cafe?",
+      "preparation_seconds": 3,
+      "response_seconds": 15,
+      "rubric_anchors": ["direct answer", "relevant frequency or routine", "complete response"]
+    },
+    {
+      "number": 6,
+      "question_type": "respond_question",
+      "direction": "Respond to the question.",
+      "prompt": "What is the most important feature you look for in a place to study or work?",
+      "preparation_seconds": 3,
+      "response_seconds": 15,
+      "rubric_anchors": ["clear preference", "relevant feature", "complete response"]
+    },
+    {
+      "number": 7,
+      "question_type": "respond_question",
+      "direction": "Respond to the question.",
+      "prompt": "Describe a situation when a quiet place helped you finish an important task.",
+      "preparation_seconds": 3,
+      "response_seconds": 30,
+      "rubric_anchors": ["specific situation", "action and result", "connected response"]
+    },
+    {
+      "number": 8,
+      "question_type": "provided_information",
+      "direction": "Use the information provided to answer the question.",
+      "prompt": "What time does the workshop begin, and where will it be held?",
+      "preparation_seconds": 3,
+      "response_seconds": 15,
+      "group_read_seconds": 45,
+      "information_panel": {
+        "title": "New Employee Workshop",
+        "subtitle": "Tuesday, September 15",
+        "headers": ["Time", "Session", "Location"],
+        "rows": [
+          ["9:00–9:30", "Registration", "Main Lobby"],
+          ["9:30–10:15", "Company Tools", "Room 204"],
+          ["10:30–11:15", "Customer Communication", "Room 204"],
+          ["11:30–12:00", "Questions and Next Steps", "Conference Hall"]
+        ],
+        "note": "Coffee and light snacks will be available in the lobby."
+      },
+      "rubric_anchors": ["correct time", "correct location", "concise complete answer"],
+      "expected_facts": ["9:30", "Room 204"]
+    },
+    {
+      "number": 9,
+      "question_type": "provided_information",
+      "direction": "Use the information provided to answer the question.",
+      "prompt": "Where can participants get coffee, and when is the customer communication session?",
+      "preparation_seconds": 3,
+      "response_seconds": 15,
+      "information_panel": {
+        "title": "New Employee Workshop",
+        "subtitle": "Tuesday, September 15",
+        "headers": ["Time", "Session", "Location"],
+        "rows": [
+          ["9:00–9:30", "Registration", "Main Lobby"],
+          ["9:30–10:15", "Company Tools", "Room 204"],
+          ["10:30–11:15", "Customer Communication", "Room 204"],
+          ["11:30–12:00", "Questions and Next Steps", "Conference Hall"]
+        ],
+        "note": "Coffee and light snacks will be available in the lobby."
+      },
+      "rubric_anchors": ["correct refreshment location", "correct session time", "complete answer"],
+      "expected_facts": ["lobby", "10:30 to 11:15"]
+    },
+    {
+      "number": 10,
+      "question_type": "provided_information",
+      "direction": "Use the information provided to answer the question.",
+      "prompt": "I heard the final session starts at eleven o'clock and is in Room 204. Is that correct?",
+      "preparation_seconds": 3,
+      "response_seconds": 30,
+      "prompt_repeat_count": 2,
+      "information_panel": {
+        "title": "New Employee Workshop",
+        "subtitle": "Tuesday, September 15",
+        "headers": ["Time", "Session", "Location"],
+        "rows": [
+          ["9:00–9:30", "Registration", "Main Lobby"],
+          ["9:30–10:15", "Company Tools", "Room 204"],
+          ["10:30–11:15", "Customer Communication", "Room 204"],
+          ["11:30–12:00", "Questions and Next Steps", "Conference Hall"]
+        ],
+        "note": "Coffee and light snacks will be available in the lobby."
+      },
+      "rubric_anchors": ["identify both errors", "provide corrected time and location", "professional response"],
+      "expected_facts": ["11:30", "Conference Hall"]
+    },
+    {
+      "number": 11,
+      "question_type": "express_opinion",
+      "direction": "Express your opinion and support it with reasons and examples.",
+      "prompt": "Some companies allow employees to choose their own working hours. Do you think this is beneficial for both employees and employers? Why or why not?",
+      "preparation_seconds": 45,
+      "response_seconds": 60,
+      "rubric_anchors": ["clear position", "at least two supporting ideas", "connected sustained response", "relevant example"]
+    }
+  ],
+  "assets": [
+    {
+      "asset_id": "office-presentation",
+      "kind": "image",
+      "source_url": "https://upload.wikimedia.org/wikipedia/commons/0/04/Interested_people_at_presentation_about_GLAM_law_problems%2C_Wikimedia_Czech_republic_office_in_Prague.jpg",
+      "author": "Jiří Sedláček",
+      "license_name": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "attribution_required": true
+    },
+    {
+      "asset_id": "outdoor-market",
+      "kind": "image",
+      "source_url": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Outdoor_market_%282925497618%29.jpg",
+      "author": "Andy Mitchell",
+      "license_name": "CC BY-SA 2.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
+      "attribution_required": true
+    }
+  ],
+  "audit": {
+    "generator_model": "human-seeded-local-llm-ready",
+    "reviewer_model": "manual-review-bootstrap",
+    "prompt_version": "authoring-v1",
+    "attempts": 0,
+    "deterministic_checks": ["11-question layout", "official timing shape", "asset license manifest", "information consistency"],
+    "reviewer_findings": [],
+    "adjudication": "approved",
+    "approved_by": "repository owner",
+    "approved_at": "2026-08-24"
+  }
+}

@@ -45,3 +45,20 @@ def get_structured_llm(schema: Any, temperature: float = 0.7) -> Any:
         return base.with_structured_output(schema, method="json_schema")
     except (TypeError, ValueError):
         return base.with_structured_output(schema, method="json_mode")
+
+
+def get_local_structured_llm(
+    schema: Any, *, model_name: str, temperature: float = 0.1
+) -> Any:
+    """Use a named local Ollama model for independent offline review agents."""
+    from langchain_ollama import ChatOllama
+
+    base = ChatOllama(
+        base_url=get_settings().OLLAMA_BASE_URL,
+        model=model_name,
+        temperature=temperature,
+    )
+    try:
+        return base.with_structured_output(schema, method="json_schema")
+    except (TypeError, ValueError):
+        return base.with_structured_output(schema, method="json_mode")
