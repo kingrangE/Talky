@@ -145,3 +145,137 @@ class Rating(Base):
     comment: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     consumed_for_evolution: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class MockExamSession(Base):
+    __tablename__ = "mock_exam_sessions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active','scoring','completed','abandoned','failed')",
+            name="mock_exam_sessions_status_chk",
+        ),
+        CheckConstraint(
+            "scoring_profile IN ('basic','advanced')",
+            name="mock_exam_sessions_profile_chk",
+        ),
+        Index("ix_mock_exam_sessions_visitor_started", "visitor_hash", "started_at"),
+        Index("ix_mock_exam_sessions_expires", "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    visitor_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    exam_set_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    exam_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    current_question: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
+    scoring_profile: Mapped[str] = mapped_column(String(16), nullable=False, default="basic")
+    consent_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    retry_question: Mapped[int | None] = mapped_column(SmallInteger)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    responses: Mapped[list["MockExamResponse"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+    report: Mapped["MockExamReport"] = relationship(
+        back_populates="session", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class MockExamResponse(Base):
+    __tablename__ = "mock_exam_responses"
+    __table_args__ = (
+        UniqueConstraint("session_id", "question_number", name="uq_mock_exam_response_question"),
+        CheckConstraint(
+            "status IN ('queued','processing','scored','no_response','technical_error','failed')",
+            name="mock_exam_responses_status_chk",
+        ),
+        Index("ix_mock_exam_responses_expires", "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("mock_exam_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    question_number: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="queued")
+    encrypted_audio_path: Mapped[str | None] = mapped_column(Text)
+    transcript: Mapped[str | None] = mapped_column(Text)
+    audio_metrics: Mapped[dict | None] = mapped_column(JSONB)
+    language_evaluation: Mapped[dict | None] = mapped_column(JSONB)
+    task_evaluation: Mapped[dict | None] = mapped_column(JSONB)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    session: Mapped[MockExamSession] = relationship(back_populates="responses")
+
+
+class MockExamReport(Base):
+    __tablename__ = "mock_exam_reports"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued','scoring','partial','completed','failed')",
+            name="mock_exam_reports_status_chk",
+        ),
+        Index("ix_mock_exam_reports_expires", "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("mock_exam_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    scoring_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    score_low: Mapped[int | None] = mapped_column(SmallInteger)
+    score_high: Mapped[int | None] = mapped_column(SmallInteger)
+    expected_level: Mapped[str | None] = mapped_column(String(64))
+    confidence: Mapped[str | None] = mapped_column(String(16))
+    scoring_profile: Mapped[str] = mapped_column(String(16), nullable=False)
+    payload: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    session: Mapped[MockExamSession] = relationship(back_populates="report")
+
+
+class MockExamCalibrationSample(Base):
+    __tablename__ = "mock_exam_calibration_samples"
+    __table_args__ = (
+        CheckConstraint("official_score BETWEEN 0 AND 200", name="mock_exam_official_score_chk"),
+        CheckConstraint("official_score % 10 = 0", name="mock_exam_official_score_step_chk"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    official_score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    official_exam_month: Mapped[str | None] = mapped_column(String(7))
+    predicted_low: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    predicted_high: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    scoring_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    scoring_profile: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class MockExamDailyAggregate(Base):
+    __tablename__ = "mock_exam_daily_aggregates"
+    __table_args__ = (
+        UniqueConstraint("day", "scoring_profile", name="uq_mock_exam_aggregate_day_profile"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    day: Mapped[str] = mapped_column(String(10), nullable=False)
+    scoring_profile: Mapped[str] = mapped_column(String(16), nullable=False)
+    started_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    completed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_processing_ms: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    score_bands: Mapped[dict | None] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

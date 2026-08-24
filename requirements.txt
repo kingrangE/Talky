@@ -20,6 +20,7 @@ langchain-openai==0.2.*
 faster-whisper==1.0.*
 piper-tts==1.2.*
 soundfile==0.12.*
+cryptography==43.*
 
 # Graph DB (Phase E)
 neo4j==5.*
