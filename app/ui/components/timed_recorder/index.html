@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: transparent; color: #263238; }
+    .card { border: 1px solid #dce3e8; border-radius: 12px; padding: 18px; background: #fff; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .phase { font-size: 17px; font-weight: 700; }
+    .clock { font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 800; color: #1565c0; }
+    .bar { height: 9px; margin-top: 14px; overflow: hidden; border-radius: 99px; background: #e8eef2; }
+    .fill { height: 100%; width: 0; background: #1565c0; transition: width .15s linear; }
+    .note { margin-top: 12px; color: #546e7a; font-size: 13px; line-height: 1.45; }
+    .recording .clock, .recording .phase { color: #c62828; }
+    .recording .fill { background: #c62828; }
+    .error { color: #b71c1c; }
+    @media (prefers-color-scheme: dark) {
+      body { color: #edf3f7; }
+      .card { background: #15191d; border-color: #39434a; }
+      .bar { background: #30383e; }
+      .note { color: #b0bec5; }
+    }
+  </style>
+</head>
+<body>
+  <div id="card" class="card">
+    <div class="row"><div id="phase" class="phase">Preparing microphone…</div><div id="clock" class="clock">–</div></div>
+    <div class="bar"><div id="fill" class="fill"></div></div>
+    <div id="note" class="note">Do not close or reload this page. Recording stops automatically.</div>
+  </div>
+  <script>
+    const card = document.getElementById("card");
+    const phase = document.getElementById("phase");
+    const clock = document.getElementById("clock");
+    const fill = document.getElementById("fill");
+    const note = document.getElementById("note");
+    let currentRun = null;
+
+    function post(type, extra = {}) {
+      window.parent.postMessage({ isStreamlitMessage: true, type, ...extra }, "*");
+    }
+    function setValue(value) { post("streamlit:setComponentValue", { value }); }
+    function setHeight() { post("streamlit:setFrameHeight", { height: document.body.scrollHeight + 4 }); }
+    function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    function formatTime(seconds) { return `0:${String(Math.max(0, seconds)).padStart(2, "0")}`; }
+
+    async function countdown(label, seconds, className = "") {
+      card.className = `card ${className}`;
+      phase.textContent = label;
+      if (seconds <= 0) { clock.textContent = "0:00"; fill.style.width = "100%"; return; }
+      const started = performance.now();
+      const ends = started + seconds * 1000;
+      while (performance.now() < ends) {
+        const remainingMs = Math.max(0, ends - performance.now());
+        clock.textContent = formatTime(Math.ceil(remainingMs / 1000));
+        fill.style.width = `${Math.min(100, ((performance.now() - started) / (seconds * 1000)) * 100)}%`;
+        await wait(100);
+      }
+      clock.textContent = "0:00";
+      fill.style.width = "100%";
+    }
+
+    async function playPrompt(encoded, repeatCount) {
+      if (!encoded) return;
+      for (let i = 0; i < repeatCount; i += 1) {
+        phase.textContent = repeatCount > 1 ? `Listen to the question (${i + 1}/${repeatCount})` : "Listen to the question";
+        clock.textContent = "▶";
+        fill.style.width = "0%";
+        const audio = new Audio(`data:audio/wav;base64,${encoded}`);
+        await audio.play();
+        await new Promise((resolve, reject) => {
+          audio.onended = resolve;
+          audio.onerror = reject;
+        });
+        if (i + 1 < repeatCount) await wait(350);
+      }
+    }
+
+    function bestMimeType() {
+      const choices = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/webm", "audio/mp4"];
+      return choices.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result).split(",", 2)[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function run(args) {
+      let stream;
+      let audioContext;
+      try {
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+          throw new Error("This browser does not support timed microphone recording.");
+        }
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 1024;
+        source.connect(analyser);
+        const samples = new Float32Array(analyser.fftSize);
+        let peakRms = 0;
+        let signalFrames = 0;
+        let meterActive = true;
+        const meter = () => {
+          if (!meterActive) return;
+          analyser.getFloatTimeDomainData(samples);
+          let sum = 0;
+          for (const sample of samples) sum += sample * sample;
+          const rms = Math.sqrt(sum / samples.length);
+          peakRms = Math.max(peakRms, rms);
+          if (rms > 0.012) signalFrames += 1;
+          requestAnimationFrame(meter);
+        };
+        meter();
+
+        if (Number(args.group_read_seconds) > 0) {
+          await countdown("Review the information", Number(args.group_read_seconds));
+        }
+        await playPrompt(args.prompt_audio_base64 || "", Number(args.prompt_repeat_count || 1));
+        await countdown("Preparation time", Number(args.preparation_seconds || 0));
+
+        const chunks = [];
+        const mimeType = bestMimeType();
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+        recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+        const stopped = new Promise((resolve, reject) => {
+          recorder.onstop = resolve;
+          recorder.onerror = event => reject(event.error || new Error("Recorder error"));
+        });
+        const startedAt = performance.now();
+        recorder.start(250);
+        note.textContent = "Recording now. Keep speaking until the timer reaches zero.";
+        await countdown("Recording", Number(args.response_seconds), "recording");
+        recorder.stop();
+        await stopped;
+        meterActive = false;
+        stream.getTracks().forEach(track => track.stop());
+        await audioContext.close();
+
+        const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || "audio/webm" });
+        const encoded = await blobToBase64(blob);
+        card.className = "card";
+        phase.textContent = "Response submitted";
+        clock.textContent = "✓";
+        note.textContent = "Your response is being checked. The next question will open automatically.";
+        setValue({
+          run_id: args.run_id,
+          audio_base64: encoded,
+          mime_type: blob.type,
+          duration_seconds: Math.round((performance.now() - startedAt) / 10) / 100,
+          signal_detected: signalFrames >= 3,
+          peak_rms: Math.round(peakRms * 10000) / 10000
+        });
+        setHeight();
+      } catch (error) {
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        if (audioContext && audioContext.state !== "closed") await audioContext.close();
+        card.className = "card error";
+        phase.textContent = "Microphone error";
+        clock.textContent = "!";
+        note.textContent = `${error?.message || error} Allow microphone access in Chrome or Edge, then reload this question.`;
+        setValue({ run_id: args.run_id, error: String(error?.message || error) });
+        setHeight();
+      }
+    }
+
+    window.addEventListener("message", event => {
+      if (event.data?.type !== "streamlit:render") return;
+      const args = event.data.args || {};
+      if (!args.run_id || currentRun === args.run_id) return;
+      currentRun = args.run_id;
+      run(args);
+    });
+    post("streamlit:componentReady", { apiVersion: 1 });
+    setHeight();
+  </script>
+</body>
+</html>

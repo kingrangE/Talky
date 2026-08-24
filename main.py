@@ -27,6 +27,19 @@ from app.ui.report_view import render_report  # noqa: E402
 load_dotenv()
 cfg = get_settings()
 
+with st.sidebar:
+    app_mode = st.radio(
+        "Mode",
+        ("English Conversation", "Speaking Mock Test"),
+        key="app_mode",
+    )
+
+if app_mode == "Speaking Mock Test":
+    from app.ui.mock_exam_view import render_mock_exam  # noqa: E402
+
+    render_mock_exam()
+    st.stop()
+
 
 @st.cache_resource
 def _bootstrap() -> dict:
