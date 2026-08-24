@@ -7,6 +7,7 @@ LangGraph 기반 한·영 음성 회화 학습 AI 에이전트.
 - **그래프 메모리**: Neo4j 에 대화/주제/표현을 노드-엣지로 적재, 다음 대화에서 multi-hop 으로 참조
 - **자기 진화 프롬프트**: 종료 시 별점에 따라 메타-LLM 이 system prompt 새 버전 생성
 - **오픈소스 Docker 배포**: 외부 클라우드 의존 없이 `docker compose up` 한 번으로 기동
+- **Speaking Mock Test**: 오리지널 11문항, 브라우저 자동 타이머 녹음, 로컬 STT와 제한된 루브릭 에이전트 평가
 
 ## 빠른 시작 (Docker)
 
@@ -21,6 +22,10 @@ docker compose up --build
 ```
 
 기동 후 http://localhost:8501 접속.
+
+사이드바의 `Speaking Mock Test`를 선택하면 모의고사 모드로 전환됩니다. 공개 배포에서는
+HTTPS와 데스크톱 Chrome/Edge를 사용하고, `.env`의 서명·핑거프린트 비밀값을 반드시
+교체하세요. 녹음, 전사문, 결과는 기본 72시간 뒤 정리됩니다.
 
 첫 기동 시 다음이 자동 수행됩니다:
 - Postgres alembic 마이그레이션 + 시드 prompt v1 삽입
@@ -56,6 +61,26 @@ streamlit run main.py
 - `WHISPER_MODEL`, `WHISPER_DEVICE` — STT 모델/장치
 - `TTS_VOICE_KO`, `TTS_VOICE_EN` — Piper voice 이름 (HuggingFace `rhasspy/piper-voices` 의 디렉토리 규칙)
 - `EVOLVE_BATCH` — 별점 N 개 누적 시 프롬프트 진화 트리거 (기본 5)
+- `MOCK_EXAM_SCORING_PROFILE` — `basic`, `advanced`, `auto`. 기본 Docker 이미지는 CPU `basic`
+- `MOCK_EXAM_DAILY_LIMIT`, `MOCK_EXAM_GLOBAL_CONCURRENCY` — 공개 데모 자원 제한
+- `MOCK_EXAM_SIGNING_SECRET`, `MOCK_EXAM_FINGERPRINT_SALT` — 공개 배포 시 필수 교체
+
+## 모의고사 콘텐츠 제작
+
+승인 세트는 `app/mock_exam/data/sets/`에 있습니다. 새 후보는 로컬 생성 모델과 별도의
+로컬 검토 모델, 결정적 검증기, 최대 2회의 수정 루프를 거쳐 PR 검토 대상으로 만듭니다.
+
+```bash
+python -m app.mock_exam.authoring "Create an original workplace communication set"
+python -m app.mock_exam.narration
+```
+
+후보 JSON은 자동 배포되지 않습니다. 라이선스 출처와 검토 기록을 사람이 확인하고
+`status: approved`로 병합해야 합니다.
+
+TOEIC® is a registered trademark of ETS. This product is not endorsed or approved by ETS.
+Talky는 공식 문항·로고·채점 결과를 사용하지 않으며 결과는 학습 참고용 베타 추정치입니다.
+자세한 내용은 [PRIVACY.md](PRIVACY.md)와 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 참고하세요.
 
 ## 기술 스택
 

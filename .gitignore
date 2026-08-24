@@ -4,4 +4,6 @@ __pycache__/
 *.pyc
 .streamlit/
 .cache/
+.data/
+mock-exam-candidates/
 model/*.gguf
