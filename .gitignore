@@ -7,3 +7,7 @@ __pycache__/
 .data/
 mock-exam-candidates/
 model/*.gguf
+/graphify-out
+.agents/
+.codex
+.claude
