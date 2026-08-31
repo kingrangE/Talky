@@ -186,3 +186,39 @@ def ingest_topics(*, conversation_id: str, topics: list[str]) -> bool:
     except Exception as exc:
         log.warning("ingest_topics skipped: %s", exc)
         return False
+
+
+def _delete_conversation_tx(tx, conversation_id: str, user_id: str) -> None:
+    # 소유 사용자를 함께 match해 다른 사용자의 그래프를 잘못 삭제하지 않는다.
+    tx.run(
+        """
+        MATCH (:User {id: $uid})-[:HAD]->(c:Conversation {id: $cid})
+              -[:CONTAINS]->(m:Message)
+        DETACH DELETE m
+        """,
+        uid=user_id,
+        cid=conversation_id,
+    )
+    tx.run(
+        """
+        MATCH (:User {id: $uid})-[:HAD]->(c:Conversation {id: $cid})
+        DETACH DELETE c
+        """,
+        uid=user_id,
+        cid=conversation_id,
+    )
+    tx.run("MATCH (t:Topic) WHERE NOT (t)<-[:ABOUT]-() DETACH DELETE t")
+    tx.run("MATCH (e:Expression) WHERE NOT ()-[:LEARNED]->(e) DETACH DELETE e")
+
+
+def delete_conversation_memory(*, conversation_id: str, user_id: str) -> bool:
+    """Postgres 대화 삭제 후 대응하는 Neo4j 노드와 고아 메모리를 정리한다."""
+    if not ensure_schema():
+        return False
+    try:
+        with get_driver().session() as s:
+            s.execute_write(_delete_conversation_tx, conversation_id, user_id)
+        return True
+    except Exception as exc:
+        log.warning("delete_conversation_memory skipped: %s", exc)
+        return False

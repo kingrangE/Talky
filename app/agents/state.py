@@ -27,6 +27,7 @@ class GraphState(TypedDict, total=False):
 
     # 회상 (Phase E)
     retrieved_memory: list[dict[str, Any]]
+    memory_topics: list[str]
 
     # 출력
     ai_reply: str

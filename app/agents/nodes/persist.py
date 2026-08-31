@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from app.agents.state import GraphState
 from app.db.repo import save_message
-from app.graph_db.ingest import ingest_turn
+from app.graph_db.ingest import ingest_topics, ingest_turn
 
 
 def persist_node(state: GraphState) -> dict:
@@ -40,6 +40,11 @@ def persist_node(state: GraphState) -> dict:
         english_expression=eng_expr,
         better_expression=bet_expr,
     )
+    # 종료 버튼을 누르지 않은 대화도 다음 대화에서 회상할 수 있도록 현재
+    # 발화에서 추출한 토픽을 turn 단위로 즉시 연결한다.
+    topics = state.get("memory_topics") or []
+    if topics:
+        ingest_topics(conversation_id=cid, topics=topics)
 
     return {
         "user_message_id": user_msg_id,

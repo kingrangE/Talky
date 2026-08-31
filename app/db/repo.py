@@ -102,10 +102,18 @@ def list_conversations(user_id: uuid.UUID | None = None) -> list[dict[str, Any]]
 
 def delete_conversation(conversation_id: str) -> None:
     cid = _to_uuid(conversation_id)
+    user_id: str | None = None
     with session_scope() as s:
         conv = s.get(Conversation, cid)
         if conv is not None:
+            user_id = str(conv.user_id) if conv.user_id else None
             s.delete(conv)
+    if user_id:
+        # Postgres 삭제가 커밋된 뒤 Neo4j 사본도 정리한다. Neo4j 장애는 내부에서
+        # 기록하고 False를 반환하므로 사용자 대화 삭제 자체는 유지된다.
+        from app.graph_db.ingest import delete_conversation_memory
+
+        delete_conversation_memory(conversation_id=str(cid), user_id=user_id)
 
 
 def update_conversation_title(conversation_id: str, title: str) -> None:

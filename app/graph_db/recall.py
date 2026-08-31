@@ -14,7 +14,10 @@ log = logging.getLogger(__name__)
 
 
 def recall_related(
-    user_id: str, topic_candidates: list[str], limit: int = 12
+    user_id: str,
+    topic_candidates: list[str],
+    limit: int = 12,
+    current_conversation_id: str | None = None,
 ) -> list[dict]:
     if not topic_candidates or not ensure_schema():
         return []
@@ -26,15 +29,18 @@ def recall_related(
                 WHERE t.name IN $topics
                 WITH collect(DISTINCT t) AS seeds
                 UNWIND seeds AS t
-                MATCH (t)-[:RELATED_TO*0..2]-(t2:Topic)<-[:ABOUT]-(c:Conversation)
-                      -[:CONTAINS]->(m:Message)
+                MATCH (t)-[:RELATED_TO*0..2]-(t2:Topic)
+                MATCH (:User {id: $uid})-[:HAD]->(c:Conversation)-[:ABOUT]->(t2)
+                MATCH (c)-[:CONTAINS]->(m:Message)
                 WHERE m.role IN ['user', 'assistant']
+                  AND ($current_cid IS NULL OR c.id <> $current_cid)
                 RETURN m.text AS text, m.lang AS lang, t2.name AS topic, m.ts AS ts
                 ORDER BY ts DESC LIMIT $limit
                 """,
                 uid=user_id,
                 topics=topic_candidates,
                 limit=limit,
+                current_cid=current_conversation_id,
             )
             return [dict(r) for r in result]
     except Exception as exc:
