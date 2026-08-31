@@ -16,6 +16,7 @@ from app.db.repo import (  # noqa: E402
     delete_conversation,
     ensure_default_user,
     get_active_prompt,
+    get_conversation_prompt,
     list_conversations,
     load_messages,
     update_conversation_title,
@@ -61,7 +62,7 @@ ENDING_GRAPH = boot["ending_graph"]
 
 
 def _active_prompt() -> dict:
-    """매 turn 마다 활성 prompt 를 새로 로드 (메타-LLM 진화 즉시 반영)."""
+    """새 대화 또는 이전 데이터 호환을 위한 현재 활성 prompt."""
     p = get_active_prompt()
     if p is None:
         st.error("Active system prompt not found. Run: python -m app.db.seed")
@@ -73,12 +74,12 @@ SERVER_LABEL = "OpenAI" if cfg.use_openai else cfg.OLLAMA_BASE_URL
 
 
 def _build_state_input(*, cid: str, **extra) -> dict:
-    active = _active_prompt()
+    prompt = get_conversation_prompt(cid) or _active_prompt()
     return {
         "conversation_id": cid,
         "user_id": str(USER_ID),
-        "prompt_version_id": active["id"],
-        "system_prompt": active["content"],
+        "prompt_version_id": prompt["id"],
+        "system_prompt": prompt["content"],
         **extra,
     }
 
@@ -318,7 +319,10 @@ def handle_voice_message(audio_bytes: bytes) -> None:
 
 
 if st.session_state.show_report_for:
-    render_report(st.session_state.show_report_for, _active_prompt()["id"])
+    report_prompt = (
+        get_conversation_prompt(st.session_state.show_report_for) or _active_prompt()
+    )
+    render_report(st.session_state.show_report_for, report_prompt["id"])
 else:
     audio_bytes = mic_input(key=f"voice_input_{st.session_state.voice_turn}")
     if audio_bytes:

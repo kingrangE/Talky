@@ -60,8 +60,10 @@ def render_report(conversation_id: str, prompt_version_id: str | None) -> None:
                     comment=(comment.strip() or None) if comment else None,
                 )
                 with st.spinner("프롬프트 진화 점검 중..."):
-                    new_pid = run_evolve_if_needed()
-                if new_pid:
+                    prompt_update = run_evolve_if_needed()
+                if prompt_update and prompt_update["action"] == "evolved":
                     st.toast("📈 system prompt 가 새 버전으로 진화되었습니다.")
+                elif prompt_update and prompt_update["action"] == "rolled_back":
+                    st.toast("↩️ 품질 하락이 감지되어 이전 system prompt로 롤백했습니다.")
             st.session_state.show_report_for = None
             st.rerun()

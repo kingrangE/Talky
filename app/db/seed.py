@@ -1,7 +1,7 @@
 """초기 시드: anonymous user + prompt_versions (active).
 
-`prompts/seed_v1.md` 의 내용이 현재 active prompt 와 다르면 새 버전을 추가하고 activate 한다.
-즉 도커 재기동 시 파일 변경이 자동으로 반영된다.
+시드가 현재 활성 버전일 때만 ``prompts/seed_v1.md`` 변경을 새 버전으로 반영한다.
+별점 기반으로 진화한 프롬프트가 활성 상태라면 컨테이너 재시작 후에도 그대로 보존한다.
 
 사용:
     python -m app.db.seed
@@ -17,6 +17,9 @@ from app.db.models import PromptVersion, User
 from app.db.postgres import session_scope
 
 
+SEED_RATIONALE = "seed sync from prompts/seed_v1.md"
+
+
 def seed_prompt_v1(session) -> PromptVersion:
     seed_path = Path(__file__).resolve().parents[2] / "prompts" / "seed_v1.md"
     content = seed_path.read_text(encoding="utf-8").strip()
@@ -24,10 +27,14 @@ def seed_prompt_v1(session) -> PromptVersion:
     active = session.scalars(
         select(PromptVersion).where(PromptVersion.active == True).limit(1)  # noqa: E712
     ).first()
-    if active is not None and active.content.strip() == content:
-        return active
-
     if active is not None:
+        if active.content.strip() == content:
+            return active
+        # 메타-LLM이 만든 활성 버전을 재시작 시 시드로 덮어쓰지 않는다.
+        if active.rationale != SEED_RATIONALE:
+            return active
+
+    if active is not None:  # 활성 버전이 시드 관리 버전인 경우에만 교체
         active.active = False
         session.flush()
 
@@ -35,7 +42,7 @@ def seed_prompt_v1(session) -> PromptVersion:
     pv = PromptVersion(
         version=int(max_v) + 1,
         content=content,
-        rationale="seed sync from prompts/seed_v1.md",
+        rationale=SEED_RATIONALE,
         active=True,
     )
     session.add(pv)

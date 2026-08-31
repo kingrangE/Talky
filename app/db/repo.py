@@ -53,6 +53,21 @@ def get_active_prompt() -> dict[str, Any] | None:
         return {"id": str(row.id), "version": row.version, "content": row.content}
 
 
+def get_conversation_prompt(conversation_id: str) -> dict[str, Any] | None:
+    """대화 생성 시 고정된 prompt 버전을 반환한다."""
+    cid = _to_uuid(conversation_id)
+    with session_scope() as s:
+        row = s.scalars(
+            select(PromptVersion)
+            .join(Conversation, Conversation.prompt_version_id == PromptVersion.id)
+            .where(Conversation.id == cid)
+            .limit(1)
+        ).first()
+        if row is None:
+            return None
+        return {"id": str(row.id), "version": row.version, "content": row.content}
+
+
 def create_conversation(title: str = "New Conversation", user_id: uuid.UUID | None = None) -> str:
     if user_id is None:
         user_id = ensure_default_user()
@@ -195,6 +210,7 @@ def save_rating(
             existing.stars = stars
             existing.comment = comment
             existing.prompt_version_id = pvid
+            existing.consumed_for_evolution = False
             s.flush()
             return str(existing.id)
         rating = Rating(
@@ -217,19 +233,24 @@ def get_rating(conversation_id: str) -> dict[str, Any] | None:
         return {"stars": row.stars, "comment": row.comment}
 
 
-def count_unconsumed_ratings() -> tuple[int, dict[int, int]]:
+def count_unconsumed_ratings(
+    prompt_version_id: str | None = None,
+) -> tuple[int, dict[int, int]]:
     """별점 진화에 아직 반영되지 않은 ratings 의 수와 분포."""
     with session_scope() as s:
-        rows = s.scalars(
-            select(Rating).where(Rating.consumed_for_evolution.is_(False))
-        ).all()
+        stmt = select(Rating).where(Rating.consumed_for_evolution.is_(False))
+        if prompt_version_id:
+            stmt = stmt.where(Rating.prompt_version_id == _to_uuid(prompt_version_id))
+        rows = s.scalars(stmt).all()
         dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
         for r in rows:
             dist[int(r.stars)] = dist.get(int(r.stars), 0) + 1
         return len(rows), dist
 
 
-def get_unconsumed_rated_reports(*, top_n: int, order: str = "desc") -> list[dict[str, Any]]:
+def get_unconsumed_rated_reports(
+    *, top_n: int, order: str = "desc", prompt_version_id: str | None = None
+) -> list[dict[str, Any]]:
     """별점 미반영 conversations 중 상위/하위 N개 (보고서 포함)."""
     with session_scope() as s:
         order_col = (
@@ -239,9 +260,10 @@ def get_unconsumed_rated_reports(*, top_n: int, order: str = "desc") -> list[dic
             select(Rating, Report)
             .join(Report, Rating.conversation_id == Report.conversation_id)
             .where(Rating.consumed_for_evolution.is_(False))
-            .order_by(order_col)
-            .limit(top_n)
         )
+        if prompt_version_id:
+            stmt = stmt.where(Rating.prompt_version_id == _to_uuid(prompt_version_id))
+        stmt = stmt.order_by(order_col).limit(top_n)
         out: list[dict[str, Any]] = []
         for rating, report in s.execute(stmt).all():
             out.append(
@@ -294,14 +316,65 @@ def insert_prompt_version(
         return str(pv.id)
 
 
-def mark_unconsumed_ratings_consumed() -> int:
+def mark_unconsumed_ratings_consumed(prompt_version_id: str | None = None) -> int:
     with session_scope() as s:
-        result = s.execute(
+        stmt = update(Rating).where(Rating.consumed_for_evolution.is_(False))
+        if prompt_version_id:
+            stmt = stmt.where(Rating.prompt_version_id == _to_uuid(prompt_version_id))
+        result = s.execute(stmt.values(consumed_for_evolution=True))
+        return result.rowcount or 0
+
+
+def rollback_active_prompt_if_degraded(
+    *, min_samples: int, drop_threshold: float
+) -> str | None:
+    """활성 prompt가 부모보다 충분히 나쁘면 부모 버전을 다시 활성화한다."""
+    with session_scope() as s:
+        active = s.scalars(
+            select(PromptVersion).where(PromptVersion.active.is_(True)).limit(1)
+        ).first()
+        if active is None or active.parent_id is None:
+            return None
+        parent = s.get(PromptVersion, active.parent_id)
+        if parent is None:
+            return None
+
+        def rating_stats(prompt_id: uuid.UUID) -> tuple[int, float | None]:
+            count, average = s.execute(
+                select(func.count(Rating.id), func.avg(Rating.stars)).where(
+                    Rating.prompt_version_id == prompt_id
+                )
+            ).one()
+            return int(count or 0), float(average) if average is not None else None
+
+        active_count, active_avg = rating_stats(active.id)
+        parent_count, parent_avg = rating_stats(parent.id)
+        active.sample_size, active.avg_rating = active_count, active_avg
+        parent.sample_size, parent.avg_rating = parent_count, parent_avg
+
+        if (
+            active_count < min_samples
+            or parent_count < min_samples
+            or active_avg is None
+            or parent_avg is None
+            or active_avg > parent_avg - drop_threshold
+        ):
+            return None
+
+        # partial unique index(one_active_prompt)를 지키기 위해 순서대로 flush한다.
+        active.active = False
+        s.flush()
+        parent.active = True
+        s.execute(
             update(Rating)
-            .where(Rating.consumed_for_evolution.is_(False))
+            .where(
+                Rating.prompt_version_id == active.id,
+                Rating.consumed_for_evolution.is_(False),
+            )
             .values(consumed_for_evolution=True)
         )
-        return result.rowcount or 0
+        s.flush()
+        return str(parent.id)
 
 
 def load_messages(conversation_id: str) -> list[dict[str, Any]]:

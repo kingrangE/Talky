@@ -25,6 +25,7 @@ from app.db.repo import (
     get_unconsumed_rated_reports,
     insert_prompt_version,
     mark_unconsumed_ratings_consumed,
+    rollback_active_prompt_if_degraded,
 )
 from app.llm.factory import get_structured_llm
 from app.settings import get_settings
@@ -82,21 +83,29 @@ JSON 으로 출력:
 
 def should_evolve_node(state: EvolveState) -> dict:
     threshold = state.get("threshold") or get_settings().EVOLVE_BATCH
-    count, dist = count_unconsumed_ratings()
+    current = get_active_prompt()
+    if current is None:
+        return {"proceed": False, "rating_distribution": {}}
+    count, dist = count_unconsumed_ratings(current["id"])
     return {
         "proceed": count >= threshold,
         "rating_distribution": dist,
+        "current_prompt": current,
     }
 
 
 def fetch_node(state: EvolveState) -> dict:
     if not state.get("proceed"):
         return {}
-    high = get_unconsumed_rated_reports(top_n=3, order="desc")
-    low = get_unconsumed_rated_reports(top_n=3, order="asc")
-    current = get_active_prompt()
-    if current is None:
+    current = state.get("current_prompt")
+    if not current:
         return {"proceed": False}
+    high = get_unconsumed_rated_reports(
+        top_n=3, order="desc", prompt_version_id=current["id"]
+    )
+    low = get_unconsumed_rated_reports(
+        top_n=3, order="asc", prompt_version_id=current["id"]
+    )
     return {
         "high_rated": high,
         "low_rated": low,
@@ -150,7 +159,7 @@ def insert_node(state: EvolveState) -> dict:
         diff_summary=state.get("diff_summary") or [],
         activate=True,
     )
-    mark_unconsumed_ratings_consumed()
+    mark_unconsumed_ratings_consumed(state["current_prompt"]["id"])
     return {"new_prompt_id": new_id}
 
 
@@ -180,8 +189,8 @@ def build_evolve_graph():
     return g.compile()
 
 
-def run_evolve_if_needed(threshold: int | None = None) -> str | None:
-    """advisory lock 안에서 evolve graph 실행. 새 prompt id 또는 None."""
+def run_evolve_if_needed(threshold: int | None = None) -> dict[str, str] | None:
+    """품질 하락 롤백 후 필요하면 evolve graph를 실행한다."""
     try:
         engine = get_engine()
         with engine.connect() as conn:
@@ -191,12 +200,23 @@ def run_evolve_if_needed(threshold: int | None = None) -> str | None:
             if not acquired:
                 return None
             try:
+                cfg = get_settings()
+                effective_threshold = threshold or cfg.EVOLVE_BATCH
+                rollback_id = rollback_active_prompt_if_degraded(
+                    min_samples=effective_threshold,
+                    drop_threshold=cfg.ROLLBACK_THRESHOLD,
+                )
+                if rollback_id:
+                    return {"action": "rolled_back", "prompt_id": rollback_id}
                 graph = build_evolve_graph()
                 state_in: EvolveState = (
                     {"threshold": threshold} if threshold is not None else {}
                 )
                 out = graph.invoke(state_in)
-                return out.get("new_prompt_id")
+                new_id = out.get("new_prompt_id")
+                if new_id:
+                    return {"action": "evolved", "prompt_id": new_id}
+                return None
             finally:
                 conn.execute(
                     text("SELECT pg_advisory_unlock(:k)"), {"k": EVOLVE_LOCK_KEY}
