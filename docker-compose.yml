@@ -3,7 +3,9 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.app
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       POSTGRES_HOST: postgres
       OLLAMA_BASE_URL: http://ollama:11434
@@ -20,7 +22,7 @@ services:
       neo4j:
         condition: service_healthy
       ollama:
-        condition: service_started
+        condition: service_healthy
 
   ollama:
     image: ollama/ollama:latest
@@ -34,6 +36,12 @@ services:
       - ./model:/work/model:ro
       - ./docker/ollama-init.sh:/ollama-init.sh:ro
     entrypoint: ["/bin/bash", "/ollama-init.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama show \"$${MODEL_NAME}\" >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 10s
 
   postgres:
     image: pgvector/pgvector:pg16
