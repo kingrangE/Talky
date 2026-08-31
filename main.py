@@ -287,6 +287,7 @@ def handle_user_message(prompt: str) -> None:
         english_expression=result.get("english_expression"),
         better_expression=result.get("better_expression"),
     )
+    st.session_state.pending_audio = result.get("audio_reply")
 
 
 def handle_voice_message(audio_bytes: bytes) -> None:
