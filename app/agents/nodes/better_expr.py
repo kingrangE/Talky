@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
 from app.llm.factory import get_structured_llm
+from app.runtime import bounded_messages
 
 BETTER_EXPR_PROMPT = """You are a native English speaker. Rewrite the user's most recent English sentence into something a native speaker would actually say in casual, everyday conversation.
 
@@ -30,11 +31,11 @@ class BetterExpressionOutput(BaseModel):
 
 def better_expr_node(state: GraphState) -> dict:
     llm = get_structured_llm(BetterExpressionOutput)
-    out: BetterExpressionOutput = llm.invoke(
+    out: BetterExpressionOutput = llm.invoke(bounded_messages(
         [
             SystemMessage(content=BETTER_EXPR_PROMPT),
             HumanMessage(content=state["user_text"]),
         ]
-    )
+    ))
     combined = f"**Try:** {out.suggestion}\n\n*{out.note}*"
     return {"better_expression": combined}

@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Any, Tuple
 
 from app.settings import get_settings
+from app.audio.validation import validate_audio
 
 
 @lru_cache(maxsize=1)
@@ -24,6 +25,7 @@ def _model():
 
 def transcribe(audio_bytes: bytes) -> Tuple[str, str]:
     """음성 바이트 → (텍스트, 언어). 언어는 ko/en 으로 정규화."""
+    validate_audio(audio_bytes)
     model = _model()
     segments, info = model.transcribe(
         io.BytesIO(audio_bytes),
@@ -43,6 +45,7 @@ def transcribe_detailed(audio_bytes: bytes) -> dict[str, Any]:
     These metrics are intentionally described as fluency/intelligibility proxies;
     they are not phoneme-level pronunciation scores.
     """
+    validate_audio(audio_bytes)
     model = _model()
     segments_iter, info = model.transcribe(
         io.BytesIO(audio_bytes),

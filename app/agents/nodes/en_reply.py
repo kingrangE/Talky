@@ -6,6 +6,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.agents.state import GraphState
 from app.llm.factory import get_chat_llm
+from app.runtime import bounded_messages, format_memory
 
 NATIVE_SUFFIX = (
     "\n\nReply ONLY in English. Sound like a native speaker chatting with a friend: "
@@ -17,25 +18,12 @@ NATIVE_SUFFIX = (
 MEMORY_HEADER = "\n\n[Earlier related memory]\n"
 
 
-def _format_memory(memory: list[dict]) -> str:
-    if not memory:
-        return ""
-    lines = []
-    for item in memory[:8]:
-        topic = item.get("topic", "")
-        text = (item.get("text") or "").replace("\n", " ").strip()
-        if not text:
-            continue
-        lines.append(f"- ({topic}) {text}")
-    return MEMORY_HEADER + "\n".join(lines) if lines else ""
-
-
 def en_reply_node(state: GraphState) -> dict:
     llm = get_chat_llm()
     system = (
         state["system_prompt"]
         + NATIVE_SUFFIX
-        + _format_memory(state.get("retrieved_memory") or [])
+        + format_memory(state.get("retrieved_memory") or [], MEMORY_HEADER)
     )
     msgs: list = [SystemMessage(content=system)]
     for m in state.get("history", []):
@@ -45,5 +33,5 @@ def en_reply_node(state: GraphState) -> dict:
             msgs.append(AIMessage(content=m["content"]))
     msgs.append(HumanMessage(content=state["user_text"]))
 
-    response = llm.invoke(msgs)
+    response = llm.invoke(bounded_messages(msgs))
     return {"ai_reply": response.content}

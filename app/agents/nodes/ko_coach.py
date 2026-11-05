@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
 from app.llm.factory import get_structured_llm
+from app.runtime import bounded_messages, format_memory
 
 KO_COACH_SUFFIX = """
 [중요] 사용자가 방금 한국어로 말했습니다. 다음 JSON 으로 응답하세요.
@@ -32,22 +33,9 @@ class KoCoachOutput(BaseModel):
     )
 
 
-def _format_memory(memory: list[dict]) -> str:
-    if not memory:
-        return ""
-    lines = []
-    for item in memory[:8]:
-        topic = item.get("topic", "")
-        text = (item.get("text") or "").replace("\n", " ").strip()
-        if not text:
-            continue
-        lines.append(f"- ({topic}) {text}")
-    return MEMORY_HEADER + "\n".join(lines) if lines else ""
-
-
 def _build_messages(state: GraphState) -> list:
     system = state["system_prompt"] + "\n\n" + KO_COACH_SUFFIX
-    system += _format_memory(state.get("retrieved_memory") or [])
+    system += format_memory(state.get("retrieved_memory") or [], MEMORY_HEADER)
 
     msgs = [SystemMessage(content=system)]
     for m in state.get("history", []):
@@ -61,7 +49,7 @@ def _build_messages(state: GraphState) -> list:
 
 def ko_coach_node(state: GraphState) -> dict:
     llm = get_structured_llm(KoCoachOutput)
-    out: KoCoachOutput = llm.invoke(_build_messages(state))
+    out: KoCoachOutput = llm.invoke(bounded_messages(_build_messages(state)))
     return {
         "ai_reply": out.reply,
         "english_expression": out.english_expression,

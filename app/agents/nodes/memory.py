@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from app.agents.state import GraphState
 from app.graph_db.recall import recall_related
 from app.llm.factory import get_structured_llm
+from app.runtime import bounded_messages
 
 log = logging.getLogger(__name__)
 
@@ -34,9 +35,9 @@ def _extract_topics(text: str) -> list[str]:
         return []
     try:
         llm = get_structured_llm(TopicCandidates, temperature=0.0)
-        out: TopicCandidates = llm.invoke(
+        out: TopicCandidates = llm.invoke(bounded_messages(
             [SystemMessage(content=TOPIC_PROMPT), HumanMessage(content=text)]
-        )
+        ))
         return [t.strip().lower() for t in out.topics if t and t.strip()][:3]
     except Exception as exc:
         log.warning("topic extraction failed: %s", exc)

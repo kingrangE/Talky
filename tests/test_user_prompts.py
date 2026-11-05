@@ -75,7 +75,7 @@ def test_ratings_evolution_and_agent_prompt_are_user_owned(db):
     loaded = prompts.load_conversation_prompt_node({
         "user_id": str(alice), "conversation_id": cid, "system_prompt": "spoofed",
     })
-    assert loaded == {"prompt_version_id": first["id"], "system_prompt": first["content"]}
+    assert loaded == {"prompt_version_id": first["id"], "system_prompt": first["content"], "history": []}
     new_cid = repo.create_conversation(user_id=alice)
     assert prompts.load_conversation_prompt_node({
         "user_id": str(alice), "conversation_id": new_cid,

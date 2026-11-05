@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from app.agents.state import GraphState
 from app.audio.stt_engine import transcribe
+from app.settings import get_settings
 
 
 def _has_hangul(text: str) -> bool:
@@ -21,6 +22,8 @@ def stt_node(state: GraphState) -> dict:
     audio = state.get("audio_bytes")
     if audio:
         text, lang = transcribe(audio)
+        if len(text) > get_settings().MAX_USER_TEXT_CHARS:
+            raise ValueError("인식한 문장이 너무 깁니다. 짧게 나눠 말씀해 주세요.")
         return {"user_text": text, "language": lang}
     if state.get("language"):
         return {}

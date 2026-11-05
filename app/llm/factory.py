@@ -8,12 +8,14 @@ tool calling 을 지원하지 않으므로 json_schema 모드로 강제한다.
 from __future__ import annotations
 
 from typing import Any
+from functools import lru_cache
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from app.settings import get_settings
 
 
+@lru_cache(maxsize=16)
 def get_chat_llm(temperature: float = 0.7, streaming: bool = True) -> BaseChatModel:
     cfg = get_settings()
     if cfg.use_openai:
@@ -24,6 +26,9 @@ def get_chat_llm(temperature: float = 0.7, streaming: bool = True) -> BaseChatMo
             model=cfg.OPENAI_MODEL,
             temperature=temperature,
             streaming=streaming,
+            timeout=cfg.LLM_TIMEOUT_SECONDS,
+            max_retries=0,
+            max_tokens=cfg.LLM_MAX_OUTPUT_TOKENS,
         )
 
     from langchain_ollama import ChatOllama
@@ -32,6 +37,8 @@ def get_chat_llm(temperature: float = 0.7, streaming: bool = True) -> BaseChatMo
         base_url=cfg.OLLAMA_BASE_URL,
         model=cfg.MODEL_NAME,
         temperature=temperature,
+        num_predict=cfg.LLM_MAX_OUTPUT_TOKENS,
+        client_kwargs={"timeout": cfg.LLM_TIMEOUT_SECONDS},
     )
 
 
@@ -57,6 +64,8 @@ def get_local_structured_llm(
         base_url=get_settings().OLLAMA_BASE_URL,
         model=model_name,
         temperature=temperature,
+        num_predict=get_settings().LLM_MAX_OUTPUT_TOKENS,
+        client_kwargs={"timeout": get_settings().LLM_TIMEOUT_SECONDS},
     )
     try:
         return base.with_structured_output(schema, method="json_schema")

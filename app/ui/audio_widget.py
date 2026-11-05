@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from app.settings import get_settings
 
 
 def mic_input(key: str) -> bytes | None:
@@ -15,5 +16,8 @@ def mic_input(key: str) -> bytes | None:
         "마이크가 동작하지 않으면 브라우저 주소창 좌측 자물쇠 → 마이크 권한 '허용' 으로 변경 후 새로고침 하세요."
     )
     if audio is None:
+        return None
+    if audio.size > get_settings().MAX_AUDIO_BYTES:
+        st.error("녹음이 너무 큽니다. 짧게 나눠 말씀해 주세요.")
         return None
     return audio.getvalue()

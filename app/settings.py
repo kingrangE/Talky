@@ -1,6 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
+
+from pydantic import Field
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,6 +15,13 @@ class Settings(BaseSettings):
     MODEL_NAME: str = "skt/A.X-4.0-Light"
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
+    LLM_TIMEOUT_SECONDS: Annotated[int, Field(ge=1, le=300)] = 60
+    LLM_MAX_OUTPUT_TOKENS: Annotated[int, Field(ge=128, le=8192)] = 4096
+    LLM_MAX_INPUT_BYTES: Annotated[int, Field(ge=1024, le=128000)] = 24000
+    MAX_USER_TEXT_CHARS: Annotated[int, Field(ge=1, le=10000)] = 4000
+    MAX_HISTORY_BYTES: Annotated[int, Field(ge=1024, le=32000)] = 12000
+    MAX_AUDIO_BYTES: Annotated[int, Field(ge=1024, le=20000000)] = 5000000
+    MAX_AUDIO_SECONDS: Annotated[int, Field(ge=1, le=120)] = 90
 
     WHISPER_MODEL: str = "small"
     WHISPER_DEVICE: Literal["cpu", "cuda"] = "cpu"
@@ -30,6 +39,9 @@ class Settings(BaseSettings):
     MOCK_EXAM_DAILY_LIMIT: int = 1
     MOCK_EXAM_GLOBAL_CONCURRENCY: int = 1
     MOCK_EXAM_SCORING_TIMEOUT_SECONDS: int = 90
+    MOCK_EXAM_JOB_TIMEOUT_SECONDS: Annotated[int, Field(ge=1, le=600)] = 180
+    MOCK_EXAM_MAX_ATTEMPTS: Annotated[int, Field(ge=1, le=5)] = 3
+    MOCK_EXAM_CLEANUP_INTERVAL_SECONDS: Annotated[int, Field(ge=1)] = 60
     MOCK_EXAM_SIGNING_SECRET: str = ""
     MOCK_EXAM_FINGERPRINT_SALT: str = "talky-local-demo"
     MOCK_EXAM_SCORING_PROFILE: Literal["basic", "advanced", "auto"] = "auto"
