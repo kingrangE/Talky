@@ -25,11 +25,11 @@ from app.db.repo import (
     get_active_prompt,
     get_unconsumed_rated_reports,
     insert_prompt_version,
-    mark_unconsumed_ratings_consumed,
     rollback_active_prompt_if_degraded,
 )
 from app.llm.factory import get_structured_llm
 from app.settings import get_settings
+from app.runtime import bounded_messages
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class EvolveState(TypedDict, total=False):
     rationale: str
     diff_summary: list[str]
     new_prompt_id: str | None
+    rating_snapshot: list[dict[str, Any]]
 
 
 class EvolveOutput(BaseModel):
@@ -101,15 +102,16 @@ def fetch_node(state: EvolveState) -> dict:
     current = state.get("current_prompt")
     if not current:
         return {"proceed": False}
-    high = get_unconsumed_rated_reports(
-        user_id=state["user_id"], top_n=3, order="desc", prompt_version_id=current["id"]
+    rows = get_unconsumed_rated_reports(
+        user_id=state["user_id"], top_n=None, order="desc", prompt_version_id=current["id"]
     )
-    low = get_unconsumed_rated_reports(
-        user_id=state["user_id"], top_n=3, order="asc", prompt_version_id=current["id"]
-    )
+    distribution = {stars: sum(row["stars"] == stars for row in rows) for stars in range(1, 6)}
     return {
-        "high_rated": high,
-        "low_rated": low,
+        "proceed": len(rows) >= (state.get("threshold") or get_settings().EVOLVE_BATCH),
+        "high_rated": rows[:3],
+        "low_rated": list(reversed(rows[-3:])),
+        "rating_distribution": distribution,
+        "rating_snapshot": [{"id": row["id"], "revision": row["revision"]} for row in rows],
         "current_prompt": current,
     }
 
@@ -124,12 +126,12 @@ def meta_compose_node(state: EvolveState) -> dict:
         "rating_distribution": state.get("rating_distribution") or {},
     }
     llm = get_structured_llm(EvolveOutput, temperature=0.4)
-    out: EvolveOutput = llm.invoke(
+    out: EvolveOutput = llm.invoke(bounded_messages(
         [
             SystemMessage(content=META_PROMPT),
             HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
         ]
-    )
+    ))
     return {
         "new_prompt_content": out.new_system_prompt,
         "rationale": out.rationale,
@@ -160,8 +162,8 @@ def insert_node(state: EvolveState) -> dict:
         parent_id=state["current_prompt"]["id"],
         diff_summary=state.get("diff_summary") or [],
         activate=True,
+        rating_snapshot=state["rating_snapshot"],
     )
-    mark_unconsumed_ratings_consumed(state["user_id"], state["current_prompt"]["id"])
     return {"new_prompt_id": new_id}
 
 

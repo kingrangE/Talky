@@ -101,14 +101,62 @@ def test_second_message_failure_rolls_back_entire_turn(pg_db):
         assert session.scalar(select(func.count(Message.id))) == 0
 
 
+def _rated_conversation(uid, stars=5):
+    cid = repo.create_conversation(user_id=uid)
+    prompt = repo.get_conversation_prompt(cid, uid)
+    repo.save_report(conversation_id=cid, user_id=uid, summary="summary",
+                     strengths=[], weaknesses=[], vocab_learned=[])
+    rid = repo.save_rating(conversation_id=cid, user_id=uid, prompt_version_id=prompt["id"], stars=stars)
+    return cid, prompt, rid
 
 
+def _snapshot(uid):
+    state = {"user_id": uid, "threshold": 1}
+    state.update(evolve_graph.should_evolve_node(state))
+    state.update(evolve_graph.fetch_node(state))
+    state["new_prompt_content"] = "English tutor adapted to the user"
+    return state
 
 
+def test_evolution_only_consumes_ratings_it_actually_read(pg_db):
+    uid = auth.register_user("alice", PASSWORD)
+    _, original, _ = _rated_conversation(uid)
+    state = _snapshot(uid)
+    _rated_conversation(uid, 1)
+    evolve_graph.insert_node(state)
+    assert repo.count_unconsumed_ratings(uid, original["id"])[0] == 1
 
 
+def test_evolution_aborts_if_snapshotted_rating_was_edited(pg_db):
+    uid = auth.register_user("alice", PASSWORD)
+    cid, original, _ = _rated_conversation(uid)
+    state = _snapshot(uid)
+    repo.save_rating(conversation_id=cid, user_id=uid, prompt_version_id=original["id"], stars=1)
+    with pytest.raises(ValueError, match="changed"):
+        evolve_graph.insert_node(state)
+    assert repo.get_active_prompt(uid)["id"] == original["id"]
+    assert repo.count_unconsumed_ratings(uid, original["id"])[0] == 1
 
 
+def test_rating_consumption_failure_rolls_back_prompt_activation(pg_db):
+    _, scope = pg_db
+    uid = auth.register_user("alice", PASSWORD)
+    _, original, _ = _rated_conversation(uid)
+    state = _snapshot(uid)
+
+    def fail_consumption(_mapper, _connection, rating):
+        if rating.consumed_for_evolution:
+            raise RuntimeError("injected consumption failure")
+
+    event.listen(Rating, "before_update", fail_consumption)
+    try:
+        with pytest.raises(RuntimeError):
+            evolve_graph.insert_node(state)
+    finally:
+        event.remove(Rating, "before_update", fail_consumption)
+    assert repo.get_active_prompt(uid)["id"] == original["id"]
+    with scope() as session:
+        assert session.scalar(select(func.count(PromptVersion.id))) == 1
 
 
 def test_inference_slot_is_shared_and_released_after_errors(pg_db):

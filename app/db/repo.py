@@ -330,6 +330,7 @@ def insert_prompt_version(
     parent_id: str | None,
     diff_summary: list[str] | None = None,
     activate: bool = True,
+    rating_snapshot: list[dict[str, Any]] | None = None,
 ) -> str:
     uid = _to_uuid(user_id)
     pid = _to_uuid(parent_id) if parent_id else None
@@ -345,6 +346,17 @@ def insert_prompt_version(
         parent = s.get(PromptVersion, pid) if pid else None
         if pid and (parent is None or parent.user_id != uid):
             raise ValueError("Parent prompt does not belong to user")
+        if rating_snapshot is not None:
+            if not parent or not parent.active or not rating_snapshot:
+                raise ValueError("Prompt or ratings changed during evolution")
+            expected = {_to_uuid(item["id"]): item["revision"] for item in rating_snapshot}
+            ratings = s.scalars(select(Rating).where(
+                Rating.id.in_(expected), Rating.prompt_version_id == pid,
+                Rating.consumed_for_evolution.is_(False),
+                Rating.conversation_id.in_(select(Conversation.id).where(Conversation.user_id == uid)),
+            ).with_for_update()).all()
+            if {rating.id: rating.revision for rating in ratings} != expected:
+                raise ValueError("Ratings changed during evolution")
         max_v = s.scalar(
             select(func.coalesce(func.max(PromptVersion.version), 0))
             .where(PromptVersion.user_id == uid)
@@ -368,21 +380,11 @@ def insert_prompt_version(
         )
         s.add(pv)
         s.flush()
+        if rating_snapshot is not None:
+            for rating in ratings:
+                rating.consumed_for_evolution = True
+            s.flush()
         return str(pv.id)
-
-
-def mark_unconsumed_ratings_consumed(user_id: str | uuid.UUID, prompt_version_id: str) -> int:
-    with session_scope() as s:
-        stmt = update(Rating).where(
-            Rating.consumed_for_evolution.is_(False),
-            Rating.conversation_id.in_(
-                select(Conversation.id).where(Conversation.user_id == _to_uuid(user_id))
-            ),
-            Rating.prompt_version_id == _to_uuid(prompt_version_id),
-        )
-        result = s.execute(stmt.values(consumed_for_evolution=True))
-        return result.rowcount or 0
-
 
 
 def rollback_active_prompt_if_degraded(

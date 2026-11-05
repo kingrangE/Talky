@@ -60,6 +60,7 @@ def test_ratings_evolution_and_agent_prompt_are_user_owned(db):
     assert repo.get_unconsumed_rated_reports(user_id=bob, top_n=3, prompt_version_id=first["id"]) == []
 
     alice_state = evolve_graph.should_evolve_node({"user_id": str(alice), "threshold": 1})
+    alice_state.update(evolve_graph.fetch_node({**alice_state, "user_id": str(alice), "threshold": 1}))
     bob_state = evolve_graph.should_evolve_node({"user_id": str(bob), "threshold": 2})
     assert alice_state["proceed"] is True
     assert bob_state["proceed"] is False
