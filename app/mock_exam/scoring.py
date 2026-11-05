@@ -15,7 +15,7 @@ def audio_proxy_score(metrics: dict[str, Any], *, response_seconds: int) -> floa
     if not metrics.get("word_count"):
         return 0.0
     wpm = float(metrics.get("words_per_minute") or 0)
-    pause_ratio = float(metrics.get("pause_ratio") or 1)
+    pause_ratio = float(metrics["pause_ratio"]) if metrics.get("pause_ratio") is not None else 1.0
     probability = float(metrics.get("mean_word_probability") or 0)
     duration = float(metrics.get("duration_seconds") or 0)
 

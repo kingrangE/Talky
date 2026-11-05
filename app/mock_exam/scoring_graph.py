@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.llm.factory import get_structured_llm
 from app.mock_exam.content import load_exam_set
 from app.mock_exam.scoring import aggregate_report
+from app.runtime import bounded_messages
 
 
 class EvaluationItem(BaseModel):
@@ -127,9 +128,9 @@ def _complete_items(
 def language_agent_node(state: ScoringState) -> dict[str, Any]:
     try:
         llm = get_structured_llm(EvaluationBatch, temperature=0.1)
-        result: EvaluationBatch = llm.invoke([
+        result: EvaluationBatch = llm.invoke(bounded_messages([
             SystemMessage(content=LANGUAGE_PROMPT), HumanMessage(content=_agent_input(state))
-        ])
+        ]))
         items = {item.question_number: item.model_dump() for item in result.items}
         return {"language_items": _complete_items(state, items, task=False)}
     except Exception:
@@ -139,9 +140,9 @@ def language_agent_node(state: ScoringState) -> dict[str, Any]:
 def task_agent_node(state: ScoringState) -> dict[str, Any]:
     try:
         llm = get_structured_llm(EvaluationBatch, temperature=0.1)
-        result: EvaluationBatch = llm.invoke([
+        result: EvaluationBatch = llm.invoke(bounded_messages([
             SystemMessage(content=TASK_PROMPT), HumanMessage(content=_agent_input(state))
-        ])
+        ]))
         items = {item.question_number: item.model_dump() for item in result.items}
     except Exception:
         items = {}
@@ -165,13 +166,13 @@ def evidence_agent_node(state: ScoringState) -> dict[str, Any]:
             disagreements.append({"question_number": number, "language": language, "task": task})
     try:
         llm = get_structured_llm(EvidenceDecision, temperature=0)
-        decision: EvidenceDecision = llm.invoke([
+        decision: EvidenceDecision = llm.invoke(bounded_messages([
             SystemMessage(content=EVIDENCE_PROMPT),
             HumanMessage(content=json.dumps({
                 "disagreements": disagreements,
                 "assessment_input": json.loads(_agent_input(state)),
             }, ensure_ascii=False)),
-        ])
+        ]))
         language = dict(state.get("language_items", {}))
         task = dict(state.get("task_items", {}))
         language.update({item.question_number: item.model_dump() for item in decision.revised_language_items})
@@ -200,11 +201,16 @@ def aggregate_node(state: ScoringState) -> dict[str, Any]:
         scoring_profile=state["scoring_profile"],
         disagreement=bool(state.get("disagreement")),
     )
+    language_fallback = any(item.get("fallback") for item in state.get("language_items", {}).values())
+    task_fallback = any(item.get("fallback") for item in state.get("task_items", {}).values())
     report["agent_audit"] = {
-        "language_agent": "completed",
-        "task_agent": "completed",
+        "language_agent": "fallback" if language_fallback else "completed",
+        "task_agent": "fallback" if task_fallback else "completed",
         "evidence_agent": state.get("evidence_audit") or {"skipped": True},
     }
+    if language_fallback or task_fallback:
+        report["confidence"] = "low"
+        report["partial_reason"] = "일부 모델 평가가 실패해 단어 수 기반 임시 평가를 사용했습니다."
     improvements = []
     for number in range(1, 12):
         language = state.get("language_items", {}).get(number, {})
