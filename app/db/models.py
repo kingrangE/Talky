@@ -36,6 +36,10 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     display_name: Mapped[str | None] = mapped_column(String(128))
+    login_name: Mapped[str | None] = mapped_column(String(64), unique=True)
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    failed_logins: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -150,6 +154,7 @@ class Rating(Base):
     comment: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     consumed_for_evolution: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
 class MockExamSession(Base):
@@ -208,6 +213,7 @@ class MockExamResponse(Base):
     )
     question_number: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="queued")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     encrypted_audio_path: Mapped[str | None] = mapped_column(Text)
     transcript: Mapped[str | None] = mapped_column(Text)
     audio_metrics: Mapped[dict | None] = mapped_column(JSONB)
@@ -239,6 +245,7 @@ class MockExamReport(Base):
         unique=True,
     )
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     scoring_version: Mapped[str] = mapped_column(String(32), nullable=False)
     score_low: Mapped[int | None] = mapped_column(SmallInteger)
     score_high: Mapped[int | None] = mapped_column(SmallInteger)
@@ -284,3 +291,10 @@ class MockExamDailyAggregate(Base):
     total_processing_ms: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     score_bands: Mapped[dict | None] = mapped_column(JSONB)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PendingAudioDeletion(Base):
+    __tablename__ = "pending_audio_deletions"
+
+    path: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

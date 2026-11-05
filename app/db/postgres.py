@@ -14,7 +14,10 @@ _SessionLocal: sessionmaker | None = None
 def get_engine() -> Engine:
     global _engine, _SessionLocal
     if _engine is None:
-        _engine = create_engine(get_settings().postgres_dsn, pool_pre_ping=True, future=True)
+        _engine = create_engine(
+            get_settings().postgres_dsn, pool_pre_ping=True, future=True,
+            connect_args={"connect_timeout": 5, "options": "-c statement_timeout=30000 -c lock_timeout=5000"},
+        )
         _SessionLocal = sessionmaker(bind=_engine, autoflush=False, autocommit=False, future=True)
     return _engine
 
