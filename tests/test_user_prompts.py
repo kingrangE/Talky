@@ -45,7 +45,7 @@ def db(monkeypatch):
 def rate_conversation(user_id, stars):
     cid = repo.create_conversation(user_id=user_id)
     prompt = repo.get_conversation_prompt(cid, user_id)
-    repo.save_report(conversation_id=cid, summary="summary", strengths=[], weaknesses=[], vocab_learned=[])
+    repo.save_report(conversation_id=cid, user_id=user_id, summary="summary", strengths=[], weaknesses=[], vocab_learned=[])
     repo.save_rating(conversation_id=cid, user_id=user_id, prompt_version_id=prompt["id"], stars=stars)
     return cid, prompt
 

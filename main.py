@@ -14,17 +14,15 @@ from app.agents.ending_graph import build_ending_graph  # noqa: E402
 from app.db.repo import (  # noqa: E402
     create_conversation,
     delete_conversation,
-    ensure_default_user,
-    get_active_prompt,
     list_conversations,
     load_messages,
     update_conversation_title,
 )
-from app.db.postgres import session_scope  # noqa: E402
-from app.db.seed import seed_prompt_v1  # noqa: E402
 from app.settings import get_settings  # noqa: E402
 from app.ui.audio_widget import mic_input  # noqa: E402
 from app.ui.report_view import render_report  # noqa: E402
+from app.ui.login import require_user  # noqa: E402
+from app.runtime import ModelBusy, inference_slot  # noqa: E402
 
 load_dotenv()
 cfg = get_settings()
@@ -45,21 +43,14 @@ if app_mode == "Speaking Mock Test":
 
 @st.cache_resource
 def _bootstrap() -> dict:
-    user_id = ensure_default_user()
-    with session_scope() as session:
-        seed_prompt_v1(session, user_id)
-    if get_active_prompt(user_id) is None:
-        st.error("Active system prompt not found. Run: python -m app.db.seed")
-        st.stop()
     return {
-        "user_id": user_id,
         "graph": build_conversation_graph(),
         "ending_graph": build_ending_graph(),
     }
 
 
+USER_ID = require_user()
 boot = _bootstrap()
-USER_ID = boot["user_id"]
 GRAPH = boot["graph"]
 ENDING_GRAPH = boot["ending_graph"]
 
@@ -119,17 +110,26 @@ with st.sidebar:
             use_container_width=True,
             key="end_conv",
         ):
-            with st.spinner("보고서 생성 중..."):
-                ENDING_GRAPH.invoke(
-                    {
+            try:
+                with st.spinner("보고서 생성 중..."), inference_slot():
+                    ENDING_GRAPH.invoke({
                         "conversation_id": st.session_state.conversation_id,
                         "user_id": str(USER_ID),
-                    }
-                )
-            st.session_state.show_report_for = st.session_state.conversation_id
-            st.rerun()
+                    })
+                st.session_state.show_report_for = st.session_state.conversation_id
+                st.rerun()
+            except (ModelBusy, ValueError) as exc:
+                st.warning(str(exc))
 
-    conversations = list_conversations(user_id=USER_ID)
+    page = st.session_state.get("conversation_page", 0)
+    conversations = list_conversations(user_id=USER_ID, offset=page * 50)
+    previous, following = st.columns(2)
+    if previous.button("이전 목록", disabled=page == 0):
+        st.session_state.conversation_page = page - 1
+        st.rerun()
+    if following.button("다음 목록", disabled=len(conversations) < 50):
+        st.session_state.conversation_page = page + 1
+        st.rerun()
     for conv in conversations:
         cid = conv["id"]
         is_active = st.session_state.conversation_id == cid
@@ -147,7 +147,7 @@ with st.sidebar:
             with col_save:
                 if st.button("✓", key=f"ok_{cid}"):
                     if new_title.strip():
-                        update_conversation_title(cid, new_title.strip())
+                        update_conversation_title(cid, new_title.strip(), USER_ID)
                     st.session_state.editing_conv_id = None
                     st.rerun()
         else:
@@ -160,7 +160,7 @@ with st.sidebar:
                     use_container_width=True,
                 ):
                     st.session_state.conversation_id = cid
-                    st.session_state.messages = load_messages(cid)
+                    st.session_state.messages = load_messages(cid, USER_ID)
                     st.session_state.pending_audio = None
                     st.session_state.show_report_for = (
                         cid if conv.get("ended_at") else None
@@ -172,7 +172,7 @@ with st.sidebar:
                         st.session_state.editing_conv_id = cid
                         st.rerun()
                     if st.button("Delete", key=f"del_{cid}", use_container_width=True):
-                        delete_conversation(cid)
+                        delete_conversation(cid, USER_ID)
                         if st.session_state.conversation_id == cid:
                             st.session_state.conversation_id = None
                             st.session_state.messages = []
@@ -252,11 +252,13 @@ def _push_session_messages(
 
     if len(st.session_state.messages) == 2:
         title = user_text[:30] + ("..." if len(user_text) > 30 else "")
-        update_conversation_title(cid, title)
+        update_conversation_title(cid, title, USER_ID)
+    st.session_state.messages = st.session_state.messages[-200:]
 
 
 def _invoke_turn(state_input: dict) -> dict:
-    return GRAPH.invoke(state_input)
+    with inference_slot():
+        return GRAPH.invoke(state_input)
 
 
 def handle_user_message(prompt: str) -> None:
@@ -318,10 +320,13 @@ else:
     if audio_bytes:
         h = hashlib.sha1(audio_bytes).hexdigest()
         if st.session_state.last_voice_hash != h:
-            st.session_state.last_voice_hash = h
-            handle_voice_message(audio_bytes)
-            st.session_state.voice_turn += 1
-            st.rerun()
+            try:
+                handle_voice_message(audio_bytes)
+                st.session_state.last_voice_hash = h
+                st.session_state.voice_turn += 1
+                st.rerun()
+            except (ModelBusy, ValueError) as exc:
+                st.warning(str(exc))
 
     for message in st.session_state.messages:
         _render_message(message)
@@ -330,7 +335,10 @@ else:
         st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
         st.session_state.pending_audio = None
 
-    text_prompt = st.chat_input("Type a message")
+    text_prompt = st.chat_input("Type a message", max_chars=cfg.MAX_USER_TEXT_CHARS)
     if text_prompt:
-        handle_user_message(text_prompt)
-        st.rerun()
+        try:
+            handle_user_message(text_prompt)
+            st.rerun()
+        except (ModelBusy, ValueError) as exc:
+            st.warning(str(exc))

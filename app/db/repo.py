@@ -21,6 +21,19 @@ def _to_uuid(value: str | uuid.UUID) -> uuid.UUID:
     return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
 
 
+def _owned_conversation(session, conversation_id, user_id, *, lock=False) -> Conversation:
+    stmt = select(Conversation).where(
+        Conversation.id == _to_uuid(conversation_id),
+        Conversation.user_id == _to_uuid(user_id),
+    )
+    if lock:
+        stmt = stmt.with_for_update()
+    conversation = session.scalars(stmt).first()
+    if conversation is None:
+        raise ValueError("Conversation does not belong to user")
+    return conversation
+
+
 def ensure_default_user() -> uuid.UUID:
     """단일 사용자 모드 — anonymous 사용자가 없으면 만들어 반환."""
     cfg = get_settings()
@@ -74,9 +87,8 @@ def get_conversation_prompt(conversation_id: str, user_id: str | uuid.UUID) -> d
         return {"id": str(row.id), "version": row.version, "content": row.content}
 
 
-def create_conversation(title: str = "New Conversation", user_id: uuid.UUID | None = None) -> str:
-    if user_id is None:
-        user_id = ensure_default_user()
+def create_conversation(title: str = "New Conversation", *, user_id: str | uuid.UUID) -> str:
+    user_id = _to_uuid(user_id)
     from app.db.seed import seed_prompt_v1
 
     with session_scope() as s:
@@ -95,11 +107,11 @@ def create_conversation(title: str = "New Conversation", user_id: uuid.UUID | No
         return str(conv.id)
 
 
-def list_conversations(user_id: uuid.UUID | None = None) -> list[dict[str, Any]]:
+def list_conversations(user_id: str | uuid.UUID, *, offset: int = 0, limit: int = 50) -> list[dict[str, Any]]:
     with session_scope() as s:
-        stmt = select(Conversation).order_by(Conversation.started_at.desc())
-        if user_id is not None:
-            stmt = stmt.where(Conversation.user_id == user_id)
+        stmt = (select(Conversation).where(Conversation.user_id == _to_uuid(user_id))
+                .order_by(Conversation.started_at.desc(), Conversation.id)
+                .offset(max(0, offset)).limit(max(1, min(limit, 100))))
         rows = s.scalars(stmt).all()
         return [
             {
@@ -112,74 +124,65 @@ def list_conversations(user_id: uuid.UUID | None = None) -> list[dict[str, Any]]
         ]
 
 
-def delete_conversation(conversation_id: str) -> None:
+def delete_conversation(conversation_id: str, user_id: str | uuid.UUID) -> None:
     cid = _to_uuid(conversation_id)
-    user_id: str | None = None
     with session_scope() as s:
-        conv = s.get(Conversation, cid)
-        if conv is not None:
-            user_id = str(conv.user_id) if conv.user_id else None
-            s.delete(conv)
+        conv = _owned_conversation(s, cid, user_id, lock=True)
+        s.delete(conv)
     if user_id:
         # Postgres 삭제가 커밋된 뒤 Neo4j 사본도 정리한다. Neo4j 장애는 내부에서
         # 기록하고 False를 반환하므로 사용자 대화 삭제 자체는 유지된다.
         from app.graph_db.ingest import delete_conversation_memory
 
-        delete_conversation_memory(conversation_id=str(cid), user_id=user_id)
+        delete_conversation_memory(conversation_id=str(cid), user_id=str(user_id))
 
 
-def update_conversation_title(conversation_id: str, title: str) -> None:
+def update_conversation_title(conversation_id: str, title: str, user_id: str | uuid.UUID) -> None:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
-        s.execute(
-            update(Conversation).where(Conversation.id == cid).values(title=title)
-        )
+        conv = _owned_conversation(s, cid, user_id, lock=True)
+        conv.title = title.strip()[:256]
 
 
-def mark_conversation_ended(conversation_id: str) -> None:
-    cid = _to_uuid(conversation_id)
-    with session_scope() as s:
-        s.execute(
-            update(Conversation)
-            .where(Conversation.id == cid)
-            .values(ended_at=datetime.now(timezone.utc))
-        )
-
-
-def save_message(
+def save_turn(
     conversation_id: str,
-    role: str,
-    content: str,
+    user_id: str | uuid.UUID,
+    user_text: str,
+    ai_reply: str,
     *,
     language: str | None = None,
     english_expression: str | None = None,
     better_expression: str | None = None,
-) -> str:
+) -> tuple[str, str]:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
-        msg = Message(
-            conversation_id=cid,
-            role=role,
-            content=content,
-            language=language,
-            english_expression=english_expression,
-            better_expression=better_expression,
-        )
-        s.add(msg)
+        conv = _owned_conversation(s, cid, user_id, lock=True)
+        if conv.ended_at is not None:
+            raise ValueError("Conversation has ended")
+        user_msg = Message(conversation_id=cid, role="user", content=user_text,
+                           language=language, english_expression=english_expression)
+        ai_msg = Message(conversation_id=cid, role="assistant", content=ai_reply,
+                         language=language, better_expression=better_expression)
+        s.add_all([user_msg, ai_msg])
         s.flush()
-        return str(msg.id)
+        return str(user_msg.id), str(ai_msg.id)
 
 
 def save_report(
     *,
     conversation_id: str,
+    user_id: str | uuid.UUID,
     summary: str,
     strengths: list[str],
     weaknesses: list[str],
     vocab_learned: list[str],
+    ended: bool = False,
 ) -> str:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
+        conv = _owned_conversation(s, cid, user_id, lock=True)
+        if ended:
+            conv.ended_at = datetime.now(timezone.utc)
         existing = s.scalars(select(Report).where(Report.conversation_id == cid)).first()
         if existing is not None:
             existing.summary = summary
@@ -200,9 +203,10 @@ def save_report(
         return str(report.id)
 
 
-def get_report(conversation_id: str) -> dict[str, Any] | None:
+def get_report(conversation_id: str, user_id: str | uuid.UUID) -> dict[str, Any] | None:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
+        _owned_conversation(s, cid, user_id)
         row = s.scalars(select(Report).where(Report.conversation_id == cid)).first()
         if row is None:
             return None
@@ -226,9 +230,7 @@ def save_rating(
     cid = _to_uuid(conversation_id)
     uid = _to_uuid(user_id)
     with session_scope() as s:
-        conv = s.get(Conversation, cid)
-        if conv is None or conv.user_id != uid:
-            raise ValueError("Conversation does not belong to user")
+        conv = _owned_conversation(s, cid, uid, lock=True)
         prompt = s.get(PromptVersion, conv.prompt_version_id) if conv.prompt_version_id else None
         if prompt is None or prompt.user_id != uid:
             raise ValueError("Conversation has no user-owned system prompt")
@@ -237,10 +239,13 @@ def save_rating(
             raise ValueError("Rating must use the conversation's system prompt")
         existing = s.scalars(select(Rating).where(Rating.conversation_id == cid)).first()
         if existing is not None:
+            if existing.stars == stars and existing.comment == comment:
+                return str(existing.id)
             existing.stars = stars
             existing.comment = comment
             existing.prompt_version_id = pvid
             existing.consumed_for_evolution = False
+            existing.revision += 1
             s.flush()
             return str(existing.id)
         rating = Rating(
@@ -254,9 +259,10 @@ def save_rating(
         return str(rating.id)
 
 
-def get_rating(conversation_id: str) -> dict[str, Any] | None:
+def get_rating(conversation_id: str, user_id: str | uuid.UUID) -> dict[str, Any] | None:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
+        _owned_conversation(s, cid, user_id)
         row = s.scalars(select(Rating).where(Rating.conversation_id == cid)).first()
         if row is None:
             return None
@@ -282,7 +288,7 @@ def count_unconsumed_ratings(
 
 
 def get_unconsumed_rated_reports(
-    *, user_id: str | uuid.UUID, top_n: int, order: str = "desc", prompt_version_id: str
+    *, user_id: str | uuid.UUID, top_n: int | None, order: str = "desc", prompt_version_id: str
 ) -> list[dict[str, Any]]:
     """별점 미반영 conversations 중 상위/하위 N개 (보고서 포함)."""
     with session_scope() as s:
@@ -304,6 +310,8 @@ def get_unconsumed_rated_reports(
         for rating, report in s.execute(stmt).all():
             out.append(
                 {
+                    "id": str(rating.id),
+                    "revision": rating.revision,
                     "stars": int(rating.stars),
                     "comment": rating.comment,
                     "summary": report.summary,
@@ -376,6 +384,7 @@ def mark_unconsumed_ratings_consumed(user_id: str | uuid.UUID, prompt_version_id
         return result.rowcount or 0
 
 
+
 def rollback_active_prompt_if_degraded(
     *, user_id: str | uuid.UUID, min_samples: int, drop_threshold: float
 ) -> str | None:
@@ -434,13 +443,15 @@ def rollback_active_prompt_if_degraded(
         return str(parent.id)
 
 
-def load_messages(conversation_id: str) -> list[dict[str, Any]]:
+def load_messages(conversation_id: str, user_id: str | uuid.UUID, *, limit: int = 200) -> list[dict[str, Any]]:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
+        _owned_conversation(s, cid, user_id)
         rows = s.scalars(
             select(Message)
             .where(Message.conversation_id == cid)
-            .order_by(Message.created_at)
+            .order_by(Message.created_at.desc(), Message.id.desc())
+            .limit(max(1, min(limit, 200)))
         ).all()
         return [
             {
@@ -450,5 +461,5 @@ def load_messages(conversation_id: str) -> list[dict[str, Any]]:
                 "english_expression": m.english_expression,
                 "better_expression": m.better_expression,
             }
-            for m in rows
+            for m in reversed(rows)
         ]

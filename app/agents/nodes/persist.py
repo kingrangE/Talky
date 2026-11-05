@@ -7,7 +7,7 @@ ingest_turn 은 내부에서 swallow.
 from __future__ import annotations
 
 from app.agents.state import GraphState
-from app.db.repo import save_message
+from app.db.repo import save_turn
 from app.graph_db.ingest import ingest_topics, ingest_turn
 
 
@@ -22,11 +22,9 @@ def persist_node(state: GraphState) -> dict:
     eng_expr = state.get("english_expression")
     bet_expr = state.get("better_expression")
 
-    user_msg_id = save_message(
-        cid, "user", user_text, language=language, english_expression=eng_expr
-    )
-    assistant_msg_id = save_message(
-        cid, "assistant", ai_reply, language=language, better_expression=bet_expr
+    user_msg_id, assistant_msg_id = save_turn(
+        cid, state["user_id"], user_text, ai_reply, language=language,
+        english_expression=eng_expr, better_expression=bet_expr,
     )
 
     ingest_turn(

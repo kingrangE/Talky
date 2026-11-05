@@ -61,9 +61,8 @@ def test_memory_node_keeps_topics_for_immediate_ingest(monkeypatch):
 
 
 def test_persist_ingests_topics_before_conversation_end(monkeypatch):
-    message_ids = iter(["user-message", "assistant-message"])
     topic_calls = []
-    monkeypatch.setattr(persist, "save_message", lambda *_args, **_kwargs: next(message_ids))
+    monkeypatch.setattr(persist, "save_turn", lambda *_args, **_kwargs: ("user-message", "assistant-message"))
     monkeypatch.setattr(persist, "ingest_turn", lambda **_kwargs: True)
     monkeypatch.setattr(
         persist,

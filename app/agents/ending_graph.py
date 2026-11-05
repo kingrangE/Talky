@@ -12,7 +12,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
-from app.db.repo import load_messages, mark_conversation_ended, save_report
+from app.db.repo import load_messages, save_report
+from app.runtime import bounded_history, bounded_messages
 from app.graph_db.ingest import ingest_topics
 from app.llm.factory import get_structured_llm
 
@@ -46,7 +47,7 @@ SUMMARIZE_PROMPT = """
 
 def load_history_node(state: EndingState) -> dict:
     cid = state["conversation_id"]
-    rows = load_messages(cid)
+    rows = bounded_history(load_messages(cid, state["user_id"]))
     history = [{"role": r["role"], "content": r["content"]} for r in rows]
     return {"history": history}
 
@@ -66,12 +67,12 @@ def summarize_node(state: EndingState) -> dict:
 
     history_text = "\n".join(f"[{m['role']}] {m['content']}" for m in history)
     llm = get_structured_llm(ReportPayload, temperature=0.3)
-    out: ReportPayload = llm.invoke(
+    out: ReportPayload = llm.invoke(bounded_messages(
         [
             SystemMessage(content=SUMMARIZE_PROMPT),
             HumanMessage(content=history_text),
         ]
-    )
+    ))
     return {"report": out.model_dump()}
 
 
@@ -80,12 +81,13 @@ def persist_report_node(state: EndingState) -> dict:
     report = state.get("report") or {}
     save_report(
         conversation_id=cid,
+        user_id=state["user_id"],
         summary=report.get("summary", ""),
         strengths=report.get("strengths") or [],
         weaknesses=report.get("weaknesses") or [],
         vocab_learned=report.get("vocab_learned") or [],
+        ended=True,
     )
-    mark_conversation_ended(cid)
     return {}
 
 

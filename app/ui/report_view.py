@@ -6,13 +6,14 @@ import streamlit as st
 
 from app.agents.evolve_graph import run_evolve_if_needed
 from app.db.repo import get_conversation_prompt, get_rating, get_report, save_rating
+from app.runtime import ModelBusy, inference_slot
 
 
 def render_report(conversation_id: str, user_id: str) -> None:
     prompt = get_conversation_prompt(conversation_id, user_id)
     if prompt is None:
         raise ValueError("Conversation has no user-owned system prompt")
-    report = get_report(conversation_id)
+    report = get_report(conversation_id, user_id)
     st.subheader("📊 Conversation Report")
 
     if report is None:
@@ -40,7 +41,7 @@ def render_report(conversation_id: str, user_id: str) -> None:
 
     st.divider()
 
-    existing = get_rating(conversation_id) or {}
+    existing = get_rating(conversation_id, user_id) or {}
     st.markdown("### How was this session?")
     initial = (existing.get("stars") or 0) - 1 if existing.get("stars") else None
     stars = st.feedback("stars", key=f"stars_{conversation_id}")
@@ -63,8 +64,12 @@ def render_report(conversation_id: str, user_id: str) -> None:
                     stars=int(stars) + 1,  # st.feedback 은 0~4 반환
                     comment=(comment.strip() or None) if comment else None,
                 )
-                with st.spinner("프롬프트 진화 점검 중..."):
-                    prompt_update = run_evolve_if_needed(user_id)
+                prompt_update = None
+                try:
+                    with st.spinner("프롬프트 진화 점검 중..."), inference_slot():
+                        prompt_update = run_evolve_if_needed(user_id)
+                except ModelBusy:
+                    st.info("별점을 저장했습니다. 모델 작업이 끝난 뒤 개선을 다시 확인할 수 있습니다.")
                 if prompt_update and prompt_update["action"] == "evolved":
                     st.toast("📈 system prompt 가 새 버전으로 진화되었습니다.")
                 elif prompt_update and prompt_update["action"] == "rolled_back":
