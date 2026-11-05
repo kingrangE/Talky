@@ -29,12 +29,16 @@ def get_driver() -> Driver:
 
 
 @lru_cache(maxsize=1)
+def _initialize_schema() -> None:
+    with get_driver().session() as s:
+        for stmt in _CONSTRAINTS:
+            s.run(stmt).consume()
+
+
 def ensure_schema() -> bool:
-    """앱 첫 호출 시 1회만 제약/인덱스 생성. Neo4j 미접속이면 False."""
+    """성공만 캐시하며 일시적인 접속 실패는 다음 요청에서 재시도한다."""
     try:
-        with get_driver().session() as s:
-            for stmt in _CONSTRAINTS:
-                s.run(stmt)
+        _initialize_schema()
         return True
     except Exception as exc:
         log.warning("Neo4j schema init skipped: %s", exc)
