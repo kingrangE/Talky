@@ -7,6 +7,8 @@ import hmac
 import os
 import secrets
 import time
+import tempfile
+import uuid
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -81,18 +83,30 @@ class EncryptedAudioStore:
         key_path = self.root.parent / ".audio-key"
         key_path.parent.mkdir(parents=True, exist_ok=True)
         if not key_path.exists():
-            key_path.write_bytes(Fernet.generate_key())
-            os.chmod(key_path, 0o600)
+            with tempfile.NamedTemporaryFile(dir=key_path.parent, delete=False) as temp:
+                temporary = Path(temp.name)
+                temp.write(Fernet.generate_key())
+            try:
+                try:
+                    os.link(temporary, key_path)
+                except FileExistsError:
+                    pass
+            finally:
+                temporary.unlink(missing_ok=True)
         return key_path.read_bytes()
 
     def save(self, session_id: str, question_number: int, audio: bytes) -> str:
-        directory = self.root / session_id
+        if not 1 <= question_number <= 11:
+            raise ValueError("invalid question number")
+        directory = (self.root / session_id).resolve()
+        if self.root.resolve() not in directory.parents:
+            raise ValueError("audio path escapes storage root")
         directory.mkdir(parents=True, exist_ok=True)
-        path = directory / f"q{question_number:02d}.fernet"
+        path = directory / f"q{question_number:02d}-{uuid.uuid4().hex}.fernet"
         temp = directory / f".{path.name}.tmp"
         temp.write_bytes(self._fernet.encrypt(audio))
         os.replace(temp, path)
-        return str(path.relative_to(self.root))
+        return str(path.relative_to(self.root.resolve()))
 
     def load(self, relative_path: str) -> bytes:
         path = (self.root / relative_path).resolve()

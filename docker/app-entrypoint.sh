@@ -19,8 +19,5 @@ PY
 echo "[talky] running migrations..."
 alembic upgrade head
 
-echo "[talky] seeding default data..."
-python -m app.db.seed
-
 echo "[talky] starting Streamlit..."
-exec streamlit run main.py --server.address=0.0.0.0 --server.port=8501
+exec streamlit run main.py --server.address=0.0.0.0 --server.port=8501 --server.maxMessageSize=10 --server.maxUploadSize=5

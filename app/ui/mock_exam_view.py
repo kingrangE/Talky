@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import html
 import secrets
 import time
@@ -10,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import streamlit as st
+from app.audio.validation import decode_audio_upload
 
 from app.mock_exam.content import list_approved_sets, load_exam_set
 from app.mock_exam.narration import narration_for
@@ -27,7 +27,7 @@ from app.mock_exam.repository import (
     quota_status,
     save_calibration_sample,
 )
-from app.mock_exam.service import publish_timeout_report, run_expiry_cleanup, submit_response
+from app.mock_exam.service import publish_timeout_report, retry_report, submit_response
 from app.settings import get_settings
 from app.ui.timed_recorder import timed_recorder
 
@@ -79,7 +79,10 @@ def _session_from_url() -> dict[str, Any] | None:
         return None
     if session["status"] == "active":
         age = datetime.now(timezone.utc) - session["updated_at"]
-        if age.total_seconds() > get_settings().MOCK_EXAM_RECOVERY_TTL_MINUTES * 60:
+        pending = age.total_seconds() > get_settings().MOCK_EXAM_RECOVERY_TTL_MINUTES * 60 and any(
+            row["status"] in {"queued", "processing"} for row in list_responses(session_id)
+        )
+        if age.total_seconds() > get_settings().MOCK_EXAM_RECOVERY_TTL_MINUTES * 60 and not pending:
             st.warning("중단된 시험의 10분 복구 시간이 지났습니다. 새 시험은 일일 제한에 따라 시작할 수 있습니다.")
             return None
     return session
@@ -150,7 +153,7 @@ def _render_active_exam(session: dict[str, Any]) -> None:
     if existing and existing["status"] == "technical_error":
         st.warning("녹음은 수신했지만 처리할 수 없었습니다. 이 문항에 한해 기술 재시도를 시작합니다.")
 
-    retry_suffix = "retry" if session.get("retry_question") == number else "first"
+    retry_suffix = f"retry-{existing['attempts']}" if session.get("retry_question") == number and existing else "first"
     mic_attempt_key = f"mock_mic_attempt_{session['id']}_{number}_{retry_suffix}"
     attempt = int(st.session_state.get(mic_attempt_key, 0))
     run_id = f"{session['id']}:{number}:{retry_suffix}:{attempt}"
@@ -177,7 +180,7 @@ def _render_active_exam(session: dict[str, Any]) -> None:
             st.rerun()
         return
     try:
-        audio_bytes = base64.b64decode(result["audio_base64"], validate=True)
+        audio_bytes = decode_audio_upload(result["audio_base64"])
         client_metrics = {
             "mime_type": result.get("mime_type"),
             "duration_seconds": result.get("duration_seconds"),
@@ -191,6 +194,8 @@ def _render_active_exam(session: dict[str, Any]) -> None:
             client_metrics=client_metrics,
         )
         st.rerun()
+    except ValueError as exc:
+        st.error(str(exc))
     except Exception as exc:
         st.error(f"응답을 저장하지 못했습니다: {type(exc).__name__}")
 
@@ -283,6 +288,12 @@ def _render_scoring(session: dict[str, Any]) -> None:
         _render_report(report, session_id=session["id"])
         if report["status"] == "partial" and st.button("상세 평가 상태 새로고침"):
             st.rerun()
+        if report["status"] == "partial" and session["status"] == "completed" and st.button("상세 평가 다시 요청"):
+            try:
+                retry_report(session["id"])
+                st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
         return
     started = session.get("completed_at") or session["updated_at"]
     elapsed = (datetime.now(timezone.utc) - started).total_seconds()
@@ -323,11 +334,15 @@ def _render_intro(visitor_hash: str) -> None:
     consent = st.checkbox("개인정보 처리, 72시간 보관, 비공식 베타 채점에 동의합니다.")
     if st.button("모의고사 시작", type="primary", disabled=not consent):
         exam = list_approved_sets()[0]
-        created = create_session(
-            visitor_hash=visitor_hash,
-            exam_set_id=exam.id,
-            exam_set_version=exam.version,
-        )
+        try:
+            created = create_session(
+                visitor_hash=visitor_hash,
+                exam_set_id=exam.id,
+                exam_set_version=exam.version,
+            )
+        except PermissionError:
+            st.warning("다른 시험이 먼저 시작됐거나 오늘 이용 한도에 도달했습니다.")
+            return
         _set_recovery_url(created["id"])
         st.rerun()
 
@@ -344,11 +359,6 @@ def render_mock_exam() -> None:
         """,
         unsafe_allow_html=True,
     )
-    if not st.session_state.get("mock_cleanup_done"):
-        try:
-            run_expiry_cleanup()
-        finally:
-            st.session_state.mock_cleanup_done = True
     session = _session_from_url()
     if session is None:
         _render_intro(_visitor_hash())
@@ -357,7 +367,7 @@ def render_mock_exam() -> None:
     elif session["status"] in {"scoring", "completed"}:
         _render_scoring(session)
     else:
-        st.error("시험을 계속할 수 없습니다. 데이터 보관 기간과 서버 상태를 확인해 주세요.")
+        st.error("서버 처리 재시도 한도를 초과해 시험이 중단되었습니다. 저장된 응답은 보관 기간 동안 유지됩니다.")
     st.divider()
     st.caption(DISCLAIMER_KO)
     st.caption("Privacy: audio, transcripts, and reports are deleted after 72 hours. See PRIVACY.md and THIRD_PARTY_NOTICES.md.")
