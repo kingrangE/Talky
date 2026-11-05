@@ -2,6 +2,7 @@
 .talky
 __pycache__/
 *.pyc
+docs/
 .streamlit/
 .cache/
 .data/
