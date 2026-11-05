@@ -87,15 +87,20 @@ class Message(Base):
 class PromptVersion(Base):
     __tablename__ = "prompt_versions"
     __table_args__ = (
+        CheckConstraint("NOT active OR user_id IS NOT NULL", name="active_prompt_has_owner"),
         Index(
-            "one_active_prompt",
-            "active",
+            "one_active_prompt_per_user",
+            "user_id",
             unique=True,
             postgresql_where="active = true",
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    # NULL 소유자는 마이그레이션으로 보존한 비활성 공통 버전뿐이다.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     rationale: Mapped[str | None] = mapped_column(Text)

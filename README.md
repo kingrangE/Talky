@@ -52,6 +52,26 @@ python -m app.db.seed
 streamlit run main.py
 ```
 
+## 사용자별 시스템 프롬프트
+
+`prompt_versions.user_id`를 기준으로 사용자마다 활성 시스템 프롬프트 하나를 관리합니다.
+초기 프롬프트는 `prompts/seed_v1.md`에서 사용자별 RDB 행으로 생성하며, 기존 개인
+프롬프트는 시드 파일 변경이나 재시작으로 덮어쓰지 않습니다.
+별점 집계, 개선 자료, 버전 활성화, 품질 하락 롤백은 모두 해당 사용자 범위로 제한합니다.
+
+새 대화는 사용자의 활성 버전을 고정합니다. 에이전트는 매 실행 시 RDB에서
+대화 소유자와 프롬프트 소유자를 확인하고 해당 본문을 읽습니다. 진행 중인 대화는
+기존 버전을 유지하며, 개선된 버전은 새 대화부터 적용됩니다.
+
+기존 설치는 `alembic upgrade head`를 실행해야 합니다. `0003_user_prompts`는
+기존 공통 버전 이력을 기존 사용자별로 복제하고 대화·평가·부모 버전 연결을 옮깁니다.
+기존 공통 본문을 출발점으로 보존하며, 이후 개선부터 사용자별로 독립합니다.
+소유자가 없는 기존 공통 버전은 비활성 이력으로 보존합니다.
+
+현재 Streamlit 화면의 사용자 식별은 `APP_USER_ID` 또는 기본 anonymous 사용자입니다.
+여러 사람이 동시에 쓰려면 로그인에서 확인한 사용자 ID를 현재 `USER_ID` 자리에
+연동해야 합니다. 인증 시스템은 포함되어 있지 않습니다.
+
 ## 환경변수
 
 `.env.example` 참고. 핵심:
@@ -60,7 +80,8 @@ streamlit run main.py
 - `MODEL_NAME` — Ollama 모델명 (Modelfile 의 tag 와 일치해야 함)
 - `WHISPER_MODEL`, `WHISPER_DEVICE` — STT 모델/장치
 - `TTS_VOICE_KO`, `TTS_VOICE_EN` — Piper voice 이름 (HuggingFace `rhasspy/piper-voices` 의 디렉토리 규칙)
-- `EVOLVE_BATCH` — 별점 N 개 누적 시 프롬프트 진화 트리거 (기본 5)
+- `APP_USER_ID` — 현재 앱 사용자의 UUID. 미설정 시 기본 anonymous 사용자 사용
+- `EVOLVE_BATCH` — 사용자별 현재 프롬프트에 미반영 별점 N 개 누적 시 개별 진화 (기본 5)
 - `MOCK_EXAM_SCORING_PROFILE` — `basic`, `advanced`, `auto`. 기본 Docker 이미지는 CPU `basic`
 - `MOCK_EXAM_DAILY_LIMIT`, `MOCK_EXAM_GLOBAL_CONCURRENCY` — 공개 데모 자원 제한
 - `MOCK_EXAM_SIGNING_SECRET`, `MOCK_EXAM_FINGERPRINT_SALT` — 공개 배포 시 필수 교체

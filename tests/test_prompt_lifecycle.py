@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+USER_ID = "00000000-0000-0000-0000-000000000001"
+
 from app.agents import evolve_graph
 from app.db import seed
 
@@ -19,7 +21,7 @@ def test_seed_does_not_replace_evolved_active_prompt():
         def scalars(self, _stmt):
             return ScalarResult()
 
-    assert seed.seed_prompt_v1(FakeSession()) is evolved
+    assert seed.seed_prompt_v1(FakeSession(), USER_ID) is evolved
     assert evolved.active is True
 
 
@@ -28,22 +30,26 @@ def test_evolution_counts_only_ratings_for_active_prompt(monkeypatch):
     monkeypatch.setattr(
         evolve_graph,
         "get_active_prompt",
-        lambda: {"id": "prompt-active", "content": "active", "version": 2},
+        lambda user_id: {"id": "prompt-active", "content": "active", "version": 2},
     )
 
-    def fake_count(prompt_version_id):
+    def fake_count(user_id, prompt_version_id):
+        captured["user_id"] = user_id
         captured["prompt_version_id"] = prompt_version_id
         return 5, {1: 0, 2: 0, 3: 0, 4: 1, 5: 4}
 
     monkeypatch.setattr(evolve_graph, "count_unconsumed_ratings", fake_count)
-    result = evolve_graph.should_evolve_node({"threshold": 5})
+    result = evolve_graph.should_evolve_node({"threshold": 5, "user_id": USER_ID})
 
     assert result["proceed"] is True
     assert result["current_prompt"]["id"] == "prompt-active"
+    assert captured["user_id"] == USER_ID
     assert captured["prompt_version_id"] == "prompt-active"
 
 
 def test_degraded_prompt_rolls_back_before_new_evolution(monkeypatch):
+    calls = []
+    rollback_args = {}
     class ScalarResult:
         def scalar(self):
             return True
@@ -55,7 +61,8 @@ def test_degraded_prompt_rolls_back_before_new_evolution(monkeypatch):
         def __exit__(self, *_args):
             return False
 
-        def execute(self, *_args, **_kwargs):
+        def execute(self, query, params):
+            calls.append((str(query), params))
             return ScalarResult()
 
         def commit(self):
@@ -74,7 +81,7 @@ def test_degraded_prompt_rolls_back_before_new_evolution(monkeypatch):
     monkeypatch.setattr(
         evolve_graph,
         "rollback_active_prompt_if_degraded",
-        lambda **_kwargs: "parent-prompt",
+        lambda **kwargs: rollback_args.update(kwargs) or "parent-prompt",
     )
     monkeypatch.setattr(
         evolve_graph,
@@ -82,6 +89,9 @@ def test_degraded_prompt_rolls_back_before_new_evolution(monkeypatch):
         lambda: (_ for _ in ()).throw(AssertionError("evolution must not run")),
     )
 
-    result = evolve_graph.run_evolve_if_needed()
+    result = evolve_graph.run_evolve_if_needed(USER_ID)
 
     assert result == {"action": "rolled_back", "prompt_id": "parent-prompt"}
+
+    assert rollback_args["user_id"] == USER_ID
+    assert calls[0][1] == calls[1][1] == {"k": 1}

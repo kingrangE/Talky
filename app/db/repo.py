@@ -43,24 +43,30 @@ def ensure_default_user() -> uuid.UUID:
         return user.id
 
 
-def get_active_prompt() -> dict[str, Any] | None:
+def get_active_prompt(user_id: str | uuid.UUID) -> dict[str, Any] | None:
     with session_scope() as s:
         row = s.scalars(
-            select(PromptVersion).where(PromptVersion.active.is_(True)).limit(1)
+            select(PromptVersion).where(
+                PromptVersion.active.is_(True), PromptVersion.user_id == _to_uuid(user_id)
+            ).limit(1)
         ).first()
         if row is None:
             return None
         return {"id": str(row.id), "version": row.version, "content": row.content}
 
 
-def get_conversation_prompt(conversation_id: str) -> dict[str, Any] | None:
+def get_conversation_prompt(conversation_id: str, user_id: str | uuid.UUID) -> dict[str, Any] | None:
     """대화 생성 시 고정된 prompt 버전을 반환한다."""
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
         row = s.scalars(
             select(PromptVersion)
             .join(Conversation, Conversation.prompt_version_id == PromptVersion.id)
-            .where(Conversation.id == cid)
+            .where(
+                Conversation.id == cid,
+                Conversation.user_id == _to_uuid(user_id),
+                PromptVersion.user_id == _to_uuid(user_id),
+            )
             .limit(1)
         ).first()
         if row is None:
@@ -71,7 +77,13 @@ def get_conversation_prompt(conversation_id: str) -> dict[str, Any] | None:
 def create_conversation(title: str = "New Conversation", user_id: uuid.UUID | None = None) -> str:
     if user_id is None:
         user_id = ensure_default_user()
-    prompt = get_active_prompt()
+    from app.db.seed import seed_prompt_v1
+
+    with session_scope() as s:
+        seed_prompt_v1(s, user_id)
+    prompt = get_active_prompt(user_id)
+    if prompt is None:
+        raise ValueError("Active system prompt not found for user")
     with session_scope() as s:
         conv = Conversation(
             user_id=user_id,
@@ -206,13 +218,23 @@ def get_report(conversation_id: str) -> dict[str, Any] | None:
 def save_rating(
     *,
     conversation_id: str,
+    user_id: str | uuid.UUID,
     prompt_version_id: str | None,
     stars: int,
     comment: str | None = None,
 ) -> str:
     cid = _to_uuid(conversation_id)
-    pvid = _to_uuid(prompt_version_id) if prompt_version_id else None
+    uid = _to_uuid(user_id)
     with session_scope() as s:
+        conv = s.get(Conversation, cid)
+        if conv is None or conv.user_id != uid:
+            raise ValueError("Conversation does not belong to user")
+        prompt = s.get(PromptVersion, conv.prompt_version_id) if conv.prompt_version_id else None
+        if prompt is None or prompt.user_id != uid:
+            raise ValueError("Conversation has no user-owned system prompt")
+        pvid = prompt.id
+        if prompt_version_id is not None and _to_uuid(prompt_version_id) != pvid:
+            raise ValueError("Rating must use the conversation's system prompt")
         existing = s.scalars(select(Rating).where(Rating.conversation_id == cid)).first()
         if existing is not None:
             existing.stars = stars
@@ -242,13 +264,16 @@ def get_rating(conversation_id: str) -> dict[str, Any] | None:
 
 
 def count_unconsumed_ratings(
-    prompt_version_id: str | None = None,
+    user_id: str | uuid.UUID,
+    prompt_version_id: str,
 ) -> tuple[int, dict[int, int]]:
     """별점 진화에 아직 반영되지 않은 ratings 의 수와 분포."""
     with session_scope() as s:
-        stmt = select(Rating).where(Rating.consumed_for_evolution.is_(False))
-        if prompt_version_id:
-            stmt = stmt.where(Rating.prompt_version_id == _to_uuid(prompt_version_id))
+        stmt = select(Rating).join(Conversation).where(
+            Rating.consumed_for_evolution.is_(False),
+            Conversation.user_id == _to_uuid(user_id),
+            Rating.prompt_version_id == _to_uuid(prompt_version_id),
+        )
         rows = s.scalars(stmt).all()
         dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
         for r in rows:
@@ -257,7 +282,7 @@ def count_unconsumed_ratings(
 
 
 def get_unconsumed_rated_reports(
-    *, top_n: int, order: str = "desc", prompt_version_id: str | None = None
+    *, user_id: str | uuid.UUID, top_n: int, order: str = "desc", prompt_version_id: str
 ) -> list[dict[str, Any]]:
     """별점 미반영 conversations 중 상위/하위 N개 (보고서 포함)."""
     with session_scope() as s:
@@ -267,10 +292,13 @@ def get_unconsumed_rated_reports(
         stmt = (
             select(Rating, Report)
             .join(Report, Rating.conversation_id == Report.conversation_id)
-            .where(Rating.consumed_for_evolution.is_(False))
+            .join(Conversation, Rating.conversation_id == Conversation.id)
+            .where(
+                Rating.consumed_for_evolution.is_(False),
+                Conversation.user_id == _to_uuid(user_id),
+                Rating.prompt_version_id == _to_uuid(prompt_version_id),
+            )
         )
-        if prompt_version_id:
-            stmt = stmt.where(Rating.prompt_version_id == _to_uuid(prompt_version_id))
         stmt = stmt.order_by(order_col).limit(top_n)
         out: list[dict[str, Any]] = []
         for rating, report in s.execute(stmt).all():
@@ -288,12 +316,14 @@ def get_unconsumed_rated_reports(
 
 def insert_prompt_version(
     *,
+    user_id: str | uuid.UUID,
     content: str,
     rationale: str | None,
     parent_id: str | None,
     diff_summary: list[str] | None = None,
     activate: bool = True,
 ) -> str:
+    uid = _to_uuid(user_id)
     pid = _to_uuid(parent_id) if parent_id else None
     rationale_full = rationale or ""
     if diff_summary:
@@ -302,17 +332,26 @@ def insert_prompt_version(
         ).strip()
 
     with session_scope() as s:
-        max_v = s.scalar(select(func.coalesce(func.max(PromptVersion.version), 0)))
+        if s.scalars(select(User).where(User.id == uid).with_for_update()).first() is None:
+            raise ValueError("Unknown user")
+        parent = s.get(PromptVersion, pid) if pid else None
+        if pid and (parent is None or parent.user_id != uid):
+            raise ValueError("Parent prompt does not belong to user")
+        max_v = s.scalar(
+            select(func.coalesce(func.max(PromptVersion.version), 0))
+            .where(PromptVersion.user_id == uid)
+        )
         new_version = int(max_v or 0) + 1
 
         if activate:
             s.execute(
                 update(PromptVersion)
-                .where(PromptVersion.active.is_(True))
+                .where(PromptVersion.active.is_(True), PromptVersion.user_id == uid)
                 .values(active=False)
             )
 
         pv = PromptVersion(
+            user_id=uid,
             version=new_version,
             content=content,
             rationale=rationale_full or None,
@@ -324,32 +363,39 @@ def insert_prompt_version(
         return str(pv.id)
 
 
-def mark_unconsumed_ratings_consumed(prompt_version_id: str | None = None) -> int:
+def mark_unconsumed_ratings_consumed(user_id: str | uuid.UUID, prompt_version_id: str) -> int:
     with session_scope() as s:
-        stmt = update(Rating).where(Rating.consumed_for_evolution.is_(False))
-        if prompt_version_id:
-            stmt = stmt.where(Rating.prompt_version_id == _to_uuid(prompt_version_id))
+        stmt = update(Rating).where(
+            Rating.consumed_for_evolution.is_(False),
+            Rating.conversation_id.in_(
+                select(Conversation.id).where(Conversation.user_id == _to_uuid(user_id))
+            ),
+            Rating.prompt_version_id == _to_uuid(prompt_version_id),
+        )
         result = s.execute(stmt.values(consumed_for_evolution=True))
         return result.rowcount or 0
 
 
 def rollback_active_prompt_if_degraded(
-    *, min_samples: int, drop_threshold: float
+    *, user_id: str | uuid.UUID, min_samples: int, drop_threshold: float
 ) -> str | None:
     """활성 prompt가 부모보다 충분히 나쁘면 부모 버전을 다시 활성화한다."""
     with session_scope() as s:
         active = s.scalars(
-            select(PromptVersion).where(PromptVersion.active.is_(True)).limit(1)
+            select(PromptVersion).where(
+                PromptVersion.active.is_(True), PromptVersion.user_id == _to_uuid(user_id)
+            ).limit(1)
         ).first()
         if active is None or active.parent_id is None:
             return None
         parent = s.get(PromptVersion, active.parent_id)
-        if parent is None:
+        if parent is None or parent.user_id != _to_uuid(user_id):
             return None
 
         def rating_stats(prompt_id: uuid.UUID) -> tuple[int, float | None]:
             count, average = s.execute(
-                select(func.count(Rating.id), func.avg(Rating.stars)).where(
+                select(func.count(Rating.id), func.avg(Rating.stars)).join(Conversation).where(
+                    Conversation.user_id == _to_uuid(user_id),
                     Rating.prompt_version_id == prompt_id
                 )
             ).one()
@@ -369,13 +415,16 @@ def rollback_active_prompt_if_degraded(
         ):
             return None
 
-        # partial unique index(one_active_prompt)를 지키기 위해 순서대로 flush한다.
+        # partial unique index(one_active_prompt_per_user)를 지키기 위해 순서대로 flush한다.
         active.active = False
         s.flush()
         parent.active = True
         s.execute(
             update(Rating)
             .where(
+                Rating.conversation_id.in_(
+                    select(Conversation.id).where(Conversation.user_id == _to_uuid(user_id))
+                ),
                 Rating.prompt_version_id == active.id,
                 Rating.consumed_for_evolution.is_(False),
             )

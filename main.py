@@ -16,11 +16,12 @@ from app.db.repo import (  # noqa: E402
     delete_conversation,
     ensure_default_user,
     get_active_prompt,
-    get_conversation_prompt,
     list_conversations,
     load_messages,
     update_conversation_title,
 )
+from app.db.postgres import session_scope  # noqa: E402
+from app.db.seed import seed_prompt_v1  # noqa: E402
 from app.settings import get_settings  # noqa: E402
 from app.ui.audio_widget import mic_input  # noqa: E402
 from app.ui.report_view import render_report  # noqa: E402
@@ -45,7 +46,9 @@ if app_mode == "Speaking Mock Test":
 @st.cache_resource
 def _bootstrap() -> dict:
     user_id = ensure_default_user()
-    if get_active_prompt() is None:
+    with session_scope() as session:
+        seed_prompt_v1(session, user_id)
+    if get_active_prompt(user_id) is None:
         st.error("Active system prompt not found. Run: python -m app.db.seed")
         st.stop()
     return {
@@ -61,25 +64,14 @@ GRAPH = boot["graph"]
 ENDING_GRAPH = boot["ending_graph"]
 
 
-def _active_prompt() -> dict:
-    """새 대화 또는 이전 데이터 호환을 위한 현재 활성 prompt."""
-    p = get_active_prompt()
-    if p is None:
-        st.error("Active system prompt not found. Run: python -m app.db.seed")
-        st.stop()
-    return p
-
 MODEL_LABEL = cfg.OPENAI_MODEL if cfg.use_openai else cfg.MODEL_NAME
 SERVER_LABEL = "OpenAI" if cfg.use_openai else cfg.OLLAMA_BASE_URL
 
 
 def _build_state_input(*, cid: str, **extra) -> dict:
-    prompt = get_conversation_prompt(cid) or _active_prompt()
     return {
         "conversation_id": cid,
         "user_id": str(USER_ID),
-        "prompt_version_id": prompt["id"],
-        "system_prompt": prompt["content"],
         **extra,
     }
 
@@ -320,10 +312,7 @@ def handle_voice_message(audio_bytes: bytes) -> None:
 
 
 if st.session_state.show_report_for:
-    report_prompt = (
-        get_conversation_prompt(st.session_state.show_report_for) or _active_prompt()
-    )
-    render_report(st.session_state.show_report_for, report_prompt["id"])
+    render_report(st.session_state.show_report_for, str(USER_ID))
 else:
     audio_bytes = mic_input(key=f"voice_input_{st.session_state.voice_turn}")
     if audio_bytes:

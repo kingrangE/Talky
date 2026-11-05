@@ -5,10 +5,13 @@ from __future__ import annotations
 import streamlit as st
 
 from app.agents.evolve_graph import run_evolve_if_needed
-from app.db.repo import get_rating, get_report, save_rating
+from app.db.repo import get_conversation_prompt, get_rating, get_report, save_rating
 
 
-def render_report(conversation_id: str, prompt_version_id: str | None) -> None:
+def render_report(conversation_id: str, user_id: str) -> None:
+    prompt = get_conversation_prompt(conversation_id, user_id)
+    if prompt is None:
+        raise ValueError("Conversation has no user-owned system prompt")
     report = get_report(conversation_id)
     st.subheader("📊 Conversation Report")
 
@@ -55,12 +58,13 @@ def render_report(conversation_id: str, prompt_version_id: str | None) -> None:
             if stars is not None:
                 save_rating(
                     conversation_id=conversation_id,
-                    prompt_version_id=prompt_version_id,
+                    user_id=user_id,
+                    prompt_version_id=prompt["id"],
                     stars=int(stars) + 1,  # st.feedback 은 0~4 반환
                     comment=(comment.strip() or None) if comment else None,
                 )
                 with st.spinner("프롬프트 진화 점검 중..."):
-                    prompt_update = run_evolve_if_needed()
+                    prompt_update = run_evolve_if_needed(user_id)
                 if prompt_update and prompt_update["action"] == "evolved":
                     st.toast("📈 system prompt 가 새 버전으로 진화되었습니다.")
                 elif prompt_update and prompt_update["action"] == "rolled_back":

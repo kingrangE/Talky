@@ -1,15 +1,16 @@
-"""별점 누적 시 system prompt 새 버전을 생성하는 메타-LLM 그래프.
+"""사용자별 별점 누적 시 해당 사용자의 system prompt 새 버전을 생성하는 메타-LLM 그래프.
 
 START → should_evolve → fetch → meta_compose → validate → insert → END
        └─[no]→ END                          └─[invalid]→ END
 
-`run_evolve_if_needed(threshold)` 가 advisory lock 으로 동시성 보호하며 트리거한다.
+`run_evolve_if_needed(user_id, threshold)` 가 advisory lock 으로 동시성 보호하며 트리거한다.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import uuid
 from functools import lru_cache
 from typing import Any, TypedDict
 
@@ -32,12 +33,12 @@ from app.settings import get_settings
 
 log = logging.getLogger(__name__)
 
-EVOLVE_LOCK_KEY = 73457301
 REQUIRED_KEYWORDS = ("English", "영어", "tutor", "튜터", "conversation", "대화")
 MIN_LEN, MAX_LEN = 200, 3000
 
 
 class EvolveState(TypedDict, total=False):
+    user_id: str
     threshold: int
     proceed: bool
     high_rated: list[dict[str, Any]]
@@ -69,7 +70,7 @@ META_PROMPT = """
 - rating_distribution: 1~5 별점 분포
 
 수행할 일:
-1. 별점 높은 대화의 패턴을 강화하고, 별점 낮은 대화의 문제를 해결하도록 system prompt 를 다듬어 새 버전을 작성합니다.
+1. 입력은 한 사용자의 평가입니다. 그 사용자의 선호와 학습 필요에 맞춰 별점 높은 대화의 패턴을 강화하고, 별점 낮은 대화의 문제를 해결하도록 system prompt 를 다듬어 새 버전을 작성합니다.
 2. 한국어/영어 이중언어 회화 튜터라는 핵심 역할은 유지하세요.
 3. 마크다운 본문은 plain text 로, 제목 헤더 (#) 는 사용하지 마세요.
 4. 길이는 한국어/영어 합쳐 200~3000자.
@@ -83,10 +84,10 @@ JSON 으로 출력:
 
 def should_evolve_node(state: EvolveState) -> dict:
     threshold = state.get("threshold") or get_settings().EVOLVE_BATCH
-    current = get_active_prompt()
+    current = get_active_prompt(state["user_id"])
     if current is None:
         return {"proceed": False, "rating_distribution": {}}
-    count, dist = count_unconsumed_ratings(current["id"])
+    count, dist = count_unconsumed_ratings(state["user_id"], current["id"])
     return {
         "proceed": count >= threshold,
         "rating_distribution": dist,
@@ -101,10 +102,10 @@ def fetch_node(state: EvolveState) -> dict:
     if not current:
         return {"proceed": False}
     high = get_unconsumed_rated_reports(
-        top_n=3, order="desc", prompt_version_id=current["id"]
+        user_id=state["user_id"], top_n=3, order="desc", prompt_version_id=current["id"]
     )
     low = get_unconsumed_rated_reports(
-        top_n=3, order="asc", prompt_version_id=current["id"]
+        user_id=state["user_id"], top_n=3, order="asc", prompt_version_id=current["id"]
     )
     return {
         "high_rated": high,
@@ -153,13 +154,14 @@ def insert_node(state: EvolveState) -> dict:
     if not state.get("proceed"):
         return {}
     new_id = insert_prompt_version(
+        user_id=state["user_id"],
         content=state["new_prompt_content"],
         rationale=state.get("rationale"),
         parent_id=state["current_prompt"]["id"],
         diff_summary=state.get("diff_summary") or [],
         activate=True,
     )
-    mark_unconsumed_ratings_consumed(state["current_prompt"]["id"])
+    mark_unconsumed_ratings_consumed(state["user_id"], state["current_prompt"]["id"])
     return {"new_prompt_id": new_id}
 
 
@@ -189,13 +191,16 @@ def build_evolve_graph():
     return g.compile()
 
 
-def run_evolve_if_needed(threshold: int | None = None) -> dict[str, str] | None:
+def run_evolve_if_needed(user_id: str, threshold: int | None = None) -> dict[str, str] | None:
     """품질 하락 롤백 후 필요하면 evolve graph를 실행한다."""
+    # UUID의 하위 63비트로 사용자별 잠금을 잡는다.
+    user_id = str(uuid.UUID(str(user_id)))
+    lock_key = uuid.UUID(user_id).int & ((1 << 63) - 1)
     try:
         engine = get_engine()
         with engine.connect() as conn:
             acquired = conn.execute(
-                text("SELECT pg_try_advisory_lock(:k)"), {"k": EVOLVE_LOCK_KEY}
+                text("SELECT pg_try_advisory_lock(:k)"), {"k": lock_key}
             ).scalar()
             if not acquired:
                 return None
@@ -203,15 +208,16 @@ def run_evolve_if_needed(threshold: int | None = None) -> dict[str, str] | None:
                 cfg = get_settings()
                 effective_threshold = threshold or cfg.EVOLVE_BATCH
                 rollback_id = rollback_active_prompt_if_degraded(
+                    user_id=user_id,
                     min_samples=effective_threshold,
                     drop_threshold=cfg.ROLLBACK_THRESHOLD,
                 )
                 if rollback_id:
                     return {"action": "rolled_back", "prompt_id": rollback_id}
                 graph = build_evolve_graph()
-                state_in: EvolveState = (
-                    {"threshold": threshold} if threshold is not None else {}
-                )
+                state_in: EvolveState = {"user_id": user_id}
+                if threshold is not None:
+                    state_in["threshold"] = threshold
                 out = graph.invoke(state_in)
                 new_id = out.get("new_prompt_id")
                 if new_id:
@@ -219,7 +225,7 @@ def run_evolve_if_needed(threshold: int | None = None) -> dict[str, str] | None:
                 return None
             finally:
                 conn.execute(
-                    text("SELECT pg_advisory_unlock(:k)"), {"k": EVOLVE_LOCK_KEY}
+                    text("SELECT pg_advisory_unlock(:k)"), {"k": lock_key}
                 )
                 conn.commit()
     except Exception as exc:
