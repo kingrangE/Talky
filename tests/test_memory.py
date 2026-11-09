@@ -31,6 +31,7 @@ def test_memory_recall_is_scoped_and_excludes_current_conversation(monkeypatch):
     assert result[0]["text"] == "earlier"
     assert "(:User {id: $uid})-[:HAD]->(c:Conversation)" in captured["query"]
     assert "c.id <> $current_cid" in captured["query"]
+    assert "RELATED_TO*0..3" in captured["query"]
     assert captured["params"]["current_cid"] == "conversation-current"
 
 

@@ -1,7 +1,7 @@
 """Multi-hop 회상 Cypher.
 
 현재 입력의 토픽 후보가 주어지면, 사용자가 가졌던 대화들에서 같은 토픽 또는
-2-hop 까지의 RELATED_TO 토픽이 등장한 메시지를 시간 역순으로 가져온다.
+3-hop 까지의 RELATED_TO 토픽이 등장한 메시지를 시간 역순으로 가져온다.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def recall_related(
                 WHERE t.name IN $topics
                 WITH collect(DISTINCT t) AS seeds
                 UNWIND seeds AS t
-                MATCH (t)-[:RELATED_TO*0..2]-(t2:Topic)
+                MATCH (t)-[:RELATED_TO*0..3]-(t2:Topic)
                 MATCH (:User {id: $uid})-[:HAD]->(c:Conversation)-[:ABOUT]->(t2)
                 MATCH (c)-[:CONTAINS]->(m:Message)
                 WHERE m.role IN ['user', 'assistant']
