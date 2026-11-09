@@ -17,7 +17,7 @@
 
   3. 대화 메모리 정교화
 
-  현재는 입력에서 1~3개 토픽을 뽑아 Neo4j의 2-hop 관계를 회상합니다 (app/agents/nodes/memory.py:46, app/graph_db/recall.py:16).
+  현재는 입력에서 1~3개 토픽을 뽑아 Neo4j의 토픽 관계를 최대 3-hop까지 회상합니다 (app/agents/nodes/memory.py, app/graph_db/recall.py).
 
   - 그래프+키워드+임베딩 혼합 검색
   - 최신성·중요도·사용자 선호도 기반 랭킹
