@@ -15,6 +15,7 @@ from sqlalchemy import func, select, update
 from app.db.models import Conversation, Message, PromptVersion, Rating, Report, User
 from app.db.postgres import session_scope
 from app.settings import get_settings
+from app.llm.prompt_registry import common_references, publish_user_prompt, read_reference
 
 
 def _to_uuid(value: str | uuid.UUID) -> uuid.UUID:
@@ -65,26 +66,38 @@ def get_active_prompt(user_id: str | uuid.UUID) -> dict[str, Any] | None:
         ).first()
         if row is None:
             return None
-        return {"id": str(row.id), "version": row.version, "content": row.content}
+        result = _prompt_record(row)
+    return _hydrate_prompt(result)
+
+
+def _prompt_record(row: PromptVersion) -> dict:
+    reference = {"source": "langfuse", "name": row.langfuse_name, "version": row.langfuse_version} if row.langfuse_name else None
+    return {"id": str(row.id), "version": row.version, "content": row.content, "prompt_ref": reference}
+
+
+def _hydrate_prompt(result: dict) -> dict:
+    if result["prompt_ref"]:
+        result["content"] = read_reference(result["prompt_ref"])
+    return result
 
 
 def get_conversation_prompt(conversation_id: str, user_id: str | uuid.UUID) -> dict[str, Any] | None:
-    """대화 생성 시 고정된 prompt 버전을 반환한다."""
+    """소유권을 확인한 뒤 고정된 이름·버전으로 프롬프트를 읽는다."""
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
-        row = s.scalars(
-            select(PromptVersion)
-            .join(Conversation, Conversation.prompt_version_id == PromptVersion.id)
-            .where(
-                Conversation.id == cid,
-                Conversation.user_id == _to_uuid(user_id),
-                PromptVersion.user_id == _to_uuid(user_id),
-            )
-            .limit(1)
+        conversation = s.scalars(
+            select(Conversation).where(Conversation.id == cid, Conversation.user_id == _to_uuid(user_id)).with_for_update()
         ).first()
-        if row is None:
+        if conversation is None:
             return None
-        return {"id": str(row.id), "version": row.version, "content": row.content}
+        row = s.get(PromptVersion, conversation.prompt_version_id) if conversation.prompt_version_id else None
+        if row is None or row.user_id != _to_uuid(user_id):
+            return None
+        if conversation.common_prompt_refs is None:
+            # Legacy conversations used code constants, so do not silently adopt a new Cloud label.
+            conversation.common_prompt_refs = common_references(local=True)
+        result = {**_prompt_record(row), "common_prompt_refs": conversation.common_prompt_refs}
+    return _hydrate_prompt(result)
 
 
 def create_conversation(title: str = "New Conversation", *, user_id: str | uuid.UUID) -> str:
@@ -96,11 +109,13 @@ def create_conversation(title: str = "New Conversation", *, user_id: str | uuid.
     prompt = get_active_prompt(user_id)
     if prompt is None:
         raise ValueError("Active system prompt not found for user")
+    references = common_references()
     with session_scope() as s:
         conv = Conversation(
             user_id=user_id,
             title=title,
             prompt_version_id=_to_uuid(prompt["id"]) if prompt else None,
+            common_prompt_refs=references,
         )
         s.add(conv)
         s.flush()
@@ -370,10 +385,15 @@ def insert_prompt_version(
                 .values(active=False)
             )
 
+        record_id = uuid.uuid4()
+        reference = publish_user_prompt(str(uid), content, record_id=str(record_id)) if get_settings().LANGFUSE_ENABLED else None
         pv = PromptVersion(
+            id=record_id,
             user_id=uid,
             version=new_version,
-            content=content,
+            content="" if reference else content,
+            langfuse_name=reference["name"] if reference else None,
+            langfuse_version=reference["version"] if reference else None,
             rationale=rationale_full or None,
             parent_id=pid,
             active=activate,

@@ -23,6 +23,7 @@ from app.ui.audio_widget import mic_input  # noqa: E402
 from app.ui.report_view import render_report  # noqa: E402
 from app.ui.login import require_user  # noqa: E402
 from app.runtime import ModelBusy, inference_slot  # noqa: E402
+from app.llm.prompt_registry import PromptUnavailable  # noqa: E402
 
 load_dotenv()
 cfg = get_settings()
@@ -92,12 +93,15 @@ with st.sidebar:
     st.markdown("### Conversations")
 
     if st.button("+ New Conversation"):
-        cid = create_conversation(user_id=USER_ID)
-        st.session_state.conversation_id = cid
-        st.session_state.messages = []
-        st.session_state.pending_audio = None
-        st.session_state.show_report_for = None
-        st.rerun()
+        try:
+            cid = create_conversation(user_id=USER_ID)
+            st.session_state.conversation_id = cid
+            st.session_state.messages = []
+            st.session_state.pending_audio = None
+            st.session_state.show_report_for = None
+            st.rerun()
+        except PromptUnavailable as exc:
+            st.warning(str(exc))
 
     if (
         st.session_state.conversation_id is not None
@@ -118,7 +122,7 @@ with st.sidebar:
                     })
                 st.session_state.show_report_for = st.session_state.conversation_id
                 st.rerun()
-            except (ModelBusy, ValueError) as exc:
+            except (ModelBusy, ValueError, PromptUnavailable) as exc:
                 st.warning(str(exc))
 
     page = st.session_state.get("conversation_page", 0)
@@ -325,7 +329,7 @@ else:
                 st.session_state.last_voice_hash = h
                 st.session_state.voice_turn += 1
                 st.rerun()
-            except (ModelBusy, ValueError) as exc:
+            except (ModelBusy, ValueError, PromptUnavailable) as exc:
                 st.warning(str(exc))
 
     for message in st.session_state.messages:
@@ -340,5 +344,5 @@ else:
         try:
             handle_user_message(text_prompt)
             st.rerun()
-        except (ModelBusy, ValueError) as exc:
+        except (ModelBusy, ValueError, PromptUnavailable) as exc:
             st.warning(str(exc))

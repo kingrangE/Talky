@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import uuid
+
 from app.db.repo import get_active_prompt, get_conversation_prompt
+from app.llm.prompt_registry import read_reference
 from app.runtime import bounded_history
 from app.settings import get_settings
 
@@ -27,5 +30,9 @@ def load_conversation_prompt_node(state: dict) -> dict:
     prompt = get_conversation_prompt(state["conversation_id"], state["user_id"])
     if prompt is None:
         raise ActivePromptMissing("사용자 소유의 대화 system prompt가 없습니다.")
+    references = prompt["common_prompt_refs"]
     return {"prompt_version_id": prompt["id"], "system_prompt": prompt["content"],
+            "system_prompt_ref": prompt["prompt_ref"], "common_prompt_refs": references,
+            "common_prompt_texts": {name: read_reference(ref) for name, ref in references.items()},
+            "trace_id": uuid.uuid4().hex,
             "history": bounded_history(state.get("history") or [])}

@@ -15,6 +15,7 @@ langchain-core==0.3.*
 langchain-community==0.3.*
 langchain-ollama==0.2.*
 langchain-openai==0.2.*
+langfuse==5.2.0
 
 # Audio (Phase C)
 faster-whisper==1.0.*

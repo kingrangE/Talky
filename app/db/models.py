@@ -54,6 +54,7 @@ class Conversation(Base):
     prompt_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("prompt_versions.id", ondelete="SET NULL")
     )
+    common_prompt_refs: Mapped[dict | None] = mapped_column(JSONB)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -91,6 +92,10 @@ class Message(Base):
 class PromptVersion(Base):
     __tablename__ = "prompt_versions"
     __table_args__ = (
+        CheckConstraint(
+            "(langfuse_name IS NULL AND langfuse_version IS NULL) OR (langfuse_name IS NOT NULL AND langfuse_version IS NOT NULL AND langfuse_version > 0)",
+            name="langfuse_reference_pair",
+        ),
         CheckConstraint("NOT active OR user_id IS NOT NULL", name="active_prompt_has_owner"),
         Index(
             "one_active_prompt_per_user",
@@ -107,6 +112,8 @@ class PromptVersion(Base):
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    langfuse_name: Mapped[str | None] = mapped_column(String(512))
+    langfuse_version: Mapped[int | None] = mapped_column(Integer)
     rationale: Mapped[str | None] = mapped_column(Text)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("prompt_versions.id", ondelete="SET NULL")

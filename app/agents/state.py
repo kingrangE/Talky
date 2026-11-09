@@ -24,6 +24,10 @@ class GraphState(TypedDict, total=False):
     language: Optional[Literal["ko", "en"]]
     history: list[HistoryItem]
     system_prompt: str
+    system_prompt_ref: dict | None
+    common_prompt_refs: dict
+    common_prompt_texts: dict[str, str]
+    trace_id: str
 
     # 회상 (Phase E)
     retrieved_memory: list[dict[str, Any]]

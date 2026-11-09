@@ -3,10 +3,10 @@
 LangGraph 기반 한·영 음성 회화 학습 AI 에이전트.
 
 - **음성 루프**: STT (faster-whisper) → LangGraph 에이전트 → TTS (Piper)
-- **이중 언어**: 한국어 입력 → 한국어 응답 + 영어 표현 코칭 / 영어 입력 → 영어 응답 + "참고하세요!" 토글
+- **이중 언어**: 한국어 입력 → 영어 표현 안내 + 영어 응답 / 영어 입력 → 영어 응답 + "참고하세요!" 교정 토글
 - **그래프 메모리**: Neo4j 에 대화/주제/표현을 노드-엣지로 적재, 다음 대화에서 multi-hop 으로 참조
 - **자기 진화 프롬프트**: 종료 시 별점에 따라 메타-LLM 이 system prompt 새 버전 생성
-- **오픈소스 Docker 배포**: 외부 클라우드 의존 없이 `docker compose up` 한 번으로 기동
+- **오픈소스 Docker 배포**: 기본 로컬 모드는 외부 클라우드 의존 없이 `docker compose up`으로 기동
 - **Speaking Mock Test**: 오리지널 11문항, 브라우저 자동 타이머 녹음, 로컬 STT와 제한된 루브릭 에이전트 평가
 
 ## 빠른 시작 (Docker)
@@ -79,12 +79,13 @@ Compose의 DB 포트는 게시하지 않으므로 호스트에서 개발하려�
 ## 사용자별 시스템 프롬프트
 
 `prompt_versions.user_id`를 기준으로 사용자마다 활성 시스템 프롬프트 하나를 관리합니다.
-초기 프롬프트는 `prompts/seed_v1.md`에서 사용자별 RDB 행으로 생성하며, 기존 개인
-프롬프트는 시드 파일 변경이나 재시작으로 덮어쓰지 않습니다.
+기본 로컬 모드는 `prompts/seed_v1.md`에서 사용자별 RDB 본문을 생성합니다.
+Cloud 모드에서는 Langfuse의 `talky/system`을 출발점으로 이름·버전만 연결합니다.
+기존 개인 프롬프트는 시드 파일 변경이나 재시작으로 덮어쓰지 않습니다.
 별점 집계, 개선 자료, 버전 활성화, 품질 하락 롤백은 모두 해당 사용자 범위로 제한합니다.
 
 새 대화는 사용자의 활성 버전을 고정합니다. 에이전트는 매 실행 시 RDB에서
-대화 소유자와 프롬프트 소유자를 확인하고 해당 본문을 읽습니다. 진행 중인 대화는
+대화 소유자와 프롬프트 소유자를 확인하고 고정 참조로 해당 본문을 읽습니다. 진행 중인 대화는
 기존 버전을 유지하며, 개선된 버전은 새 대화부터 적용됩니다.
 
 기존 설치는 `alembic upgrade head`를 실행해야 합니다. `0003_user_prompts`는
@@ -141,7 +142,102 @@ Talky는 공식 문항·로고·채점 결과를 사용하지 않으며 결과�
 
 ## 기술 스택
 
-LangGraph · LangChain · Neo4j · Streamlit · PostgreSQL · faster-whisper · Piper · Docker
+LangGraph · LangChain · Langfuse · Neo4j · Streamlit · PostgreSQL · faster-whisper · Piper · Docker
+
+## Langfuse Cloud 프롬프트 관리
+
+Cloud 모드에서는 프롬프트 본문·버전을 Langfuse에서 관리합니다. PostgreSQL에는
+사용자별 활성 프롬프트·부모·별점 연결과 Langfuse 이름·숫자 버전, 대화가 선택한
+공통 프롬프트 참조만 저장합니다. Cloud에서 새로 만드는 프롬프트의 DB `content`는
+빈 문자열이며, 기존 본문은 검증과 복구를 위해 자동 삭제하지 않습니다.
+
+먼저 Langfuse Cloud에 프로젝트를 만들고 Settings → API Keys에서 키와 해당 리전의
+접속 URL을 확인합니다. 키를 채팅에 보내거나 Git에 올리지 말고 로컬 `.env`에 넣습니다.
+
+```dotenv
+LANGFUSE_ENABLED=true
+LANGFUSE_PUBLIC_KEY=프로젝트의_public_key
+LANGFUSE_SECRET_KEY=프로젝트의_secret_key
+LANGFUSE_BASE_URL=프로젝트에서_안내하는_URL
+LANGFUSE_PROMPT_LABEL=staging
+LANGFUSE_PROMPT_VERSIONS={}
+LANGFUSE_RELEASE=실행할_코드의_commit_SHA
+```
+
+프로젝트의 Python 환경에서 다음 순서로 실행합니다. 기존 앱을 업데이트할 때는 먼저
+DB를 백업하고 앱·worker를 중지한 뒤 마이그레이션합니다.
+
+```bash
+python -m pip install -r requirements.txt
+python -m alembic upgrade head
+python -m app.llm.manage_prompts publish --label staging
+python -m app.llm.manage_prompts migrate
+python -m app.llm.manage_prompts check
+```
+
+Compose로 운영 중이라면 호스트의 Python 대신 다음 명령을 사용합니다. DB 포트를
+외부에 게시할 필요가 없습니다. 앱 기본 entrypoint는 Streamlit을 시작하므로 관리
+명령에서는 반드시 `--entrypoint python`을 지정합니다.
+
+```bash
+docker compose stop app worker
+docker compose build app
+docker compose up -d postgres
+docker compose run --rm --no-deps --entrypoint python app -m alembic upgrade head
+docker compose run --rm --no-deps --entrypoint python app -m app.llm.manage_prompts publish --label staging
+docker compose run --rm --no-deps --entrypoint python app -m app.llm.manage_prompts migrate
+docker compose run --rm --no-deps --entrypoint python app -m app.llm.manage_prompts check
+docker compose up -d app worker
+```
+
+- `publish`: `prompts/`의 system·한국어 코칭·영어 답변·영어 교정 지시를 등록합니다. 같은 최신 본문은 새 버전을 만들지 않습니다. 기본 라벨은 staging이며 production은 바꾸지 않습니다. 저장소 프롬프트를 변경한 뒤 재실행하면 새 버전이 생깁니다.
+- `migrate`: 기존 DB 버전들을 사용자별 `talky/users/<UUID>/system`으로 업로드하고,
+  Cloud 원문과 일치하는지 확인한 뒤 참조를 연결합니다. 기존 ID·대화·별점·본문은
+  보존하며 이미 연결된 버전은 건너뜁니다. 실행은 기존 사용자 프롬프트를 Cloud에
+  업로드하므로 사용 중인 프로젝트와 데이터 범위를 확인한 뒤 실행합니다.
+- `check`: 인증과 선택된 라벨/숫자 버전의 공통 프롬프트 조회를 확인합니다.
+
+앱을 재시작하고 새 대화에서 한국어·영어 입력을 각각 확인합니다. Langfuse의 Prompts와 Traces에서 선택 버전을 확인하고, 새 대화에서 동작을 확인한 공통 버전에 UI에서 production 라벨을 붙입니다. `.env`의 라벨도 production으로 바꾸고 재시작합니다. 평가 실행기와 데이터셋 업로드는 별도입니다.
+
+새 대화에서 라벨을 숫자 버전으로 해석해 고정하므로, 라벨 이동은 진행 중인 대화에
+영향을 주지 않습니다. 사용자별 개선 프롬프트는 각자 다른 이름으로 생성하고 DB의
+활성 참조로 선택하므로 다른 사용자의 개선이나 전역 production 라벨과 섞이지 않습니다.
+기본 `talky/system`을 쓰는 사용자는 새 대화에서 새 기본 버전을 선택하고, 이미 개인화된
+사용자는 개인 버전을 유지합니다. 기존 대화의 공통 지시는 최초 재개 시 로컬 파일의
+해시로 고정하므로 새 Cloud 라벨로 자동 교체되지 않습니다.
+
+SDK 캐시는 프로세스별로 300초 유지됩니다. 같은 숫자 버전의 캐시가 남아 있으면
+API 장애 중에도 이를 사용할 수 있지만, 캐시가 비어 있으면 Cloud 조회가 필요합니다.
+Cloud 모드에서 다른 본문이나 로컬 프롬프트로 조용히 대체하지 않습니다. 로컬 파일이
+바뀌어 고정 해시와 달라진 기존 로컬 대화도 재개를 거절하므로 이전 코드로 재개하거나
+새 대화를 시작합니다. Cloud 프롬프트·사용 중인 버전을 삭제하지 마세요.
+
+평가 시에는 `.env`에서 비교할 버전을 JSON으로 명시하고 새 대화/평가 상태를 사용합니다.
+버전이 없거나 이름을 잘못 쓰면 다른 프롬프트로 평가하지 않고 실패합니다.
+
+```dotenv
+LANGFUSE_PROMPT_VERSIONS={"talky/system":1,"talky/ko-coach":1,"talky/en-reply":1,"talky/better-expression":1,"talky/evaluation-judge":1,"talky/dialogue-judge":1,"talky/expression-judge":1}
+```
+
+이 설정의 system 버전은 기본 system을 쓰는 사용자에게 적용되며 기존 개인 버전을
+덮어쓰지 않습니다. 비교 실험에서는 같은 사용자 system 참조도 별도로 고정합니다.
+generation은 공통 프롬프트에 직접 연결하고, 사용자 system 참조는 metadata에 기록합니다.
+실제 모델 입력·출력도 Cloud trace에 기록되므로 합성 데이터로 먼저 확인하세요.
+현재 직접 계측하는 호출은 한국어 코칭·영어 답변·영어 교정이며, 토픽 추출·종료 보고서·
+프롬프트 개선 모델 등 나머지 호출의 trace는 포함하지 않습니다. 구조화 출력 호출은
+현재 팩토리에서 토큰 사용량을 반환하지 않으므로 그 호출의 토큰·비용은 미측정입니다.
+
+LangChain 0.3 계열을 유지하고 Langfuse 5.2 SDK의 수동 generation 기록을 사용합니다.
+최신 LangChain callback을 추가하지 않습니다. Cloud에서 프롬프트 게시에 성공한 뒤
+DB 커밋이 실패하면 참조되지 않은 Cloud 버전이 남을 수 있지만 앱에서 활성화하지는
+않습니다. DB downgrade는 Cloud 참조가 남아 있으면 중단하므로, 본문을 내보내고
+참조를 안전하게 되돌리는 이전 절차 없이 downgrade하지 않습니다.
+
+`LANGFUSE_ENABLED=false`가 기본값이며 기존 로컬/DB 방식으로 동작합니다. 이미 Cloud
+참조를 가진 대화를 이 설정만 바꾸어 로컬로 전환할 수는 없습니다.
+
+공식 문서: [버전·라벨](https://langfuse.com/docs/prompt-management/features/prompt-version-control),
+[프롬프트와 trace 연결](https://langfuse.com/docs/prompt-management/features/link-to-traces).
 
 ## 회귀 테스트
 

@@ -12,6 +12,9 @@ from app.agents import evolve_graph
 from app.db import repo, seed
 from app.db.models import Base, User
 from app.llm import prompts
+from app.llm import manage_prompts, prompt_registry
+from app.settings import get_settings
+from test_langfuse_prompts import cloud
 
 
 @pytest.fixture
@@ -76,7 +79,10 @@ def test_ratings_evolution_and_agent_prompt_are_user_owned(db):
     loaded = prompts.load_conversation_prompt_node({
         "user_id": str(alice), "conversation_id": cid, "system_prompt": "spoofed",
     })
-    assert loaded == {"prompt_version_id": first["id"], "system_prompt": first["content"], "history": []}
+    assert loaded["prompt_version_id"] == first["id"]
+    assert loaded["system_prompt"] == first["content"]
+    assert loaded["history"] == []
+    assert loaded["common_prompt_refs"] == first["common_prompt_refs"]
     new_cid = repo.create_conversation(user_id=alice)
     assert prompts.load_conversation_prompt_node({
         "user_id": str(alice), "conversation_id": new_cid,
@@ -152,3 +158,92 @@ def test_agent_loads_own_rdb_prompt_before_calling_llm(db, monkeypatch, user_tex
     assert len(calls) == 1
     assert calls[0][0].content.startswith(prompt["content"])
     assert result["prompt_version_id"] == prompt["id"]
+
+
+def test_cloud_bodies_stay_remote_and_existing_conversations_pin_versions(db, cloud):
+    scope, (alice, bob) = db
+    first_cid = repo.create_conversation(user_id=alice)
+    first = repo.get_conversation_prompt(first_cid, alice)
+    with scope() as session:
+        from app.db.models import Conversation, PromptVersion
+        row = session.get(PromptVersion, uuid.UUID(first["id"]))
+        assert row.content == ""
+        assert row.langfuse_name == "talky/system"
+        conversation = session.get(Conversation, uuid.UUID(first_cid))
+        assert all(set(ref) == {"source", "name", "version"} for ref in conversation.common_prompt_refs.values())
+
+    cloud.create_prompt(name="talky/system", prompt="Updated English tutor system", labels=["production"])
+    cloud.create_prompt(name="talky/en-reply", prompt="Updated English instructions", labels=["production"])
+    second_cid = repo.create_conversation(user_id=alice)
+    second = repo.get_conversation_prompt(second_cid, alice)
+    assert second["id"] != first["id"]
+    assert second["prompt_ref"]["version"] == 2
+    assert repo.get_conversation_prompt(first_cid, alice)["content"] == first["content"]
+    loaded = prompts.load_conversation_prompt_node({
+        "user_id": str(alice), "conversation_id": first_cid,
+        "common_prompt_texts": {"talky/en-reply": "injected"},
+    })
+    assert loaded["common_prompt_texts"]["talky/en-reply"] == prompt_registry.builtin_text("talky/en-reply")
+    assert loaded["common_prompt_refs"]["talky/en-reply"]["version"] == 1
+    before = len(cloud.calls)
+    assert repo.get_conversation_prompt(first_cid, bob) is None
+    assert len(cloud.calls) == before
+
+
+def test_cloud_evolution_preserves_ownership_and_does_not_store_the_body(db, cloud):
+    scope, (alice, bob) = db
+    cid = repo.create_conversation(user_id=alice)
+    first = repo.get_conversation_prompt(cid, alice)
+    bob_cid = repo.create_conversation(user_id=bob)
+    bob_prompt = repo.get_conversation_prompt(bob_cid, bob)
+    new_id = repo.insert_prompt_version(
+        user_id=alice, content="English tutor personalized for Alice",
+        rationale="user feedback", parent_id=first["id"],
+    )
+    with scope() as session:
+        from app.db.models import PromptVersion
+        row = session.get(PromptVersion, uuid.UUID(new_id))
+        assert row.content == ""
+        assert row.langfuse_name == f"talky/users/{alice}/system"
+    assert repo.get_active_prompt(alice)["content"] == "English tutor personalized for Alice"
+    assert repo.get_active_prompt(bob)["id"] == bob_prompt["id"]
+    assert repo.get_conversation_prompt(cid, alice)["content"] == first["content"]
+    assert repo.create_conversation(user_id=alice)
+    assert repo.get_active_prompt(alice)["id"] == new_id
+
+
+def test_legacy_migration_verifies_cloud_and_preserves_existing_body(db, cloud, monkeypatch):
+    scope, (alice, _) = db
+    monkeypatch.setenv("LANGFUSE_ENABLED", "false")
+    get_settings.cache_clear()
+    cid = repo.create_conversation(user_id=alice)
+    original = repo.get_conversation_prompt(cid, alice)
+    monkeypatch.setenv("LANGFUSE_ENABLED", "true")
+    get_settings.cache_clear()
+    assert manage_prompts.migrate() == 1
+    assert manage_prompts.migrate() == 0
+    with scope() as session:
+        from app.db.models import PromptVersion
+        row = session.get(PromptVersion, uuid.UUID(original["id"]))
+        assert row.content == original["content"]
+        assert row.langfuse_name == f"talky/users/{alice}/system"
+    linked = repo.get_conversation_prompt(cid, alice)
+    assert linked["content"] == original["content"]
+    assert linked["prompt_ref"]["source"] == "langfuse"
+    assert all(ref["source"] == "builtin" for ref in linked["common_prompt_refs"].values())
+
+
+def test_cloud_upload_failure_keeps_the_active_version_and_ratings(db, cloud, monkeypatch):
+    _, (alice, _) = db
+    _, original = rate_conversation(alice, 5)
+    ratings = repo.get_unconsumed_rated_reports(user_id=alice, top_n=None, prompt_version_id=original["id"])
+    def unavailable(*_args, **_kwargs):
+        raise prompt_registry.PromptUnavailable("Cloud unavailable")
+    monkeypatch.setattr(repo, "publish_user_prompt", unavailable)
+    with pytest.raises(prompt_registry.PromptUnavailable):
+        repo.insert_prompt_version(
+            user_id=alice, content="new English tutor", rationale="feedback", parent_id=original["id"],
+            rating_snapshot=[{"id": row["id"], "revision": row["revision"]} for row in ratings],
+        )
+    assert repo.get_active_prompt(alice)["id"] == original["id"]
+    assert repo.count_unconsumed_ratings(alice, original["id"])[0] == 1

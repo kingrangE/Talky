@@ -7,21 +7,10 @@ from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
 from app.llm.factory import get_structured_llm
+from app.llm.prompt_registry import builtin_text, invoke_with_prompt
 from app.runtime import bounded_messages
 
-BETTER_EXPR_PROMPT = """You are a native English speaker. Rewrite the user's most recent English sentence into something a native speaker would actually say in casual, everyday conversation.
-
-Rules:
-- Use contractions, idioms, and current everyday phrasing.
-- Avoid textbook English, overly formal phrasing, or stiff grammar.
-- Keep the meaning identical, just make it sound natural and native.
-
-Output JSON with:
-- suggestion: the native-sounding rewrite (one line)
-- note: a short Korean explanation of what changed and why it sounds more natural to a native speaker (one or two sentences)
-
-If the original sentence already sounds fully native, set suggestion to the original sentence and note to "이미 원어민 같은 표현이에요.".
-"""
+BETTER_EXPR_PROMPT = builtin_text("talky/better-expression")
 
 
 class BetterExpressionOutput(BaseModel):
@@ -31,11 +20,11 @@ class BetterExpressionOutput(BaseModel):
 
 def better_expr_node(state: GraphState) -> dict:
     llm = get_structured_llm(BetterExpressionOutput)
-    out: BetterExpressionOutput = llm.invoke(bounded_messages(
+    out: BetterExpressionOutput = invoke_with_prompt(llm, bounded_messages(
         [
-            SystemMessage(content=BETTER_EXPR_PROMPT),
+            SystemMessage(content=state.get("common_prompt_texts", {}).get("talky/better-expression", BETTER_EXPR_PROMPT)),
             HumanMessage(content=state["user_text"]),
         ]
-    ))
+    ), state, "talky/better-expression")
     combined = f"**Try:** {out.suggestion}\n\n*{out.note}*"
     return {"better_expression": combined}

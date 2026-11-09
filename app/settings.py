@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     MODEL_NAME: str = "skt/A.X-4.0-Light"
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
+    LANGFUSE_ENABLED: bool = False
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_BASE_URL: str = "https://cloud.langfuse.com"
+    LANGFUSE_PROMPT_LABEL: str = "production"
+    LANGFUSE_PROMPT_VERSIONS: dict[str, Annotated[int, Field(gt=0)]] = Field(default_factory=dict)
+    LANGFUSE_RELEASE: str = ""
     LLM_TIMEOUT_SECONDS: Annotated[int, Field(ge=1, le=300)] = 60
     LLM_MAX_OUTPUT_TOKENS: Annotated[int, Field(ge=128, le=8192)] = 4096
     LLM_MAX_INPUT_BYTES: Annotated[int, Field(ge=1024, le=128000)] = 24000

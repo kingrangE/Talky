@@ -50,6 +50,15 @@ def test_upgrade_preserves_legacy_data_and_can_be_reapplied():
             assert connection.execute(text("SELECT stars, revision FROM ratings")).one() == (5, 1)
             assert connection.scalar(text("SELECT content FROM prompt_versions")) == "legacy English tutor"
             assert connection.scalar(text("SELECT title FROM conversations")) == "legacy conversation"
+            assert connection.scalar(text("SELECT langfuse_name FROM prompt_versions")) is None
+            assert connection.scalar(text("SELECT common_prompt_refs FROM conversations")) is None
+        with engine.begin() as connection:
+            connection.execute(text("UPDATE prompt_versions SET langfuse_name='talky/system', langfuse_version=1, content=''"))
+        with pytest.raises(subprocess.CalledProcessError):
+            migrate("downgrade", "0004_operational_safety")
+        with engine.begin() as connection:
+            assert connection.scalar(text("SELECT langfuse_name FROM prompt_versions")) == "talky/system"
+            connection.execute(text("UPDATE prompt_versions SET langfuse_name=NULL, langfuse_version=NULL, content='legacy English tutor'"))
         migrate("downgrade", "0003_user_prompts")
         migrate("upgrade", "head")
         with engine.connect() as connection:
