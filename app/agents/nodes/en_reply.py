@@ -14,8 +14,7 @@ NATIVE_SUFFIX = builtin_text("talky/en-reply")
 MEMORY_HEADER = "\n\n[Earlier related memory]\n"
 
 
-def en_reply_node(state: GraphState) -> dict:
-    llm = get_chat_llm()
+def _build_messages(state: GraphState) -> list:
     system = (
         state["system_prompt"]
         + state.get("common_prompt_texts", {}).get("talky/en-reply", NATIVE_SUFFIX)
@@ -28,6 +27,10 @@ def en_reply_node(state: GraphState) -> dict:
         elif m["role"] == "assistant":
             msgs.append(AIMessage(content=m["content"]))
     msgs.append(HumanMessage(content=state["user_text"]))
+    return msgs
 
-    response = invoke_with_prompt(llm, bounded_messages(msgs), state, "talky/en-reply")
+
+def en_reply_node(state: GraphState) -> dict:
+    llm = get_chat_llm()
+    response = invoke_with_prompt(llm, bounded_messages(_build_messages(state)), state, "talky/en-reply")
     return {"ai_reply": response.content}

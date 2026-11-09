@@ -197,7 +197,7 @@ docker compose up -d app worker
   업로드하므로 사용 중인 프로젝트와 데이터 범위를 확인한 뒤 실행합니다.
 - `check`: 인증과 선택된 라벨/숫자 버전의 공통 프롬프트 조회를 확인합니다.
 
-앱을 재시작하고 새 대화에서 한국어·영어 입력을 각각 확인합니다. Langfuse의 Prompts와 Traces에서 선택 버전을 확인하고, [기억·대화·표현 지도 평가](data/test/README.md)를 거쳐 선택한 공통 버전에 UI에서 production 라벨을 붙입니다. `.env`의 라벨도 production으로 바꾸고 재시작합니다. judge는 프롬프트 등록까지만 포함하며 평가 실행기와 데이터셋 업로드는 별도입니다.
+앱을 재시작하고 새 대화에서 한국어·영어 입력을 각각 확인합니다. Langfuse의 Prompts와 Traces에서 선택 버전을 확인하고, [기억·대화·표현 지도 평가](data/test/README.md)를 거쳐 선택한 공통 버전에 UI에서 production 라벨을 붙입니다. `.env`의 라벨도 production으로 바꾸고 재시작합니다. 로컬 데이터셋은 `python -m app.evaluate`로 영역별 생성·채점·Langfuse 기록을 실행합니다. 평가용 Neo4j 설정과 파일럿 실행 방법은 데이터셋 README를 참고하세요. Hosted Dataset 업로드와 ChromaDB 비교는 별도입니다.
 
 새 대화에서 라벨을 숫자 버전으로 해석해 고정하므로, 라벨 이동은 진행 중인 대화에
 영향을 주지 않습니다. 사용자별 개선 프롬프트는 각자 다른 이름으로 생성하고 DB의

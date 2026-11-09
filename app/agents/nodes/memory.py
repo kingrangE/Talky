@@ -30,7 +30,7 @@ class TopicCandidates(BaseModel):
     topics: list[str] = Field(default_factory=list, description="1~3 short topic phrases in english")
 
 
-def _extract_topics(text: str) -> list[str]:
+def _extract_topics(text: str, raise_errors: bool = False) -> list[str]:
     if not text or len(text) < 4:
         return []
     try:
@@ -40,6 +40,8 @@ def _extract_topics(text: str) -> list[str]:
         ))
         return [t.strip().lower() for t in out.topics if t and t.strip()][:3]
     except Exception as exc:
+        if raise_errors:
+            raise
         log.warning("topic extraction failed: %s", exc)
         return []
 

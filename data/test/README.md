@@ -125,7 +125,7 @@ data/test/
 
 ## Langfuse에 연결하는 방식
 
-- 이 자료는 평가 입력과 기준, judge 프롬프트를 제공한다. Cloud 업로드, 검색 방식별 실행, 모델 호출, 점수 집계 runner는 아직 포함하지 않는다.
+- `python -m app.evaluate`로 로컬 데이터셋의 생성·채점·Langfuse 기록을 실행한다. 기억·대화는 실제 Neo4j 검색, 표현 지도는 기존 메시지 구성과 모델 팩토리를 사용한다. 음성·UI·인증·RDB 저장까지 거치는 전체 서비스 테스트는 아니다. ChromaDB 비교와 Hosted Dataset 업로드는 포함하지 않는다.
 - 기억은 질문 하나, 표현은 발화 하나, 대화는 시나리오 하나를 dataset item으로 매핑한다. 생성 모델용 `input`과 평가자용 `expected_output`을 분리한다. 원본 파일 전체를 그대로 생성 모델 입력으로 넘기지 않는다.
 - 대화 item의 사용자 발화 계획은 runner만 읽는다. `turns[].expected_output`과 전체 기대 행동은 expected output으로 옮긴다. 각 턴에서는 지금까지의 내용만 생성 모델에 주고 실제 출력으로 기록을 만든다.
 - 표현은 `input`의 원문·상황·말투만 생성 입력으로 사용한다. 정답 예시, 의미 목록, 금지 변경, 설명 기준과 calibration 자료는 생성 모델에 주지 않는다.
@@ -134,10 +134,38 @@ data/test/
 - judge 모델과 숫자 버전도 고정한다. 앱의 표현 지도 모델과 judge가 같은 답을 선호한다는 이유만으로 원어민 수준이라고 결론 내리지 않는다. 일부 결과를 한·영 검토자와 영어 사용자에게 독립적으로 검수받고 자동 판정과 비교한다.
 - 저장소의 프롬프트를 Cloud에 처음 등록할 때는 `python -m app.llm.manage_prompts publish --label staging`을 사용한다. 이는 다른 등록 프롬프트도 게시하는 명령이며, 이미 Cloud에서 편집 중인 본문을 로컬 파일로 덮어 올리지 않도록 확인한다.
 
+## 실제 실행
+
+- 프로젝트 의존성과 사용할 Ollama 생성·judge 모델을 준비한다. `.env`의 키를 사용하며 다음 환경 변수는 실행할 터미널에만 적용한다. 예시의 모델은 현재 로컬에 설치된 이름이다.
+- 기억·대화에는 별도 평가 DB를 지정한다. 이번에 준비한 컨테이너는 `talky-eval-neo4j`, 접속 주소는 `bolt://localhost:17687`이다. 서비스용 DB 주소를 지정하지 않는다. 평가 노드는 원본·모델·토픽 추출 지시의 해시로 구분하고, 적재가 완료된 인덱스만 재사용한다. 실패한 적재를 재시도할 때는 새 범위에 적재하며 기존 노드를 지우지 않는다.
+
+```bash
+export LANGFUSE_ENABLED=true
+export LANGFUSE_PROMPT_LABEL=staging
+export MODEL_NAME=ax4-light
+export LLM_MAX_OUTPUT_TOKENS=768
+export LLM_TIMEOUT_SECONDS=180
+export NEO4J_URI=bolt://localhost:17687
+
+python -m app.evaluate --suite calibration --judge-model exaone3.5:7.8b
+python -m app.evaluate --suite expression --limit 6 --judge-model exaone3.5:7.8b
+python -m app.evaluate --suite memory --limit 9 --judge-model exaone3.5:7.8b
+python -m app.evaluate --suite dialogue --limit 6 --judge-model exaone3.5:7.8b
+```
+
+- `--limit`를 빼면 해당 영역 전체를 실행한다. `--cases ko-01,en-01`처럼 항목을 지정할 수도 있다. 소량 실행은 앞 파일에만 치우치지 않도록 유형별로 순환 선택한다. `--suite all`은 표현·기억·대화를 순서대로 실행하고, `--limit`는 각 영역에 적용된다.
+- `--judge-model`은 명시적으로 지정한다. 작은 모델도 채점 대상과 참고 정답을 혼동하거나 의미 오류를 문법 오류로 함께 처리할 수 있다. 사전 예시의 일치도와 판정 이유를 확인하고 자동 점수를 잠정 결과로 취급한다. 작성된 calibration 라벨도 사람 검수 전 초안이다.
+- Langfuse의 Experiments에서 `talky-expression-v2`, `talky-memory-v2`, `talky-dialogue-v2`, `talky-calibration-v2`를 확인한다. 실행 종료 시 직접 열 수 있는 실험 URL도 출력한다. 각 항목의 trace에서 실제 생성 입력·출력, judge 입력·출력, 항목별 점수와 이유를 확인한다.
+- `.data/evaluations/<실행 ID>/`에는 고정 프롬프트 참조·코드 commit·작업 트리 변경 여부·runner 해시를 기록한 `run.json`, 생성과 채점의 JSONL, 문항별 trace 링크를 담은 summary JSON이 남는다. 이 경로는 Git에서 제외된다.
+- judge 점수는 허용 범위와 적용 여부를 검증한다. 적용되지 않는 항목은 출력 스키마에서 `null`로 제한하고 점수로 보내지 않는다. 모델 응답 실패와 채점 오류는 로그에 남기며, 채점 오류는 `judge_success=0`으로 기록한다. 검색 장애를 정상적인 검색 결과 없음으로 바꾸지 않는다.
+- `review_required=1`은 자동 판정을 다시 읽어야 한다는 표시다. 정답 표현이 답변에 보이지 않는데 정답 점수를 받았거나, 종료 답변에 물음표가 있는데 대화 흐름이 만점인 경우 표시한다. 문자열 검사이므로 동등 표현이나 인용문 때문에 표시될 수도 있다. 원래 점수를 덮어쓰거나 자동 오답으로 처리하지 않는다. `closing_question_mark`는 종료 답변의 물음표 유무이며 의미 기반 질문 판정은 아니다.
+- 기억 질문의 `retrieval_recall`은 필요한 원본 메시지가 검색 결과에 있는 비율, `visible_evidence_recall`은 실제 생성 입력에도 남은 비율이다. 정답 근거가 없는 Hallucination 질문에는 이 두 지표를 만들지 않는다. 이 비율은 사실을 이해했는지나 답변이 맞는지를 뜻하지 않는다.
+- 표현 지도에서 맥락이 필요한 영어 교정은 현재 앱이 그 맥락을 받지 못하므로 의미·말투·종합 성공 점수를 비워 두고 `context_delivery=0`을 기록한다. 빈 점수를 오답이나 통과로 집계하지 않는다. 원래 문장만으로 판단할 수 있는 문법·표현·설명은 별도로 기록한다.
+
 ## 검증과 해석의 범위
 
 ```bash
-python -m pytest tests/test_retrieval_dataset.py tests/test_conversation_dataset.py -q
+python -m pytest tests/test_retrieval_dataset.py tests/test_conversation_dataset.py tests/test_evaluation_runner.py -q
 ```
 
 - 파일 목록과 개수, ID 중복, 원본 인용, 언어 비율, 근거 연결, 시나리오 길이와 역량별 분포, 표현 유형과 정답 필드, calibration 점수 범위와 judge 등록을 검사한다.

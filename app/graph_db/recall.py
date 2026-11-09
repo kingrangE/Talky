@@ -18,8 +18,13 @@ def recall_related(
     topic_candidates: list[str],
     limit: int = 12,
     current_conversation_id: str | None = None,
+    raise_errors: bool = False,
 ) -> list[dict]:
-    if not topic_candidates or not ensure_schema():
+    if not topic_candidates:
+        return []
+    if not ensure_schema():
+        if raise_errors:
+            raise RuntimeError("Neo4j schema is unavailable")
         return []
     try:
         with get_driver().session() as s:
@@ -34,7 +39,7 @@ def recall_related(
                 MATCH (c)-[:CONTAINS]->(m:Message)
                 WHERE m.role IN ['user', 'assistant']
                   AND ($current_cid IS NULL OR c.id <> $current_cid)
-                RETURN m.text AS text, m.lang AS lang, t2.name AS topic, m.ts AS ts
+                RETURN m.id AS message_id, m.text AS text, m.lang AS lang, t2.name AS topic, m.ts AS ts
                 ORDER BY ts DESC LIMIT $limit
                 """,
                 uid=user_id,
@@ -44,5 +49,7 @@ def recall_related(
             )
             return [dict(r) for r in result]
     except Exception as exc:
+        if raise_errors:
+            raise
         log.warning("recall_related skipped: %s", exc)
         return []
