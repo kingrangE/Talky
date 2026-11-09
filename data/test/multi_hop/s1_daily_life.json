@@ -1,0 +1,282 @@
+{
+  "version": "1.2",
+  "set_id": "s1",
+  "question_type": "multi_hop",
+  "questions": [
+    {
+      "id": "s1-mh01",
+      "language": "ko",
+      "question": "제가 주말 운동을 마친 뒤 들르는 곳은 어디인가요?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "파란책방",
+          "en": "Blue Bookshop"
+        }
+      ],
+      "reference_answer": "You stop at Blue Bookshop after your weekend workout.",
+      "evidence": [
+        {
+          "message_id": "s1-m001",
+          "quote": "오늘은 팔이 좀 뻐근하네요. 주말마다 클라이밍을 하는데, 어제는 어려운 코스에 도전했거든요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m003",
+          "quote": "After climbing, I usually stop at Blue Bookshop. I can sit there and read for a while without looking at my phone.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh02",
+      "language": "en",
+      "question": "Who teaches the class I take on weekday evenings?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "하나",
+          "en": "Hana"
+        }
+      ],
+      "reference_answer": "Hana teaches your weekday evening class.",
+      "evidence": [
+        {
+          "message_id": "s1-m017",
+          "quote": "오늘은 퇴근하고 스케치 수업에 다녀왔어요. 평일 저녁에 듣는 수업인데 아직 사람 얼굴 그리는 게 어렵네요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m019",
+          "quote": "Yes, Hana teaches the sketching class. She tells us to look carefully before drawing, but I always rush.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh03",
+      "language": "ko",
+      "question": "금요일 저녁에 만나는 사람이 식사 장소로 고른 식당은 어디인가요?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "메이플키친",
+          "en": "Maple Kitchen"
+        }
+      ],
+      "reference_answer": "Your Friday dinner companion chose Maple Kitchen.",
+      "evidence": [
+        {
+          "message_id": "s1-m029",
+          "quote": "네, 금요일 저녁에 도윤이랑 밥 먹기로 했어요. 오랜만에 만나서 할 얘기가 많아요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m031",
+          "quote": "Doyun picked Maple Kitchen. I have never been, so I am looking forward to trying it.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh04",
+      "language": "en",
+      "question": "Where does the group for my monthly volunteer activity meet?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "윌로 브리지",
+          "en": "Willow Bridge"
+        }
+      ],
+      "reference_answer": "Your monthly volunteer group meets at Willow Bridge.",
+      "evidence": [
+        {
+          "message_id": "s1-m043",
+          "quote": "I join a river cleanup once a month. It is tiring, but seeing the path clean afterward feels really good.",
+          "language": "en"
+        },
+        {
+          "message_id": "s1-m045",
+          "quote": "하천 정화 모임은 Willow Bridge에서 모여요. 처음 오는 사람한테 길을 설명해 줘야 해서 지도를 보고 있었어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh05",
+      "language": "ko",
+      "question": "이번에 생일선물을 챙겨줄 사람의 취미는 무엇인가요?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "도예",
+          "en": "pottery"
+        }
+      ],
+      "reference_answer": "Your birthday gift recipient enjoys pottery.",
+      "evidence": [
+        {
+          "message_id": "s1-m035",
+          "quote": "I hope so. I need to find a birthday gift for my younger sister, Sohee, and I have left it a bit late.",
+          "language": "en"
+        },
+        {
+          "message_id": "s1-m037",
+          "quote": "소희는 도예를 좋아해요. 얼마 전에 직접 만든 컵 사진도 보내줬는데 꽤 잘 만들었더라고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh06",
+      "language": "en",
+      "question": "Which neighborhood do I visit after my weekend workout?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "연남동",
+          "en": "Yeonnam-dong"
+        }
+      ],
+      "reference_answer": "You visit Yeonnam-dong after your weekend workout.",
+      "evidence": [
+        {
+          "message_id": "s1-m001",
+          "quote": "오늘은 팔이 좀 뻐근하네요. 주말마다 클라이밍을 하는데, 어제는 어려운 코스에 도전했거든요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m003",
+          "quote": "After climbing, I usually stop at Blue Bookshop. I can sit there and read for a while without looking at my phone.",
+          "language": "en"
+        },
+        {
+          "message_id": "s1-m005",
+          "quote": "파란책방, 그러니까 Blue Bookshop은 연남동에 있어요. 작은 가게라 처음엔 그냥 지나칠 뻔했어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh07",
+      "language": "ko",
+      "question": "제가 평일 저녁에 다니는 수업의 선생님은 쉬는 시간에 어떤 차를 마시나요?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "루이보스차",
+          "en": "rooibos tea"
+        }
+      ],
+      "reference_answer": "Your weekday evening class instructor drinks rooibos tea.",
+      "evidence": [
+        {
+          "message_id": "s1-m017",
+          "quote": "오늘은 퇴근하고 스케치 수업에 다녀왔어요. 평일 저녁에 듣는 수업인데 아직 사람 얼굴 그리는 게 어렵네요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m019",
+          "quote": "Yes, Hana teaches the sketching class. She tells us to look carefully before drawing, but I always rush.",
+          "language": "en"
+        },
+        {
+          "message_id": "s1-m021",
+          "quote": "Pretty relaxed. Hana usually drinks rooibos tea during breaks, and we chat while our hands get a rest.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh08",
+      "language": "en",
+      "question": "What is the signature dish at the restaurant chosen by my Friday dinner companion?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "버섯 리소토",
+          "en": "mushroom risotto"
+        }
+      ],
+      "reference_answer": "The signature dish there is mushroom risotto.",
+      "evidence": [
+        {
+          "message_id": "s1-m029",
+          "quote": "네, 금요일 저녁에 도윤이랑 밥 먹기로 했어요. 오랜만에 만나서 할 얘기가 많아요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m031",
+          "quote": "Doyun picked Maple Kitchen. I have never been, so I am looking forward to trying it.",
+          "language": "en"
+        },
+        {
+          "message_id": "s1-m033",
+          "quote": "지난번에 얘기한 식당 메뉴를 찾아봤어요. 메이플키친의 대표 메뉴가 버섯 리소토래요. 벌써 배고파지네요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh09",
+      "language": "ko",
+      "question": "제 월간 봉사활동 집결지에 가려면 어느 역 몇 번 출구가 가장 가까운가요?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "늘봄역 2번 출구",
+          "en": "exit 2 of Neulbom Station"
+        }
+      ],
+      "reference_answer": "Exit 2 of Neulbom Station is closest to your volunteer meeting point.",
+      "evidence": [
+        {
+          "message_id": "s1-m043",
+          "quote": "I join a river cleanup once a month. It is tiring, but seeing the path clean afterward feels really good.",
+          "language": "en"
+        },
+        {
+          "message_id": "s1-m045",
+          "quote": "하천 정화 모임은 Willow Bridge에서 모여요. 처음 오는 사람한테 길을 설명해 줘야 해서 지도를 보고 있었어요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m047",
+          "quote": "Exit 2 of Neulbom Station is the closest one to Willow Bridge. I should send them a screenshot as well.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-mh10",
+      "language": "en",
+      "question": "Which shop did I choose for supplies for my birthday gift recipient's hobby?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "클레이하우스",
+          "en": "Clay House"
+        }
+      ],
+      "reference_answer": "You chose Clay House for supplies for your gift recipient's hobby.",
+      "evidence": [
+        {
+          "message_id": "s1-m035",
+          "quote": "I hope so. I need to find a birthday gift for my younger sister, Sohee, and I have left it a bit late.",
+          "language": "en"
+        },
+        {
+          "message_id": "s1-m037",
+          "quote": "소희는 도예를 좋아해요. 얼마 전에 직접 만든 컵 사진도 보내줬는데 꽤 잘 만들었더라고요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s1-m039",
+          "quote": "Yes, I decided to buy pottery supplies at Clay House. I might ask the staff for help choosing something.",
+          "language": "en"
+        }
+      ]
+    }
+  ]
+}

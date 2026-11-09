@@ -1,0 +1,313 @@
+{
+  "version": "1.2",
+  "set_id": "s3",
+  "fixture_user_id": "eval-alex",
+  "synthetic": true,
+  "title": "Alex의 여행, 숙소, 이동과 선물 계획",
+  "persona_name": "Alex",
+  "sessions": [
+    {
+      "id": "s3-session-01",
+      "messages": [
+        {
+          "id": "s3-m001",
+          "role": "user",
+          "language": "ko",
+          "content": "요즘 여행 준비하는 재미로 지내요. 이번 목적지는 Bayport인데, 사진만 봐도 빨리 가고 싶어요."
+        },
+        {
+          "id": "s3-m002",
+          "role": "assistant",
+          "language": "en",
+          "content": "Having a trip to look forward to is exciting! How long will you be away?"
+        },
+        {
+          "id": "s3-m003",
+          "role": "user",
+          "language": "en",
+          "content": "Four nights. I do not want to pack every day with plans, though. I did that last time and came home exhausted."
+        },
+        {
+          "id": "s3-m004",
+          "role": "assistant",
+          "language": "en",
+          "content": "A little breathing room sounds nice. Where did you go last time?"
+        },
+        {
+          "id": "s3-m005",
+          "role": "user",
+          "language": "ko",
+          "content": "지난 여행은 Hillhaven으로 갔어요. 좋은 곳이었는데 너무 많이 걸어서 숙소에 오면 바로 잠들었어요."
+        },
+        {
+          "id": "s3-m006",
+          "role": "assistant",
+          "language": "en",
+          "content": "Sounds like your feet needed a holiday afterward! Where did you stay in Hillhaven?"
+        },
+        {
+          "id": "s3-m007",
+          "role": "user",
+          "language": "en",
+          "content": "I stayed at Cedar Inn in Hillhaven. It was small and quiet, which was exactly what I needed at night."
+        },
+        {
+          "id": "s3-m008",
+          "role": "assistant",
+          "language": "en",
+          "content": "A quiet place to come back to makes a difference. Have you booked somewhere in Bayport yet?"
+        },
+        {
+          "id": "s3-m009",
+          "role": "user",
+          "language": "ko",
+          "content": "네, Bayport 숙소는 Lantern Hotel로 예약했어요. 객실 사진이 마음에 들었고 조식도 있더라고요."
+        },
+        {
+          "id": "s3-m010",
+          "role": "assistant",
+          "language": "en",
+          "content": "Breakfast on site could save you a little planning. What time does Lantern Hotel start serving it?"
+        },
+        {
+          "id": "s3-m011",
+          "role": "user",
+          "language": "en",
+          "content": "Breakfast at Lantern Hotel starts at 7:30 a.m. That should suit me, unless I decide to sleep in."
+        },
+        {
+          "id": "s3-m012",
+          "role": "assistant",
+          "language": "en",
+          "content": "Nice to have the option! What about the journey there? Which airport are you flying into?"
+        },
+        {
+          "id": "s3-m013",
+          "role": "user",
+          "language": "ko",
+          "content": "도착 공항은 Eastgate Airport예요. 비행기 내리고 나서 이동하는 게 제일 긴장돼요."
+        },
+        {
+          "id": "s3-m014",
+          "role": "assistant",
+          "language": "en",
+          "content": "That first bit can feel overwhelming. Have you looked up the shuttle from Eastgate Airport?"
+        },
+        {
+          "id": "s3-m015",
+          "role": "user",
+          "language": "en",
+          "content": "Yes, the shuttle from Eastgate Airport is route L4. I saved the route, but I still need to check the stops."
+        },
+        {
+          "id": "s3-m016",
+          "role": "assistant",
+          "language": "en",
+          "content": "You're making a good start. We can go through the next part of the journey when you're ready."
+        }
+      ]
+    },
+    {
+      "id": "s3-session-02",
+      "messages": [
+        {
+          "id": "s3-m017",
+          "role": "user",
+          "language": "ko",
+          "content": "셔틀 노선을 마저 봤어요. L4의 종점이 Garden Square더라고요. 도착하면 잠깐 앉아서 숨 좀 돌리고 싶어요."
+        },
+        {
+          "id": "s3-m018",
+          "role": "assistant",
+          "language": "en",
+          "content": "A breather after the journey sounds good. Are you taking a big suitcase?"
+        },
+        {
+          "id": "s3-m019",
+          "role": "user",
+          "language": "en",
+          "content": "No, I will take my blue backpack. I want to travel light, especially if I need to carry it around before check-in."
+        },
+        {
+          "id": "s3-m020",
+          "role": "assistant",
+          "language": "en",
+          "content": "Your shoulders will probably thank you. Are you meeting anyone during the trip?"
+        },
+        {
+          "id": "s3-m021",
+          "role": "user",
+          "language": "ko",
+          "content": "네, 이번 여행에서 친구 Iris를 만나기로 했어요. 한동안 못 봐서 같이 밥 먹으면서 얘기하려고요."
+        },
+        {
+          "id": "s3-m022",
+          "role": "assistant",
+          "language": "en",
+          "content": "That'll be a lovely chance to catch up. Has Iris suggested a restaurant?"
+        },
+        {
+          "id": "s3-m023",
+          "role": "user",
+          "language": "en",
+          "content": "Iris chose Saffron Table. I have been looking at the menu, and now I want to order far too much."
+        },
+        {
+          "id": "s3-m024",
+          "role": "assistant",
+          "language": "en",
+          "content": "Menus have a way of doing that! Is there a vegetarian dish that stands out?"
+        },
+        {
+          "id": "s3-m025",
+          "role": "user",
+          "language": "ko",
+          "content": "Saffron Table의 대표 채식 메뉴가 구운 단호박 커리래요. 맛있어 보여서 먹어보고 싶어요."
+        },
+        {
+          "id": "s3-m026",
+          "role": "assistant",
+          "language": "en",
+          "content": "That does sound tasty. Is there anything you'll need to ask the staff about before ordering?"
+        },
+        {
+          "id": "s3-m027",
+          "role": "user",
+          "language": "en",
+          "content": "I have a peanut allergy, so I need to avoid peanuts. I will ask about ingredients instead of guessing from the menu."
+        },
+        {
+          "id": "s3-m028",
+          "role": "assistant",
+          "language": "en",
+          "content": "Checking with the staff sounds sensible. Have you got any other restaurant suggestions to look at?"
+        },
+        {
+          "id": "s3-m029",
+          "role": "user",
+          "language": "ko",
+          "content": "Noah는 Copper Spoon을 추천해 줬어요. 시간 되면 메뉴를 더 봐야겠지만, 매끼 외식하면 돈이 꽤 들겠죠?"
+        },
+        {
+          "id": "s3-m030",
+          "role": "assistant",
+          "language": "en",
+          "content": "Food costs can add up. Have you set yourself a budget for the trip?"
+        },
+        {
+          "id": "s3-m031",
+          "role": "user",
+          "language": "en",
+          "content": "My budget is 600 US dollars, excluding flights. I want some room for a small gift, so I will keep track as I go."
+        },
+        {
+          "id": "s3-m032",
+          "role": "assistant",
+          "language": "en",
+          "content": "Leaving room for a gift sounds thoughtful. We can talk through the rest of your plans next time."
+        }
+      ]
+    },
+    {
+      "id": "s3-session-03",
+      "messages": [
+        {
+          "id": "s3-m033",
+          "role": "user",
+          "language": "ko",
+          "content": "일기예보에 비 표시가 있어서 실내 활동도 하나 골랐어요. 비 오는 날에는 도자기 페인팅 워크숍에 가려고요."
+        },
+        {
+          "id": "s3-m034",
+          "role": "assistant",
+          "language": "en",
+          "content": "That sounds like a fun way to spend a rainy afternoon. Where is the workshop held?"
+        },
+        {
+          "id": "s3-m035",
+          "role": "user",
+          "language": "en",
+          "content": "The ceramic painting workshop is at Moon Kiln. I like the idea of making something instead of just buying it."
+        },
+        {
+          "id": "s3-m036",
+          "role": "assistant",
+          "language": "en",
+          "content": "Making something yourself could be a nice memory. Have you booked a time at Moon Kiln?"
+        },
+        {
+          "id": "s3-m037",
+          "role": "user",
+          "language": "ko",
+          "content": "Moon Kiln은 수요일 오후 6시로 예약했어요. 그 시간 전에는 날씨를 보면서 움직이려고요."
+        },
+        {
+          "id": "s3-m038",
+          "role": "assistant",
+          "language": "en",
+          "content": "That leaves you some flexibility earlier in the day. What would you do if it stayed dry?"
+        },
+        {
+          "id": "s3-m039",
+          "role": "user",
+          "language": "en",
+          "content": "If it is dry, I want to walk along the canal in the old town. I might browse a few shops on the way, too."
+        },
+        {
+          "id": "s3-m040",
+          "role": "assistant",
+          "language": "en",
+          "content": "A slow walk with a few stops sounds lovely. Who were you thinking of buying a souvenir for?"
+        },
+        {
+          "id": "s3-m041",
+          "role": "user",
+          "language": "ko",
+          "content": "이번 여행 선물은 아버지 Daniel께 드리려고요. 흔한 기념품보다는 좋아하시는 걸 찾아보고 싶어요."
+        },
+        {
+          "id": "s3-m042",
+          "role": "assistant",
+          "language": "en",
+          "content": "That's thoughtful. What does Daniel like to collect?"
+        },
+        {
+          "id": "s3-m043",
+          "role": "user",
+          "language": "en",
+          "content": "Daniel collects wooden bird ornaments. He has a little shelf for them, and he always notices when I move one."
+        },
+        {
+          "id": "s3-m044",
+          "role": "assistant",
+          "language": "en",
+          "content": "Ha, he clearly knows his collection well! Have you found a shop selling wooden birds?"
+        },
+        {
+          "id": "s3-m045",
+          "role": "user",
+          "language": "ko",
+          "content": "나무 새 장식품은 Willow Crafts에서 사기로 했어요. 이제 가게까지 길을 잘 찾아가기만 하면 돼요."
+        },
+        {
+          "id": "s3-m046",
+          "role": "assistant",
+          "language": "en",
+          "content": "Having the shop picked out is a good start. What would help you feel more comfortable finding your way?"
+        },
+        {
+          "id": "s3-m047",
+          "role": "user",
+          "language": "en",
+          "content": "Before the trip, I want to practice asking for directions and understanding the answers. I freeze when someone talks too fast."
+        },
+        {
+          "id": "s3-m048",
+          "role": "assistant",
+          "language": "en",
+          "content": "We can practice at a comfortable pace. You could start by asking me how to get to a shop."
+        }
+      ]
+    }
+  ]
+}

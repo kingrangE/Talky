@@ -1,0 +1,207 @@
+{
+  "version": "1.2",
+  "set_id": "s2",
+  "question_type": "single_hop",
+  "questions": [
+    {
+      "id": "s2-sh01",
+      "language": "ko",
+      "question": "세라는 프로젝트 회의를 어느 회의실에서 진행하나요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "Orion Room 회의실",
+          "en": "Orion Room"
+        }
+      ],
+      "reference_answer": "Sera holds project meetings in Orion Room.",
+      "evidence": [
+        {
+          "message_id": "s2-m009",
+          "quote": "세라는 프로젝트 회의를 Orion Room에서 진행해요. 화이트보드가 커서 설명하기 편하대요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh02",
+      "language": "en",
+      "question": "What is the default branch of return-flow?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "integration 브랜치",
+          "en": "integration"
+        }
+      ],
+      "reference_answer": "The default branch of return-flow is integration.",
+      "evidence": [
+        {
+          "message_id": "s2-m037",
+          "quote": "return-flow의 기본 브랜치는 integration이에요. 저장소마다 달라서 가끔 헷갈려요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh03",
+      "language": "ko",
+      "question": "검색 대시보드 작업을 관리하는 보드는 무엇인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "Beacon 보드",
+          "en": "Beacon"
+        }
+      ],
+      "reference_answer": "The search dashboard work is tracked on Beacon.",
+      "evidence": [
+        {
+          "message_id": "s2-m023",
+          "quote": "We track the search dashboard work on the Beacon board. I need to tidy up the open tasks before the rehearsal.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh04",
+      "language": "en",
+      "question": "What format does Elena prefer for design reviews?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "주석이 달린 PDF",
+          "en": "annotated PDF"
+        }
+      ],
+      "reference_answer": "Elena prefers an annotated PDF.",
+      "evidence": [
+        {
+          "message_id": "s2-m029",
+          "quote": "Elena는 설계 검토할 때 주석이 달린 PDF를 선호해요. 화면을 왔다 갔다 하지 않아도 돼서 좋다더라고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh05",
+      "language": "ko",
+      "question": "ops-atlas 채널에서 쓰는 장애 대응 문서 경로는 무엇인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "Runbooks/Atlas",
+          "en": "Runbooks/Atlas"
+        }
+      ],
+      "reference_answer": "The runbook path is Runbooks/Atlas.",
+      "evidence": [
+        {
+          "message_id": "s2-m045",
+          "quote": "네, ops-atlas에서 쓰는 장애 대응 문서는 Runbooks/Atlas에 있어요. 급할 때 안 헤매게 미리 읽어두려고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh06",
+      "language": "en",
+      "question": "What time do I usually start work?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "오전 9시 30분",
+          "en": "9:30 a.m."
+        }
+      ],
+      "reference_answer": "You usually start work at 9:30 a.m.",
+      "evidence": [
+        {
+          "message_id": "s2-m001",
+          "quote": "오늘 아침엔 조금 여유가 있었어요. 저는 보통 9시 30분에 일을 시작해서 그 전에 커피를 마시거든요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh07",
+      "language": "ko",
+      "question": "저는 무슨 요일에 사무실에 출근하나요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "화요일과 목요일",
+          "en": "Tuesdays and Thursdays"
+        }
+      ],
+      "reference_answer": "You go to the office on Tuesdays and Thursdays.",
+      "evidence": [
+        {
+          "message_id": "s2-m003",
+          "quote": "Yes. I only go to the office on Tuesdays and Thursdays, so I can skip the commute today.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh08",
+      "language": "en",
+      "question": "How long do I prefer routine meetings to last?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "25분",
+          "en": "25 minutes"
+        }
+      ],
+      "reference_answer": "You prefer routine meetings to last about 25 minutes.",
+      "evidence": [
+        {
+          "message_id": "s2-m015",
+          "quote": "About 25 minutes is ideal for a routine meeting. After that, I start thinking about all the work waiting for me.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh09",
+      "language": "ko",
+      "question": "저는 주간 업무 계획을 무슨 요일에 정리하나요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "금요일",
+          "en": "Fridays"
+        }
+      ],
+      "reference_answer": "You prepare your weekly work plan on Fridays.",
+      "evidence": [
+        {
+          "message_id": "s2-m031",
+          "quote": "I prepare my weekly work plan on Fridays. I will add some time for writing and rehearsing instead of hoping I can squeeze it in.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s2-sh10",
+      "language": "en",
+      "question": "What do I want to practice explaining in English?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "설계의 장단점과 선택에 따른 트레이드오프",
+          "en": "design trade-offs"
+        }
+      ],
+      "reference_answer": "You want to practice explaining design trade-offs in English.",
+      "evidence": [
+        {
+          "message_id": "s2-m017",
+          "quote": "오늘은 영어로 설계의 트레이드오프를 설명하는 연습을 하고 싶어요. 장점만 말하고 단점은 얼버무리게 되네요.",
+          "language": "ko"
+        }
+      ]
+    }
+  ]
+}

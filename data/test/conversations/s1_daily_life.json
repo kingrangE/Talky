@@ -1,0 +1,313 @@
+{
+  "version": "1.2",
+  "set_id": "s1",
+  "fixture_user_id": "eval-minsu",
+  "synthetic": true,
+  "title": "민수의 일상, 취미, 주말 약속",
+  "persona_name": "Minsu",
+  "sessions": [
+    {
+      "id": "s1-session-01",
+      "messages": [
+        {
+          "id": "s1-m001",
+          "role": "user",
+          "language": "ko",
+          "content": "오늘은 팔이 좀 뻐근하네요. 주말마다 클라이밍을 하는데, 어제는 어려운 코스에 도전했거든요."
+        },
+        {
+          "id": "s1-m002",
+          "role": "assistant",
+          "language": "en",
+          "content": "Oof, sounds like your arms earned a break! How do you usually unwind afterward?"
+        },
+        {
+          "id": "s1-m003",
+          "role": "user",
+          "language": "en",
+          "content": "After climbing, I usually stop at Blue Bookshop. I can sit there and read for a while without looking at my phone."
+        },
+        {
+          "id": "s1-m004",
+          "role": "assistant",
+          "language": "en",
+          "content": "That sounds like a lovely way to slow down. Where is it?"
+        },
+        {
+          "id": "s1-m005",
+          "role": "user",
+          "language": "ko",
+          "content": "파란책방, 그러니까 Blue Bookshop은 연남동에 있어요. 작은 가게라 처음엔 그냥 지나칠 뻔했어요."
+        },
+        {
+          "id": "s1-m006",
+          "role": "assistant",
+          "language": "en",
+          "content": "Those little places can be easy to miss! Do you prefer a gentler workout during the week?"
+        },
+        {
+          "id": "s1-m007",
+          "role": "user",
+          "language": "en",
+          "content": "Yeah, I go jogging before work on weekday mornings. Nothing serious, just enough to wake myself up."
+        },
+        {
+          "id": "s1-m008",
+          "role": "assistant",
+          "language": "en",
+          "content": "A short run can really clear your head. Do you head straight home afterward?"
+        },
+        {
+          "id": "s1-m009",
+          "role": "user",
+          "language": "en",
+          "content": "Not always. After jogging, I sometimes stop at Lake Cafe and sit outside if the weather is nice."
+        },
+        {
+          "id": "s1-m010",
+          "role": "assistant",
+          "language": "en",
+          "content": "A little outdoor break sounds nice. How do you get to work after that?"
+        },
+        {
+          "id": "s1-m011",
+          "role": "user",
+          "language": "ko",
+          "content": "출퇴근은 자전거로 해요. 버스 기다리는 것보다 마음이 편하더라고요."
+        },
+        {
+          "id": "s1-m012",
+          "role": "assistant",
+          "language": "en",
+          "content": "I can see the appeal of going at your own pace. Do your coworkers enjoy being outdoors too?"
+        },
+        {
+          "id": "s1-m013",
+          "role": "user",
+          "language": "ko",
+          "content": "동료 수빈이는 등산을 좋아해서 자꾸 같이 가자고 해요. 아직 따라갈 자신은 없어요."
+        },
+        {
+          "id": "s1-m014",
+          "role": "assistant",
+          "language": "en",
+          "content": "You could ask to start with an easy trail! Would you like to practice inviting someone along in English?"
+        },
+        {
+          "id": "s1-m015",
+          "role": "user",
+          "language": "en",
+          "content": "Actually, I want to practice casual conversations with travelers. I sometimes meet them around town and never know what to say."
+        },
+        {
+          "id": "s1-m016",
+          "role": "assistant",
+          "language": "en",
+          "content": "We can work on that together. Next time, let's start with a simple conversation about your day."
+        }
+      ]
+    },
+    {
+      "id": "s1-session-02",
+      "messages": [
+        {
+          "id": "s1-m017",
+          "role": "user",
+          "language": "ko",
+          "content": "오늘은 퇴근하고 스케치 수업에 다녀왔어요. 평일 저녁에 듣는 수업인데 아직 사람 얼굴 그리는 게 어렵네요."
+        },
+        {
+          "id": "s1-m018",
+          "role": "assistant",
+          "language": "en",
+          "content": "Faces are tricky! Does the teacher help you work through the difficult parts?"
+        },
+        {
+          "id": "s1-m019",
+          "role": "user",
+          "language": "en",
+          "content": "Yes, Hana teaches the sketching class. She tells us to look carefully before drawing, but I always rush."
+        },
+        {
+          "id": "s1-m020",
+          "role": "assistant",
+          "language": "en",
+          "content": "Slowing down takes practice too. What are the breaks like?"
+        },
+        {
+          "id": "s1-m021",
+          "role": "user",
+          "language": "en",
+          "content": "Pretty relaxed. Hana usually drinks rooibos tea during breaks, and we chat while our hands get a rest."
+        },
+        {
+          "id": "s1-m022",
+          "role": "assistant",
+          "language": "en",
+          "content": "That sounds cozy. Are you a tea person as well?"
+        },
+        {
+          "id": "s1-m023",
+          "role": "user",
+          "language": "ko",
+          "content": "저는 그날그날 달라요. 친구 Mina는 항상 카푸치노를 주문해서 고민할 일이 없더라고요."
+        },
+        {
+          "id": "s1-m024",
+          "role": "assistant",
+          "language": "en",
+          "content": "Having a usual order does make things easier! What do you like doing when you get home?"
+        },
+        {
+          "id": "s1-m025",
+          "role": "user",
+          "language": "en",
+          "content": "I usually read with my cat, Mochi, beside me. She sits right on the page if I ignore her for too long."
+        },
+        {
+          "id": "s1-m026",
+          "role": "assistant",
+          "language": "en",
+          "content": "Ha, she knows how to get your attention. Do you have a snack while you read?"
+        },
+        {
+          "id": "s1-m027",
+          "role": "user",
+          "language": "ko",
+          "content": "가끔요. 그런데 호두 알레르기가 있어서 과자 성분표는 꼭 확인해요. 밖에서 먹을 때도 신경 쓰이고요."
+        },
+        {
+          "id": "s1-m028",
+          "role": "assistant",
+          "language": "en",
+          "content": "That sounds like an important habit. Are you eating out anytime soon?"
+        },
+        {
+          "id": "s1-m029",
+          "role": "user",
+          "language": "ko",
+          "content": "네, 금요일 저녁에 도윤이랑 밥 먹기로 했어요. 오랜만에 만나서 할 얘기가 많아요."
+        },
+        {
+          "id": "s1-m030",
+          "role": "assistant",
+          "language": "en",
+          "content": "It'll be nice to catch up. Have you heard where Doyun wants to eat?"
+        },
+        {
+          "id": "s1-m031",
+          "role": "user",
+          "language": "en",
+          "content": "Doyun picked Maple Kitchen. I have never been, so I am looking forward to trying it."
+        },
+        {
+          "id": "s1-m032",
+          "role": "assistant",
+          "language": "en",
+          "content": "Trying somewhere new is fun. You'll have to tell me what you think!"
+        }
+      ]
+    },
+    {
+      "id": "s1-session-03",
+      "messages": [
+        {
+          "id": "s1-m033",
+          "role": "user",
+          "language": "ko",
+          "content": "지난번에 얘기한 식당 메뉴를 찾아봤어요. 메이플키친의 대표 메뉴가 버섯 리소토래요. 벌써 배고파지네요."
+        },
+        {
+          "id": "s1-m034",
+          "role": "assistant",
+          "language": "en",
+          "content": "Now you're making me hungry too! Will you have time to do anything else while you're out?"
+        },
+        {
+          "id": "s1-m035",
+          "role": "user",
+          "language": "en",
+          "content": "I hope so. I need to find a birthday gift for my younger sister, Sohee, and I have left it a bit late."
+        },
+        {
+          "id": "s1-m036",
+          "role": "assistant",
+          "language": "en",
+          "content": "That happens! What does she like doing in her free time?"
+        },
+        {
+          "id": "s1-m037",
+          "role": "user",
+          "language": "ko",
+          "content": "소희는 도예를 좋아해요. 얼마 전에 직접 만든 컵 사진도 보내줬는데 꽤 잘 만들었더라고요."
+        },
+        {
+          "id": "s1-m038",
+          "role": "assistant",
+          "language": "en",
+          "content": "A handmade cup sounds lovely. Have you found somewhere to look for supplies?"
+        },
+        {
+          "id": "s1-m039",
+          "role": "user",
+          "language": "en",
+          "content": "Yes, I decided to buy pottery supplies at Clay House. I might ask the staff for help choosing something."
+        },
+        {
+          "id": "s1-m040",
+          "role": "assistant",
+          "language": "en",
+          "content": "That's a good idea when you're buying for someone else's hobby. When is your own birthday?"
+        },
+        {
+          "id": "s1-m041",
+          "role": "user",
+          "language": "ko",
+          "content": "제 생일은 9월이에요. 아직 여유 있죠. 그 전에 이번 달 봉사활동 일정부터 챙겨야겠어요."
+        },
+        {
+          "id": "s1-m042",
+          "role": "assistant",
+          "language": "en",
+          "content": "Sounds like you've got a busy month. What kind of volunteering do you do?"
+        },
+        {
+          "id": "s1-m043",
+          "role": "user",
+          "language": "en",
+          "content": "I join a river cleanup once a month. It is tiring, but seeing the path clean afterward feels really good."
+        },
+        {
+          "id": "s1-m044",
+          "role": "assistant",
+          "language": "en",
+          "content": "I bet it does. Has the group decided on a meeting spot?"
+        },
+        {
+          "id": "s1-m045",
+          "role": "user",
+          "language": "ko",
+          "content": "하천 정화 모임은 Willow Bridge에서 모여요. 처음 오는 사람한테 길을 설명해 줘야 해서 지도를 보고 있었어요."
+        },
+        {
+          "id": "s1-m046",
+          "role": "assistant",
+          "language": "en",
+          "content": "A clear landmark should help. Which station exit would you tell them to use?"
+        },
+        {
+          "id": "s1-m047",
+          "role": "user",
+          "language": "en",
+          "content": "Exit 2 of Neulbom Station is the closest one to Willow Bridge. I should send them a screenshot as well."
+        },
+        {
+          "id": "s1-m048",
+          "role": "assistant",
+          "language": "en",
+          "content": "That would make it much easier to find. Want to practice giving those directions in English next time?"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,313 @@
+{
+  "version": "1.2",
+  "set_id": "s2",
+  "fixture_user_id": "eval-jieun",
+  "synthetic": true,
+  "title": "지은의 업무, 프로젝트, 협업 일정",
+  "persona_name": "Jieun",
+  "sessions": [
+    {
+      "id": "s2-session-01",
+      "messages": [
+        {
+          "id": "s2-m001",
+          "role": "user",
+          "language": "ko",
+          "content": "오늘 아침엔 조금 여유가 있었어요. 저는 보통 9시 30분에 일을 시작해서 그 전에 커피를 마시거든요."
+        },
+        {
+          "id": "s2-m002",
+          "role": "assistant",
+          "language": "en",
+          "content": "A quiet start sounds nice. Are you working from home today?"
+        },
+        {
+          "id": "s2-m003",
+          "role": "user",
+          "language": "en",
+          "content": "Yes. I only go to the office on Tuesdays and Thursdays, so I can skip the commute today."
+        },
+        {
+          "id": "s2-m004",
+          "role": "assistant",
+          "language": "en",
+          "content": "That must free up some time. Is the rest of your morning fairly quiet?"
+        },
+        {
+          "id": "s2-m005",
+          "role": "user",
+          "language": "ko",
+          "content": "그건 아니에요. 월요일 정기회의에서는 Harbor 프로젝트를 다루는데, 준비할 게 좀 있네요."
+        },
+        {
+          "id": "s2-m006",
+          "role": "assistant",
+          "language": "en",
+          "content": "Ah, so there's still some prep to do. Who manages Harbor?"
+        },
+        {
+          "id": "s2-m007",
+          "role": "user",
+          "language": "en",
+          "content": "Sera is the PM for Harbor. She usually keeps the discussion moving when we get stuck on small details."
+        },
+        {
+          "id": "s2-m008",
+          "role": "assistant",
+          "language": "en",
+          "content": "That's a useful skill. Does Sera have a regular room for project meetings?"
+        },
+        {
+          "id": "s2-m009",
+          "role": "user",
+          "language": "ko",
+          "content": "세라는 프로젝트 회의를 Orion Room에서 진행해요. 화이트보드가 커서 설명하기 편하대요."
+        },
+        {
+          "id": "s2-m010",
+          "role": "assistant",
+          "language": "en",
+          "content": "A big whiteboard does help! Do you have another project meeting later in the week?"
+        },
+        {
+          "id": "s2-m011",
+          "role": "user",
+          "language": "en",
+          "content": "On Wednesdays, we meet about Cedar. I try to keep separate notes so I do not mix up the tasks."
+        },
+        {
+          "id": "s2-m012",
+          "role": "assistant",
+          "language": "en",
+          "content": "That sounds sensible. Who is the PM for Cedar?"
+        },
+        {
+          "id": "s2-m013",
+          "role": "user",
+          "language": "ko",
+          "content": "Cedar의 PM은 Min이에요. 진행 방식이 꽤 달라서 처음엔 적응하는 데 시간이 걸렸어요."
+        },
+        {
+          "id": "s2-m014",
+          "role": "assistant",
+          "language": "en",
+          "content": "Different meeting styles can take some getting used to. How long do you like a routine meeting to last?"
+        },
+        {
+          "id": "s2-m015",
+          "role": "user",
+          "language": "en",
+          "content": "About 25 minutes is ideal for a routine meeting. After that, I start thinking about all the work waiting for me."
+        },
+        {
+          "id": "s2-m016",
+          "role": "assistant",
+          "language": "en",
+          "content": "I get that! A short agenda might help keep things focused. Let's leave you some time to prepare."
+        }
+      ]
+    },
+    {
+      "id": "s2-session-02",
+      "messages": [
+        {
+          "id": "s2-m017",
+          "role": "user",
+          "language": "ko",
+          "content": "오늘은 영어로 설계의 트레이드오프를 설명하는 연습을 하고 싶어요. 장점만 말하고 단점은 얼버무리게 되네요."
+        },
+        {
+          "id": "s2-m018",
+          "role": "assistant",
+          "language": "en",
+          "content": "We can practice giving both sides clearly. Do you have a presentation coming up?"
+        },
+        {
+          "id": "s2-m019",
+          "role": "user",
+          "language": "en",
+          "content": "We have a quarterly demo coming up. Jun is the presenter this time, but I am helping with the preparation."
+        },
+        {
+          "id": "s2-m020",
+          "role": "assistant",
+          "language": "en",
+          "content": "Helping behind the scenes still takes work. What feature is Jun going to show?"
+        },
+        {
+          "id": "s2-m021",
+          "role": "user",
+          "language": "ko",
+          "content": "준이 소개할 기능은 검색 대시보드예요. 영어로는 search dashboard라고 부르는데, 설명을 짧게 하기가 어렵네요."
+        },
+        {
+          "id": "s2-m022",
+          "role": "assistant",
+          "language": "en",
+          "content": "Maybe start with the problem it helps people solve. Where do you track the search dashboard work?"
+        },
+        {
+          "id": "s2-m023",
+          "role": "user",
+          "language": "en",
+          "content": "We track the search dashboard work on the Beacon board. I need to tidy up the open tasks before the rehearsal."
+        },
+        {
+          "id": "s2-m024",
+          "role": "assistant",
+          "language": "en",
+          "content": "That should make rehearsal easier. Will anyone outside your team review the design?"
+        },
+        {
+          "id": "s2-m025",
+          "role": "user",
+          "language": "ko",
+          "content": "네, 이번에 협업하는 해외 파트너사가 Northwind Studio예요. 자료도 영어로 준비해야 해요."
+        },
+        {
+          "id": "s2-m026",
+          "role": "assistant",
+          "language": "en",
+          "content": "That gives you a good reason to practice. Who do you talk to at Northwind Studio?"
+        },
+        {
+          "id": "s2-m027",
+          "role": "user",
+          "language": "en",
+          "content": "Elena is our contact at Northwind Studio. She asks really useful questions, so I want to be ready."
+        },
+        {
+          "id": "s2-m028",
+          "role": "assistant",
+          "language": "en",
+          "content": "Useful questions can make a review much better. How does Elena like to receive design materials?"
+        },
+        {
+          "id": "s2-m029",
+          "role": "user",
+          "language": "ko",
+          "content": "Elena는 설계 검토할 때 주석이 달린 PDF를 선호해요. 화면을 왔다 갔다 하지 않아도 돼서 좋다더라고요."
+        },
+        {
+          "id": "s2-m030",
+          "role": "assistant",
+          "language": "en",
+          "content": "That sounds practical. When do you usually make room for preparation like this?"
+        },
+        {
+          "id": "s2-m031",
+          "role": "user",
+          "language": "en",
+          "content": "I prepare my weekly work plan on Fridays. I will add some time for writing and rehearsing instead of hoping I can squeeze it in."
+        },
+        {
+          "id": "s2-m032",
+          "role": "assistant",
+          "language": "en",
+          "content": "Putting it on the calendar sounds sensible. We can practice one part of your explanation next time."
+        }
+      ]
+    },
+    {
+      "id": "s2-session-03",
+      "messages": [
+        {
+          "id": "s2-m033",
+          "role": "user",
+          "language": "ko",
+          "content": "오늘은 발표 준비 대신 코드를 좀 봤어요. 제가 맡은 고객 지원 개선 작업이 환불 자동화거든요."
+        },
+        {
+          "id": "s2-m034",
+          "role": "assistant",
+          "language": "en",
+          "content": "A change of pace, then. Which repository do you use for refund automation?"
+        },
+        {
+          "id": "s2-m035",
+          "role": "user",
+          "language": "en",
+          "content": "The repository for refund automation is return-flow. I was about to open a pull request, but I wanted to check the branch first."
+        },
+        {
+          "id": "s2-m036",
+          "role": "assistant",
+          "language": "en",
+          "content": "Good call to check before opening it. What is the default branch of return-flow?"
+        },
+        {
+          "id": "s2-m037",
+          "role": "user",
+          "language": "ko",
+          "content": "return-flow의 기본 브랜치는 integration이에요. 저장소마다 달라서 가끔 헷갈려요."
+        },
+        {
+          "id": "s2-m038",
+          "role": "assistant",
+          "language": "en",
+          "content": "I can see how that would happen. Is there another repository you switch to often?"
+        },
+        {
+          "id": "s2-m039",
+          "role": "user",
+          "language": "en",
+          "content": "Yes, ledger-core is for payment reconciliation, and its default branch is stable. I keep almost picking the wrong one."
+        },
+        {
+          "id": "s2-m040",
+          "role": "assistant",
+          "language": "en",
+          "content": "Switching contexts can be surprisingly tiring. Is coding your main focus this week?"
+        },
+        {
+          "id": "s2-m041",
+          "role": "user",
+          "language": "ko",
+          "content": "온콜도 같이 하고 있어요. 지금 제가 담당하는 서비스는 Atlas API라 알림이 오면 먼저 확인해야 해요."
+        },
+        {
+          "id": "s2-m042",
+          "role": "assistant",
+          "language": "en",
+          "content": "That can interrupt your flow. Where do the Atlas API alerts come in?"
+        },
+        {
+          "id": "s2-m043",
+          "role": "user",
+          "language": "en",
+          "content": "Atlas API alerts go to ops-atlas. I keep that channel open while I work, even when things are quiet."
+        },
+        {
+          "id": "s2-m044",
+          "role": "assistant",
+          "language": "en",
+          "content": "Makes sense to keep an eye on it. Is there a runbook handy in ops-atlas?"
+        },
+        {
+          "id": "s2-m045",
+          "role": "user",
+          "language": "ko",
+          "content": "네, ops-atlas에서 쓰는 장애 대응 문서는 Runbooks/Atlas에 있어요. 급할 때 안 헤매게 미리 읽어두려고요."
+        },
+        {
+          "id": "s2-m046",
+          "role": "assistant",
+          "language": "en",
+          "content": "Reading it while things are calm sounds wise. Do you have a teammate covering another service?"
+        },
+        {
+          "id": "s2-m047",
+          "role": "user",
+          "language": "en",
+          "content": "Hana is on call for Nova. We check in with each other, mostly to make sure we remember to take a break."
+        },
+        {
+          "id": "s2-m048",
+          "role": "assistant",
+          "language": "en",
+          "content": "That sounds like a good way to look out for each other. I hope the rest of your shift stays quiet!"
+        }
+      ]
+    }
+  ]
+}

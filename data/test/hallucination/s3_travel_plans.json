@@ -1,0 +1,168 @@
+{
+  "version": "1.0",
+  "source_version": "1.2",
+  "set_id": "s3",
+  "question_type": "hallucination",
+  "review_scope": "all_sessions",
+  "questions": [
+    {
+      "id": "s3-ha01",
+      "language": "en",
+      "question": "What is my flight number for the Bayport trip?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I know you're arriving at Eastgate Airport, but I don't have your flight number. What is it?",
+      "evidence": [],
+      "review_note": "도착 공항과 셔틀 노선은 있지만 항공편 번호는 없다. L4는 셔틀 노선이다.",
+      "related_message_ids": [
+        "s3-m013",
+        "s3-m015"
+      ]
+    },
+    {
+      "id": "s3-ha02",
+      "language": "ko",
+      "question": "Lantern Hotel에서 내 방 번호가 몇 번이야?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I know you booked Lantern Hotel, but I don't have your room number. What room were you assigned?",
+      "evidence": [],
+      "review_note": "호텔 예약과 조식 시작 시각은 있지만 객실 번호는 없다.",
+      "related_message_ids": [
+        "s3-m009",
+        "s3-m011"
+      ]
+    },
+    {
+      "id": "s3-ha03",
+      "language": "en",
+      "question": "What brand is the backpack I am taking?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I remember your backpack is blue, but I don't have its brand. What brand is it?",
+      "evidence": [],
+      "review_note": "배낭 색상은 있지만 브랜드는 없다.",
+      "related_message_ids": [
+        "s3-m019"
+      ]
+    },
+    {
+      "id": "s3-ha04",
+      "language": "ko",
+      "question": "지난 세션들에서 얘기한 그 숙소 이름이 뭐였지? 이번 여행 얘기였는지 지난 여행 얘기였는지 모르겠어.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which trip do you mean? Could you tell me the destination?",
+      "evidence": [],
+      "review_note": "지난 Hillhaven 여행의 Cedar Inn과 이번 Bayport 여행의 Lantern Hotel이 있어 구분이 필요하다.",
+      "related_message_ids": [
+        "s3-m007",
+        "s3-m009"
+      ]
+    },
+    {
+      "id": "s3-ha05",
+      "language": "en",
+      "question": "What was the name of that restaurant from our earlier sessions? I cannot remember who suggested it.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which restaurant do you mean? Could you give me a clue about who suggested it or what it serves?",
+      "evidence": [],
+      "review_note": "Iris가 고른 Saffron Table과 Noah가 추천한 Copper Spoon이 있어 대상을 고를 수 없다.",
+      "related_message_ids": [
+        "s3-m023",
+        "s3-m029"
+      ]
+    },
+    {
+      "id": "s3-ha06",
+      "language": "en",
+      "question": "Who was that person I talked about in one of our past sessions? I cannot remember what we were discussing.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which person do you mean? What were we talking about when you mentioned them?",
+      "evidence": [],
+      "review_note": "Iris, Noah, Daniel이 등장하지만 역할이나 대화 주제가 없다.",
+      "related_message_ids": [
+        "s3-m021",
+        "s3-m029",
+        "s3-m041"
+      ]
+    },
+    {
+      "id": "s3-ha07",
+      "language": "ko",
+      "question": "전에 내가 신혼여행으로 갔다고 말한 섬 이름 기억나?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I can't find a honeymoon or an island for it in the available conversation. Which trip do you mean?",
+      "evidence": [],
+      "review_note": "지난 Hillhaven 여행은 있지만 신혼여행이나 섬 여행이라는 기록은 없다.",
+      "related_message_ids": [
+        "s3-m005"
+      ]
+    },
+    {
+      "id": "s3-ha08",
+      "language": "en",
+      "question": "Which rental company did I tell you I booked a car with?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I can't find a rental car booking in the available conversation. Which company do you mean?",
+      "evidence": [],
+      "review_note": "공항 셔틀 계획은 있지만 렌터카 예약이나 회사 이름을 말한 기록은 없다.",
+      "related_message_ids": [
+        "s3-m015",
+        "s3-m017"
+      ]
+    },
+    {
+      "id": "s3-ha09",
+      "language": "ko",
+      "question": "내가 예약했다가 취소했다고 말한 호텔 이름이 뭐였지?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I remember a hotel booking, but I can't find a hotel cancellation in the available conversation. Which booking do you mean?",
+      "evidence": [],
+      "review_note": "Cedar Inn은 이전 숙소, Lantern Hotel은 이번 예약 숙소이며 취소했다는 기록은 없다.",
+      "related_message_ids": [
+        "s3-m007",
+        "s3-m009"
+      ]
+    },
+    {
+      "id": "s3-ha10",
+      "language": "ko",
+      "question": "이번 여행에 같이 가기로 했다고 말한 내 형제 이름이 뭐였지?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I can't find a sibling joining this trip in the available conversation. Who do you mean?",
+      "evidence": [],
+      "review_note": "여행 중 만날 친구 Iris와 선물 받을 아버지 Daniel은 있지만 동행할 형제를 말한 기록은 없다.",
+      "related_message_ids": [
+        "s3-m021",
+        "s3-m041"
+      ]
+    }
+  ]
+}

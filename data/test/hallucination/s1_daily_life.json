@@ -1,0 +1,165 @@
+{
+  "version": "1.0",
+  "source_version": "1.2",
+  "set_id": "s1",
+  "question_type": "hallucination",
+  "review_scope": "all_sessions",
+  "questions": [
+    {
+      "id": "s1-ha01",
+      "language": "ko",
+      "question": "내가 가장 좋아하는 영화 제목이 뭐야?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I don't have your favorite movie in the available conversation. Which movie is it?",
+      "evidence": [],
+      "review_note": "전체 세션에 좋아하는 영화나 영화 제목이 없다.",
+      "related_message_ids": []
+    },
+    {
+      "id": "s1-ha02",
+      "language": "en",
+      "question": "How old is my cat?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I remember your cat is Mochi, but I don't have her age. How old is she?",
+      "evidence": [],
+      "review_note": "고양이 이름과 독서 습관은 있지만 나이는 없다.",
+      "related_message_ids": [
+        "s1-m025"
+      ]
+    },
+    {
+      "id": "s1-ha03",
+      "language": "ko",
+      "question": "내 출퇴근용 자전거 브랜드가 뭐였지?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "You commute by bicycle, but I don't have the brand. What brand is it?",
+      "evidence": [],
+      "review_note": "자전거 출퇴근은 있지만 브랜드는 없다.",
+      "related_message_ids": [
+        "s1-m011"
+      ]
+    },
+    {
+      "id": "s1-ha04",
+      "language": "en",
+      "question": "What is the exact date of Sohee's birthday?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I know you were choosing a birthday gift for Sohee, but I don't have her birthday date. When is it?",
+      "evidence": [],
+      "review_note": "소희의 생일 선물 계획은 있지만 생일 날짜는 없다. 9월은 민수 자신의 생일이다.",
+      "related_message_ids": [
+        "s1-m035",
+        "s1-m041"
+      ]
+    },
+    {
+      "id": "s1-ha05",
+      "language": "ko",
+      "question": "내가 좋아하는 그거 있잖아! 뭔지 알지?",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "What do you mean by 'that thing'? Could you give me a clue?",
+      "evidence": [],
+      "review_note": "취미와 일상 활동이 여러 개다. 무엇을 좋아한다는 것인지 특정할 단서가 없다.",
+      "related_message_ids": [
+        "s1-m001",
+        "s1-m017",
+        "s1-m025"
+      ]
+    },
+    {
+      "id": "s1-ha06",
+      "language": "en",
+      "question": "You know that person I mentioned in one of our earlier sessions? What was their name?",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which person do you mean? Could you tell me what we discussed about them?",
+      "evidence": [],
+      "review_note": "여러 세션에 동료, 강사, 친구, 가족이 등장한다. 마지막에 등장한 인물이라는 단서도 없다.",
+      "related_message_ids": [
+        "s1-m013",
+        "s1-m019",
+        "s1-m023",
+        "s1-m029",
+        "s1-m035"
+      ]
+    },
+    {
+      "id": "s1-ha07",
+      "language": "ko",
+      "question": "예전에 말한 곳 중에 그 가게 이름이 뭐였더라? 어느 날 얘기했는지는 기억이 안 나.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which shop do you mean? What were you planning to do there?",
+      "evidence": [],
+      "review_note": "책방, 카페, 식당, 도예 재료 가게를 언급했다. 날짜와 활동이 없어 한 곳을 고를 수 없다.",
+      "related_message_ids": [
+        "s1-m003",
+        "s1-m009",
+        "s1-m031",
+        "s1-m039"
+      ]
+    },
+    {
+      "id": "s1-ha08",
+      "language": "en",
+      "question": "Remember the piano teacher I told you about? What was their name?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I can't find a piano teacher in the available conversation. Who were you referring to?",
+      "evidence": [],
+      "review_note": "언급된 Hana는 스케치 강사이며 피아노 강사에 관한 과거 대화는 없다.",
+      "related_message_ids": [
+        "s1-m019"
+      ]
+    },
+    {
+      "id": "s1-ha09",
+      "language": "ko",
+      "question": "전에 내가 다닌다고 말한 치과 기억나? 이름이 뭐였지?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I can't find a dentist's office in the available conversation. Which one do you mean?",
+      "evidence": [],
+      "review_note": "전체 세션에 치과나 치과 방문 이야기가 없다.",
+      "related_message_ids": []
+    },
+    {
+      "id": "s1-ha10",
+      "language": "en",
+      "question": "What was the name of the dog I told you I adopted?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I remember your cat Mochi, but I can't find a conversation about adopting a dog. Which dog do you mean?",
+      "evidence": [],
+      "review_note": "고양이 Mochi는 있지만 강아지 입양이나 이름을 말한 기록은 없다. 개가 없다고 단정하지 않는다.",
+      "related_message_ids": [
+        "s1-m025"
+      ]
+    }
+  ]
+}

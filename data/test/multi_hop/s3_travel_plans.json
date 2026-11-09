@@ -1,0 +1,282 @@
+{
+  "version": "1.2",
+  "set_id": "s3",
+  "question_type": "multi_hop",
+  "questions": [
+    {
+      "id": "s3-mh01",
+      "language": "ko",
+      "question": "이번 여행 목적지에서 제가 예약한 숙소는 어디인가요?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "랜턴 호텔",
+          "en": "Lantern Hotel"
+        }
+      ],
+      "reference_answer": "You booked Lantern Hotel for this trip.",
+      "evidence": [
+        {
+          "message_id": "s3-m001",
+          "quote": "요즘 여행 준비하는 재미로 지내요. 이번 목적지는 Bayport인데, 사진만 봐도 빨리 가고 싶어요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m009",
+          "quote": "네, Bayport 숙소는 Lantern Hotel로 예약했어요. 객실 사진이 마음에 들었고 조식도 있더라고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh02",
+      "language": "en",
+      "question": "Which shuttle route serves the airport I will arrive at?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "L4번 셔틀",
+          "en": "L4"
+        }
+      ],
+      "reference_answer": "Your arrival airport is served by route L4.",
+      "evidence": [
+        {
+          "message_id": "s3-m013",
+          "quote": "도착 공항은 Eastgate Airport예요. 비행기 내리고 나서 이동하는 게 제일 긴장돼요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m015",
+          "quote": "Yes, the shuttle from Eastgate Airport is route L4. I saved the route, but I still need to check the stops.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh03",
+      "language": "ko",
+      "question": "이번 여행에서 만나기로 한 친구가 식사 장소로 고른 식당은 어디인가요?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "새프런 테이블",
+          "en": "Saffron Table"
+        }
+      ],
+      "reference_answer": "The friend you will meet chose Saffron Table.",
+      "evidence": [
+        {
+          "message_id": "s3-m021",
+          "quote": "네, 이번 여행에서 친구 Iris를 만나기로 했어요. 한동안 못 봐서 같이 밥 먹으면서 얘기하려고요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m023",
+          "quote": "Iris chose Saffron Table. I have been looking at the menu, and now I want to order far too much.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh04",
+      "language": "en",
+      "question": "At which studio will my rainy-day activity take place?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "문 킬른 스튜디오",
+          "en": "Moon Kiln"
+        }
+      ],
+      "reference_answer": "Your rainy-day activity will be at Moon Kiln.",
+      "evidence": [
+        {
+          "message_id": "s3-m033",
+          "quote": "일기예보에 비 표시가 있어서 실내 활동도 하나 골랐어요. 비 오는 날에는 도자기 페인팅 워크숍에 가려고요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m035",
+          "quote": "The ceramic painting workshop is at Moon Kiln. I like the idea of making something instead of just buying it.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh05",
+      "language": "ko",
+      "question": "이번 여행 선물을 받을 사람이 수집하는 물건은 무엇인가요?",
+      "reasoning_hops": 2,
+      "expected_facts": [
+        {
+          "ko": "나무로 만든 새 장식품",
+          "en": "wooden bird ornaments"
+        }
+      ],
+      "reference_answer": "Your souvenir recipient collects wooden bird ornaments.",
+      "evidence": [
+        {
+          "message_id": "s3-m041",
+          "quote": "이번 여행 선물은 아버지 Daniel께 드리려고요. 흔한 기념품보다는 좋아하시는 걸 찾아보고 싶어요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m043",
+          "quote": "Daniel collects wooden bird ornaments. He has a little shelf for them, and he always notices when I move one.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh06",
+      "language": "en",
+      "question": "What time does breakfast start at the hotel booked for my current destination?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "오전 7시 30분",
+          "en": "7:30 a.m."
+        }
+      ],
+      "reference_answer": "Breakfast at your booked hotel starts at 7:30 a.m.",
+      "evidence": [
+        {
+          "message_id": "s3-m001",
+          "quote": "요즘 여행 준비하는 재미로 지내요. 이번 목적지는 Bayport인데, 사진만 봐도 빨리 가고 싶어요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m009",
+          "quote": "네, Bayport 숙소는 Lantern Hotel로 예약했어요. 객실 사진이 마음에 들었고 조식도 있더라고요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m011",
+          "quote": "Breakfast at Lantern Hotel starts at 7:30 a.m. That should suit me, unless I decide to sleep in.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh07",
+      "language": "ko",
+      "question": "제가 도착할 공항에서 타는 셔틀의 종점은 어디인가요?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "가든 스퀘어",
+          "en": "Garden Square"
+        }
+      ],
+      "reference_answer": "The shuttle from your arrival airport ends at Garden Square.",
+      "evidence": [
+        {
+          "message_id": "s3-m013",
+          "quote": "도착 공항은 Eastgate Airport예요. 비행기 내리고 나서 이동하는 게 제일 긴장돼요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m015",
+          "quote": "Yes, the shuttle from Eastgate Airport is route L4. I saved the route, but I still need to check the stops.",
+          "language": "en"
+        },
+        {
+          "message_id": "s3-m017",
+          "quote": "셔틀 노선을 마저 봤어요. L4의 종점이 Garden Square더라고요. 도착하면 잠깐 앉아서 숨 좀 돌리고 싶어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh08",
+      "language": "en",
+      "question": "What is the signature vegetarian dish at the restaurant selected by the friend I will meet?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "구운 단호박 커리",
+          "en": "roasted pumpkin curry"
+        }
+      ],
+      "reference_answer": "That restaurant serves roasted pumpkin curry as its signature vegetarian dish.",
+      "evidence": [
+        {
+          "message_id": "s3-m021",
+          "quote": "네, 이번 여행에서 친구 Iris를 만나기로 했어요. 한동안 못 봐서 같이 밥 먹으면서 얘기하려고요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m023",
+          "quote": "Iris chose Saffron Table. I have been looking at the menu, and now I want to order far too much.",
+          "language": "en"
+        },
+        {
+          "message_id": "s3-m025",
+          "quote": "Saffron Table의 대표 채식 메뉴가 구운 단호박 커리래요. 맛있어 보여서 먹어보고 싶어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh09",
+      "language": "ko",
+      "question": "비 오는 날 하려는 활동의 장소는 언제로 예약되어 있나요?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "수요일 오후 6시",
+          "en": "Wednesday at 6 p.m."
+        }
+      ],
+      "reference_answer": "Your rainy-day activity venue is booked for Wednesday at 6 p.m.",
+      "evidence": [
+        {
+          "message_id": "s3-m033",
+          "quote": "일기예보에 비 표시가 있어서 실내 활동도 하나 골랐어요. 비 오는 날에는 도자기 페인팅 워크숍에 가려고요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m035",
+          "quote": "The ceramic painting workshop is at Moon Kiln. I like the idea of making something instead of just buying it.",
+          "language": "en"
+        },
+        {
+          "message_id": "s3-m037",
+          "quote": "Moon Kiln은 수요일 오후 6시로 예약했어요. 그 시간 전에는 날씨를 보면서 움직이려고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-mh10",
+      "language": "en",
+      "question": "Which shop did I choose for an item collected by this trip's souvenir recipient?",
+      "reasoning_hops": 3,
+      "expected_facts": [
+        {
+          "ko": "윌로 크래프츠",
+          "en": "Willow Crafts"
+        }
+      ],
+      "reference_answer": "You chose Willow Crafts for your souvenir recipient's collectible.",
+      "evidence": [
+        {
+          "message_id": "s3-m041",
+          "quote": "이번 여행 선물은 아버지 Daniel께 드리려고요. 흔한 기념품보다는 좋아하시는 걸 찾아보고 싶어요.",
+          "language": "ko"
+        },
+        {
+          "message_id": "s3-m043",
+          "quote": "Daniel collects wooden bird ornaments. He has a little shelf for them, and he always notices when I move one.",
+          "language": "en"
+        },
+        {
+          "message_id": "s3-m045",
+          "quote": "나무 새 장식품은 Willow Crafts에서 사기로 했어요. 이제 가게까지 길을 잘 찾아가기만 하면 돼요.",
+          "language": "ko"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+{
+  "version": "1.2",
+  "set_id": "s1",
+  "question_type": "single_hop",
+  "questions": [
+    {
+      "id": "s1-sh01",
+      "language": "ko",
+      "question": "파란책방은 어느 동네에 있나요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "연남동",
+          "en": "Yeonnam-dong"
+        }
+      ],
+      "reference_answer": "Blue Bookshop is in Yeonnam-dong.",
+      "evidence": [
+        {
+          "message_id": "s1-m005",
+          "quote": "파란책방, 그러니까 Blue Bookshop은 연남동에 있어요. 작은 가게라 처음엔 그냥 지나칠 뻔했어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh02",
+      "language": "en",
+      "question": "What does Hana usually drink during breaks?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "루이보스차",
+          "en": "rooibos tea"
+        }
+      ],
+      "reference_answer": "Hana usually drinks rooibos tea.",
+      "evidence": [
+        {
+          "message_id": "s1-m021",
+          "quote": "Pretty relaxed. Hana usually drinks rooibos tea during breaks, and we chat while our hands get a rest.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh03",
+      "language": "ko",
+      "question": "메이플키친의 대표 메뉴는 무엇인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "버섯 리소토",
+          "en": "mushroom risotto"
+        }
+      ],
+      "reference_answer": "Its signature dish is mushroom risotto.",
+      "evidence": [
+        {
+          "message_id": "s1-m033",
+          "quote": "지난번에 얘기한 식당 메뉴를 찾아봤어요. 메이플키친의 대표 메뉴가 버섯 리소토래요. 벌써 배고파지네요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh04",
+      "language": "en",
+      "question": "Which station exit is closest to Willow Bridge?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "늘봄역 2번 출구",
+          "en": "exit 2 of Neulbom Station"
+        }
+      ],
+      "reference_answer": "Exit 2 of Neulbom Station is closest.",
+      "evidence": [
+        {
+          "message_id": "s1-m047",
+          "quote": "Exit 2 of Neulbom Station is the closest one to Willow Bridge. I should send them a screenshot as well.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh05",
+      "language": "ko",
+      "question": "도예 재료를 사기로 한 가게 이름은 무엇인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "클레이하우스",
+          "en": "Clay House"
+        }
+      ],
+      "reference_answer": "The shop is Clay House.",
+      "evidence": [
+        {
+          "message_id": "s1-m039",
+          "quote": "Yes, I decided to buy pottery supplies at Clay House. I might ask the staff for help choosing something.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh06",
+      "language": "en",
+      "question": "Which nut am I allergic to?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "호두",
+          "en": "walnuts"
+        }
+      ],
+      "reference_answer": "You are allergic to walnuts.",
+      "evidence": [
+        {
+          "message_id": "s1-m027",
+          "quote": "가끔요. 그런데 호두 알레르기가 있어서 과자 성분표는 꼭 확인해요. 밖에서 먹을 때도 신경 쓰이고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh07",
+      "language": "ko",
+      "question": "저는 출퇴근할 때 어떤 교통수단을 이용하나요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "자전거",
+          "en": "bicycle"
+        }
+      ],
+      "reference_answer": "You commute by bicycle.",
+      "evidence": [
+        {
+          "message_id": "s1-m011",
+          "quote": "출퇴근은 자전거로 해요. 버스 기다리는 것보다 마음이 편하더라고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh08",
+      "language": "en",
+      "question": "What is my cat's name?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "모찌",
+          "en": "Mochi"
+        }
+      ],
+      "reference_answer": "Your cat is named Mochi.",
+      "evidence": [
+        {
+          "message_id": "s1-m025",
+          "quote": "I usually read with my cat, Mochi, beside me. She sits right on the page if I ignore her for too long.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh09",
+      "language": "ko",
+      "question": "제 생일은 몇 월인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "9월",
+          "en": "September"
+        }
+      ],
+      "reference_answer": "Your birthday is in September.",
+      "evidence": [
+        {
+          "message_id": "s1-m041",
+          "quote": "제 생일은 9월이에요. 아직 여유 있죠. 그 전에 이번 달 봉사활동 일정부터 챙겨야겠어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s1-sh10",
+      "language": "en",
+      "question": "What kind of situation do I want to practice English for?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "여행자들과 가볍게 나누는 일상 대화",
+          "en": "casual conversations with travelers"
+        }
+      ],
+      "reference_answer": "You want to practice casual conversations with travelers.",
+      "evidence": [
+        {
+          "message_id": "s1-m015",
+          "quote": "Actually, I want to practice casual conversations with travelers. I sometimes meet them around town and never know what to say.",
+          "language": "en"
+        }
+      ]
+    }
+  ]
+}

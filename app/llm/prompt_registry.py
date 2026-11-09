@@ -15,6 +15,7 @@ COMMON_PROMPTS = ("talky/ko-coach", "talky/en-reply", "talky/better-expression")
 CATALOG = {
     **{name: f"{name.split('/')[-1]}.md" for name in COMMON_PROMPTS},
     "talky/system": "seed_v1.md",
+    "talky/evaluation-judge": "evaluation-judge.md",
 }
 
 

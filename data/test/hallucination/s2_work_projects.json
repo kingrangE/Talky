@@ -1,0 +1,162 @@
+{
+  "version": "1.0",
+  "source_version": "1.2",
+  "set_id": "s2",
+  "question_type": "hallucination",
+  "review_scope": "all_sessions",
+  "questions": [
+    {
+      "id": "s2-ha01",
+      "language": "ko",
+      "question": "내 연봉이 얼마였지?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I don't have your salary in the available conversation. What amount should I use?",
+      "evidence": [],
+      "review_note": "업무와 일정은 있지만 연봉은 없다.",
+      "related_message_ids": []
+    },
+    {
+      "id": "s2-ha02",
+      "language": "en",
+      "question": "What is the name of the company I work for?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I know about your projects, but I don't have your employer's name. Which company do you work for?",
+      "evidence": [],
+      "review_note": "Northwind Studio는 해외 파트너사다. 지은의 소속 회사 이름은 없다.",
+      "related_message_ids": [
+        "s2-m025"
+      ]
+    },
+    {
+      "id": "s2-ha03",
+      "language": "ko",
+      "question": "Elena의 이메일 주소가 뭐였지?",
+      "scenario_type": "missing_information",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I know Elena is your contact at Northwind Studio, but I don't have her email address. What is it?",
+      "evidence": [],
+      "review_note": "Elena의 역할과 PDF 선호는 있지만 이메일 주소는 없다.",
+      "related_message_ids": [
+        "s2-m027",
+        "s2-m029"
+      ]
+    },
+    {
+      "id": "s2-ha04",
+      "language": "en",
+      "question": "What was the name of that project from one of our earlier conversations? I cannot remember which session it was.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which project do you mean? Could you describe what it involved?",
+      "evidence": [],
+      "review_note": "Harbor와 Cedar가 모두 등장하며 어느 프로젝트인지 구분하는 단서가 없다.",
+      "related_message_ids": [
+        "s2-m005",
+        "s2-m011"
+      ]
+    },
+    {
+      "id": "s2-ha05",
+      "language": "ko",
+      "question": "전에 말한 사람 중 그 담당자 이름이 뭐였지? 무슨 업무였는지는 잘 기억이 안 나.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which role or task do you mean? Could you give me a little more detail about the person?",
+      "evidence": [],
+      "review_note": "PM, 발표자, 파트너사 담당자, 온콜 동료가 있어 담당자만으로 특정할 수 없다.",
+      "related_message_ids": [
+        "s2-m007",
+        "s2-m013",
+        "s2-m019",
+        "s2-m027",
+        "s2-m047"
+      ]
+    },
+    {
+      "id": "s2-ha06",
+      "language": "en",
+      "question": "Which default branch did I say that repository uses? I cannot remember which repository we were discussing.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which repository do you mean? Could you give me its name or purpose?",
+      "evidence": [],
+      "review_note": "return-flow와 ledger-core는 기본 브랜치가 다르다. 저장소를 특정할 단서가 없다.",
+      "related_message_ids": [
+        "s2-m035",
+        "s2-m037",
+        "s2-m039"
+      ]
+    },
+    {
+      "id": "s2-ha07",
+      "language": "ko",
+      "question": "예전 대화에서 얘기한 그 미팅은 무슨 요일이었지? 어느 프로젝트 얘기였는지 기억이 안 나.",
+      "scenario_type": "ambiguous_reference",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "Which meeting do you mean? Could you tell me which project it was for?",
+      "evidence": [],
+      "review_note": "Harbor는 월요일, Cedar는 수요일이며 어느 미팅인지 특정되지 않았다.",
+      "related_message_ids": [
+        "s2-m005",
+        "s2-m011"
+      ]
+    },
+    {
+      "id": "s2-ha08",
+      "language": "en",
+      "question": "Where was the restaurant I told you we chose for my promotion celebration?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I can't find a promotion celebration or restaurant for it in the available conversation. Which restaurant do you mean?",
+      "evidence": [],
+      "review_note": "전체 세션에 승진 축하나 회식 식당을 정한 이야기가 없다.",
+      "related_message_ids": []
+    },
+    {
+      "id": "s2-ha09",
+      "language": "ko",
+      "question": "지난번 내가 졸업했다고 말한 대학교 이름 기억나?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I can't find a university you graduated from in the available conversation. Which university do you mean?",
+      "evidence": [],
+      "review_note": "전체 세션에 대학 졸업이나 학교 이름을 말한 기록이 없다.",
+      "related_message_ids": []
+    },
+    {
+      "id": "s2-ha10",
+      "language": "en",
+      "question": "What date did I tell you we signed the contract with Northwind Studio?",
+      "scenario_type": "false_premise",
+      "expected_behavior": "clarify",
+      "reasoning_hops": 0,
+      "expected_facts": [],
+      "reference_answer": "I remember Northwind Studio is your partner, but I can't find a contract signing date. When was it signed?",
+      "evidence": [],
+      "review_note": "파트너사와 협업한다는 기록은 있지만 계약 서명이나 서명일을 말한 기록은 없다.",
+      "related_message_ids": [
+        "s2-m025"
+      ]
+    }
+  ]
+}

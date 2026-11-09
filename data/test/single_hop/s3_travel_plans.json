@@ -1,0 +1,207 @@
+{
+  "version": "1.2",
+  "set_id": "s3",
+  "question_type": "single_hop",
+  "questions": [
+    {
+      "id": "s3-sh01",
+      "language": "ko",
+      "question": "Lantern Hotel의 아침 식사는 몇 시부터인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "오전 7시 30분",
+          "en": "7:30 a.m."
+        }
+      ],
+      "reference_answer": "Breakfast at Lantern Hotel starts at 7:30 a.m.",
+      "evidence": [
+        {
+          "message_id": "s3-m011",
+          "quote": "Breakfast at Lantern Hotel starts at 7:30 a.m. That should suit me, unless I decide to sleep in.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh02",
+      "language": "en",
+      "question": "What is the final stop of route L4?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "가든 스퀘어",
+          "en": "Garden Square"
+        }
+      ],
+      "reference_answer": "The final stop is Garden Square.",
+      "evidence": [
+        {
+          "message_id": "s3-m017",
+          "quote": "셔틀 노선을 마저 봤어요. L4의 종점이 Garden Square더라고요. 도착하면 잠깐 앉아서 숨 좀 돌리고 싶어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh03",
+      "language": "ko",
+      "question": "Saffron Table의 대표 채식 메뉴는 무엇인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "구운 단호박 커리",
+          "en": "roasted pumpkin curry"
+        }
+      ],
+      "reference_answer": "Its signature vegetarian dish is roasted pumpkin curry.",
+      "evidence": [
+        {
+          "message_id": "s3-m025",
+          "quote": "Saffron Table의 대표 채식 메뉴가 구운 단호박 커리래요. 맛있어 보여서 먹어보고 싶어요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh04",
+      "language": "en",
+      "question": "When is my reservation at Moon Kiln?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "수요일 오후 6시",
+          "en": "Wednesday at 6 p.m."
+        }
+      ],
+      "reference_answer": "Your reservation is for Wednesday at 6 p.m.",
+      "evidence": [
+        {
+          "message_id": "s3-m037",
+          "quote": "Moon Kiln은 수요일 오후 6시로 예약했어요. 그 시간 전에는 날씨를 보면서 움직이려고요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh05",
+      "language": "ko",
+      "question": "나무 새 장식품을 사기로 한 가게는 어디인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "윌로 크래프츠",
+          "en": "Willow Crafts"
+        }
+      ],
+      "reference_answer": "The shop is Willow Crafts.",
+      "evidence": [
+        {
+          "message_id": "s3-m045",
+          "quote": "나무 새 장식품은 Willow Crafts에서 사기로 했어요. 이제 가게까지 길을 잘 찾아가기만 하면 돼요.",
+          "language": "ko"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh06",
+      "language": "en",
+      "question": "How many nights will this trip last?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "4박",
+          "en": "four nights"
+        }
+      ],
+      "reference_answer": "The trip will last four nights.",
+      "evidence": [
+        {
+          "message_id": "s3-m003",
+          "quote": "Four nights. I do not want to pack every day with plans, though. I did that last time and came home exhausted.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh07",
+      "language": "ko",
+      "question": "제가 알레르기 때문에 피해야 하는 식재료는 무엇인가요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "땅콩",
+          "en": "peanuts"
+        }
+      ],
+      "reference_answer": "You need to avoid peanuts.",
+      "evidence": [
+        {
+          "message_id": "s3-m027",
+          "quote": "I have a peanut allergy, so I need to avoid peanuts. I will ask about ingredients instead of guessing from the menu.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh08",
+      "language": "en",
+      "question": "What is my budget for this trip, excluding flights?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "미화 600달러",
+          "en": "USD 600"
+        }
+      ],
+      "reference_answer": "Your budget excluding flights is USD 600.",
+      "evidence": [
+        {
+          "message_id": "s3-m031",
+          "quote": "My budget is 600 US dollars, excluding flights. I want some room for a small gift, so I will keep track as I go.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh09",
+      "language": "ko",
+      "question": "이번 여행에는 어떤 가방을 가져가나요?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "파란색 배낭",
+          "en": "blue backpack"
+        }
+      ],
+      "reference_answer": "You will take your blue backpack.",
+      "evidence": [
+        {
+          "message_id": "s3-m019",
+          "quote": "No, I will take my blue backpack. I want to travel light, especially if I need to carry it around before check-in.",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "id": "s3-sh10",
+      "language": "en",
+      "question": "What English skill do I want to practice before traveling?",
+      "reasoning_hops": 1,
+      "expected_facts": [
+        {
+          "ko": "길을 묻고 안내를 이해하기",
+          "en": "asking for and understanding directions"
+        }
+      ],
+      "reference_answer": "You want to practice asking for and understanding directions.",
+      "evidence": [
+        {
+          "message_id": "s3-m047",
+          "quote": "Before the trip, I want to practice asking for directions and understanding the answers. I freeze when someone talks too fast.",
+          "language": "en"
+        }
+      ]
+    }
+  ]
+}
