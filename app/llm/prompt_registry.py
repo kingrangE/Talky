@@ -16,6 +16,8 @@ CATALOG = {
     **{name: f"{name.split('/')[-1]}.md" for name in COMMON_PROMPTS},
     "talky/system": "seed_v1.md",
     "talky/evaluation-judge": "evaluation-judge.md",
+    "talky/dialogue-judge": "dialogue-judge.md",
+    "talky/expression-judge": "expression-judge.md",
 }
 
 

@@ -160,7 +160,7 @@ LANGFUSE_PUBLIC_KEY=프로젝트의_public_key
 LANGFUSE_SECRET_KEY=프로젝트의_secret_key
 LANGFUSE_BASE_URL=프로젝트에서_안내하는_URL
 LANGFUSE_PROMPT_LABEL=staging
-LANGFUSE_PROMPT_VERSIONS={"talky/evaluation-judge":1}
+LANGFUSE_PROMPT_VERSIONS={}
 LANGFUSE_RELEASE=실행할_코드의_commit_SHA
 ```
 
@@ -190,14 +190,14 @@ docker compose run --rm --no-deps --entrypoint python app -m app.llm.manage_prom
 docker compose up -d app worker
 ```
 
-- `publish`: `prompts/`의 system·한국어 코칭·영어 답변·영어 교정과 기억 평가 judge를 등록합니다. 같은 최신 본문은 새 버전을 만들지 않습니다. 기본 라벨은 staging이며 production은 바꾸지 않습니다. 저장소 프롬프트를 변경한 뒤 재실행하면 새 버전이 생깁니다.
+- `publish`: `prompts/`의 system·한국어 코칭·영어 답변·영어 교정과 기억·대화·표현 지도 judge를 등록합니다. 같은 최신 본문은 새 버전을 만들지 않습니다. 기본 라벨은 staging이며 production은 바꾸지 않습니다. 저장소 프롬프트를 변경한 뒤 재실행하면 새 버전이 생깁니다.
 - `migrate`: 기존 DB 버전들을 사용자별 `talky/users/<UUID>/system`으로 업로드하고,
   Cloud 원문과 일치하는지 확인한 뒤 참조를 연결합니다. 기존 ID·대화·별점·본문은
   보존하며 이미 연결된 버전은 건너뜁니다. 실행은 기존 사용자 프롬프트를 Cloud에
   업로드하므로 사용 중인 프로젝트와 데이터 범위를 확인한 뒤 실행합니다.
 - `check`: 인증과 선택된 라벨/숫자 버전의 공통 프롬프트 조회를 확인합니다.
 
-앱을 재시작하고 새 대화에서 한국어·영어 입력을 각각 확인합니다. Langfuse의 Prompts와 Traces에서 선택 버전을 확인하고, [기억·신뢰성 평가](data/test/README.md)를 거쳐 선택한 공통 버전에 UI에서 production 라벨을 붙입니다. `.env`의 라벨도 production으로 바꾸고 재시작합니다. 평가 실행기와 데이터셋 업로드는 별도입니다.
+앱을 재시작하고 새 대화에서 한국어·영어 입력을 각각 확인합니다. Langfuse의 Prompts와 Traces에서 선택 버전을 확인하고, [기억·대화·표현 지도 평가](data/test/README.md)를 거쳐 선택한 공통 버전에 UI에서 production 라벨을 붙입니다. `.env`의 라벨도 production으로 바꾸고 재시작합니다. judge는 프롬프트 등록까지만 포함하며 평가 실행기와 데이터셋 업로드는 별도입니다.
 
 새 대화에서 라벨을 숫자 버전으로 해석해 고정하므로, 라벨 이동은 진행 중인 대화에
 영향을 주지 않습니다. 사용자별 개선 프롬프트는 각자 다른 이름으로 생성하고 DB의

@@ -1,0 +1,1039 @@
+{
+  "version": "1.0",
+  "suite": "expression",
+  "reference_status": "draft_pending_human_review",
+  "cases": [
+    {
+      "id": "en-01",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Yesterday I go to the library.",
+        "context": "자신이 어제 실제로 한 일을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker went to the library yesterday."
+        ],
+        "acceptable_rewrites": [
+          "Yesterday I went to the library.",
+          "I went to the library yesterday."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "완료된 어제의 일을 말하므로 go를 went로 바꾼다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-02",
+      "input": {
+        "task": "en_correction",
+        "user_text": "She have two cats.",
+        "context": "친구의 반려묘 수를 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "A woman has two cats."
+        ],
+        "acceptable_rewrites": [
+          "She has two cats.",
+          "She's got two cats."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "3인칭 단수 주어에 맞춰 have를 has로 바꾼다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-03",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I have lived here since three years.",
+        "context": "3년 전부터 지금까지 같은 곳에 살고 있다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker started living here three years ago and still lives here."
+        ],
+        "acceptable_rewrites": [
+          "I have lived here for three years.",
+          "I've been living here for three years."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "three years는 기간이므로 since 대신 for를 쓴다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-04",
+      "input": {
+        "task": "en_correction",
+        "user_text": "There is many people outside.",
+        "context": "현재 밖에 사람이 여럿 있는 것을 설명한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "Many people are outside now."
+        ],
+        "acceptable_rewrites": [
+          "There are many people outside.",
+          "There are a lot of people outside."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "복수 명사 people에 맞춰 are를 쓴다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-05",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I'm looking forward to see you.",
+        "context": "곧 만날 상대에게 기대감을 표현한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker anticipates seeing the listener positively."
+        ],
+        "acceptable_rewrites": [
+          "I'm looking forward to seeing you.",
+          "I look forward to seeing you."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "look forward to의 to는 전치사이므로 뒤에 seeing을 쓴다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-06",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I didn't went to work yesterday.",
+        "context": "어제 출근하지 않았다는 사실을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker did not go to work yesterday."
+        ],
+        "acceptable_rewrites": [
+          "I didn't go to work yesterday.",
+          "I did not go to work yesterday."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "did 뒤에는 동사원형 go를 쓴다. 부정을 유지한다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-07",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Can you explain me this rule?",
+        "context": "친구에게 규칙 설명을 부탁한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker asks the listener to explain a rule."
+        ],
+        "acceptable_rewrites": [
+          "Can you explain this rule to me?",
+          "Could you explain this rule to me?"
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "explain은 설명할 내용을 목적어로 쓰고 듣는 사람 앞에 to를 쓴다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-08",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I need an advice about my presentation.",
+        "context": "발표에 관한 조언을 구한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker needs advice about their presentation."
+        ],
+        "acceptable_rewrites": [
+          "I need some advice about my presentation.",
+          "I need a piece of advice about my presentation."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "advice는 일반적으로 불가산 명사이므로 an advice라고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-09",
+      "input": {
+        "task": "en_correction",
+        "user_text": "If it will rain tomorrow, I'll stay home.",
+        "context": "내일 비가 오면 집에 있을 계획이다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "Staying home tomorrow is conditional on rain."
+        ],
+        "acceptable_rewrites": [
+          "If it rains tomorrow, I'll stay home.",
+          "I'll stay at home if it rains tomorrow."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "일반적인 미래 조건절에서는 if 뒤에 현재형 rains를 쓴다. 조건 관계를 유지한다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-10",
+      "input": {
+        "task": "en_correction",
+        "user_text": "My brother is more taller than me.",
+        "context": "형제와 자신의 키를 비교한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The brother is taller than the speaker."
+        ],
+        "acceptable_rewrites": [
+          "My brother is taller than me.",
+          "My brother is taller than I am."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "taller에 비교급 의미가 있으므로 more를 중복해서 쓰지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-11",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I bought two book yesterday.",
+        "context": "어제 책 두 권을 산 일을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker bought two books yesterday."
+        ],
+        "acceptable_rewrites": [
+          "I bought two books yesterday.",
+          "Yesterday I bought two books."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "two 뒤에서 book을 복수형 books로 쓴다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-12",
+      "input": {
+        "task": "en_correction",
+        "user_text": "She asked where do I live.",
+        "context": "과거에 한 여성이 자신의 거주지를 물었던 일을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "A woman asked about the speaker's residence."
+        ],
+        "acceptable_rewrites": [
+          "She asked where I lived.",
+          "She asked me where I lived."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "간접의문문에서는 주어와 동사의 평서문 어순을 쓴다. 거주지가 지금도 같으면 live도 허용된다."
+        ]
+      },
+      "metadata": {
+        "category": "en_grammar",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-13",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I very like this place.",
+        "context": "좋아하는 정도를 강조하지만 사랑한다고까지 표현하지 않는다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker likes this place strongly."
+        ],
+        "acceptable_rewrites": [
+          "I really like this place.",
+          "I like this place a lot."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "very를 동사 like 앞에 직접 붙이는 대신 really나 a lot을 쓴다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-14",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I ate medicine after lunch.",
+        "context": "정제 약을 점심 식사 후 복용했다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker took medicine after lunch."
+        ],
+        "acceptable_rewrites": [
+          "I took my medicine after lunch.",
+          "After lunch, I took my medication."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "약 복용에는 보통 eat 대신 take를 쓴다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-15",
+      "input": {
+        "task": "en_correction",
+        "user_text": "My condition is not good today.",
+        "context": "질병 진단을 말하는 것이 아니라 오늘 몸이 좋지 않다고 친구에게 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker feels physically unwell today."
+        ],
+        "acceptable_rewrites": [
+          "I'm not feeling well today.",
+          "I don't feel well today."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "일상적인 몸 상태에는 not feeling well이 자연스럽다. 원문을 모든 상황에서 문법 오류라고 단정하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-16",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I will contact to you tomorrow.",
+        "context": "친구에게 내일 연락하겠다고 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker will contact the listener tomorrow."
+        ],
+        "acceptable_rewrites": [
+          "I'll contact you tomorrow.",
+          "I'll get in touch with you tomorrow."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "동사 contact는 목적어 앞에 to를 붙이지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-17",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Please borrow me your pen.",
+        "context": "상대의 펜을 자신이 잠깐 쓰려고 빌려 달라고 한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker wants temporary use of the listener's pen."
+        ],
+        "acceptable_rewrites": [
+          "Could you lend me your pen?",
+          "Can I borrow your pen?"
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "주는 사람 관점의 lend와 받는 사람 관점의 borrow를 구분한다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-18",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I made a promise with my friend to have lunch tomorrow.",
+        "context": "계약이나 엄숙한 약속이 아니라 친구와 내일 점심을 먹기로 한 일상 일정이다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker has arranged lunch with a friend tomorrow."
+        ],
+        "acceptable_rewrites": [
+          "I'm having lunch with a friend tomorrow.",
+          "I have plans to have lunch with a friend tomorrow."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "일상적인 식사 일정은 have plans나 진행형 미래 표현으로 옮길 수 있다. promise 자체가 항상 틀린 것은 아니다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-19",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I want to challenge a new hobby.",
+        "context": "새 취미를 시작해 보고 싶다는 뜻이다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker wants to try starting a new hobby."
+        ],
+        "acceptable_rewrites": [
+          "I want to try a new hobby.",
+          "I'd like to take up a new hobby."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "이 뜻에서는 challenge a hobby보다 try나 take up이 자연스럽다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-20",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I have a schedule this Saturday.",
+        "context": "토요일에 이미 선약이 있어 초대를 거절하려 한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker already has plans for Saturday."
+        ],
+        "acceptable_rewrites": [
+          "I already have plans this Saturday.",
+          "I've already got plans for Saturday."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "선약이 있다는 뜻에서는 have plans가 자연스럽다. 구체 일정을 지어내지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-21",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I feel a burden to speak in front of everyone.",
+        "context": "사람들 앞에서 말하는 것이 부담스럽고 긴장된다는 뜻이다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker feels discomfort or nervousness about speaking to the group."
+        ],
+        "acceptable_rewrites": [
+          "I feel uncomfortable speaking in front of everyone.",
+          "Speaking in front of everyone makes me nervous."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "자신이 다른 사람에게 짐이라는 뜻의 a burden과 발표 부담을 구분한다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-22",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Let's discuss about the plan.",
+        "context": "동료와 계획을 논의하려 한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker proposes discussing the plan."
+        ],
+        "acceptable_rewrites": [
+          "Let's discuss the plan.",
+          "Let's talk about the plan."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "동사 discuss는 목적어 앞에 about을 붙이지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-23",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I want to refresh my mood by walking.",
+        "context": "기분 전환을 위해 산책하고 싶다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker wants a walk as a mental break."
+        ],
+        "acceptable_rewrites": [
+          "I want to go for a walk to clear my head.",
+          "I'd like to take a walk for a change of pace."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "clear my head나 a change of pace처럼 상황에 맞는 표현을 쓸 수 있다. 우울증 등 새로운 상태를 추가하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-24",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Please check it until Friday.",
+        "context": "금요일까지 검토를 완료해 달라는 요청이지 금요일까지 계속 확인하라는 뜻이 아니다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker requests completion of a review no later than Friday."
+        ],
+        "acceptable_rewrites": [
+          "Could you review it by Friday?",
+          "Please check it by Friday."
+        ],
+        "forbidden_changes": [
+          "주체·시간·부정·강도·조건과 원문의 구체 사실을 바꾸지 않는다."
+        ],
+        "explanation_requirements": [
+          "완료 기한은 by로 표현하고 until의 지속 의미와 구분한다."
+        ]
+      },
+      "metadata": {
+        "category": "en_fluency",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-25",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I'm good, thanks.",
+        "context": "친구가 How are you?라고 물었고 자신은 괜찮다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker says they are well and thanks the listener."
+        ],
+        "acceptable_rewrites": [
+          "I'm good, thanks."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-26",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I'll give you a call tomorrow.",
+        "context": "친구에게 내일 전화하겠다고 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker will phone the listener tomorrow."
+        ],
+        "acceptable_rewrites": [
+          "I'll give you a call tomorrow."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-27",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I haven't decided yet.",
+        "context": "아직 선택하지 못했다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker has not decided yet."
+        ],
+        "acceptable_rewrites": [
+          "I haven't decided yet."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-28",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Could you send me the file when you have a moment?",
+        "context": "직장 동료에게 정중하게 파일을 요청한다.",
+        "register": "polite_workplace"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker politely asks for the file when the listener has time."
+        ],
+        "acceptable_rewrites": [
+          "Could you send me the file when you have a moment?"
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-29",
+      "input": {
+        "task": "en_correction",
+        "user_text": "That sounds like a good idea.",
+        "context": "친구의 제안에 긍정적으로 반응한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker responds positively to an idea."
+        ],
+        "acceptable_rewrites": [
+          "That sounds like a good idea."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-30",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I'm not really in the mood to go out.",
+        "context": "친구에게 지금 외출할 마음이 별로 없다고 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker does not particularly want to go out."
+        ],
+        "acceptable_rewrites": [
+          "I'm not really in the mood to go out."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-31",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Would you mind closing the window?",
+        "context": "상대에게 창문을 닫아 달라고 정중히 부탁한다.",
+        "register": "polite_social"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker politely asks the listener to close the window."
+        ],
+        "acceptable_rewrites": [
+          "Would you mind closing the window?"
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": true
+      }
+    },
+    {
+      "id": "en-32",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I used to live in Busan.",
+        "context": "예전에는 부산에 살았지만 지금은 살지 않는다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker lived in Busan in the past and no longer does."
+        ],
+        "acceptable_rewrites": [
+          "I used to live in Busan."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-33",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I've already eaten, but thanks for asking.",
+        "context": "식사 제안을 정중하게 사양한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker has already eaten and appreciates the offer."
+        ],
+        "acceptable_rewrites": [
+          "I've already eaten, but thanks for asking."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-34",
+      "input": {
+        "task": "en_correction",
+        "user_text": "I'm knackered. I think I'll head home.",
+        "context": "영국식 일상 대화에서 매우 피곤해 귀가하려고 한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker is very tired and intends to go home."
+        ],
+        "acceptable_rewrites": [
+          "I'm knackered. I think I'll head home."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-35",
+      "input": {
+        "task": "en_correction",
+        "user_text": "The team are playing well today.",
+        "context": "영국식 스포츠 대화에서 팀원들의 현재 경기력을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The team is performing well today."
+        ],
+        "acceptable_rewrites": [
+          "The team are playing well today."
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    },
+    {
+      "id": "en-36",
+      "input": {
+        "task": "en_correction",
+        "user_text": "Have you got a minute?",
+        "context": "영국식 일상 대화에서 상대에게 잠깐 이야기할 시간이 있는지 묻는다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "keep",
+        "meaning_units": [
+          "The speaker asks whether the listener has a moment."
+        ],
+        "acceptable_rewrites": [
+          "Have you got a minute?"
+        ],
+        "forbidden_changes": [
+          "정상적인 표현이나 영국식 용법을 문법 오류라고 설명하지 않는다."
+        ],
+        "explanation_requirements": [
+          "원문이 이미 자연스럽다는 점을 인정한다. 다른 표현을 제시하더라도 원문이 틀렸다고 하지 않는다."
+        ]
+      },
+      "metadata": {
+        "category": "en_no_change",
+        "context_required": false
+      }
+    }
+  ]
+}

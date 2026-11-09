@@ -1,0 +1,659 @@
+{
+  "version": "1.0",
+  "suite": "expression",
+  "reference_status": "draft_pending_human_review",
+  "cases": [
+    {
+      "id": "ko-01",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "오늘 좀 피곤해.",
+        "context": "친구에게 오늘 자신의 상태를 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker is tired today.",
+          "The degree is mild."
+        ],
+        "acceptable_rewrites": [
+          "I'm a bit tired today.",
+          "I'm feeling a little tired today."
+        ],
+        "forbidden_changes": [
+          "극도로 지쳤다고 강도를 높이지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-02",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "어제부터 몸이 좀 안 좋아.",
+        "context": "친구에게 자신의 몸 상태를 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker has felt unwell since yesterday and still does."
+        ],
+        "acceptable_rewrites": [
+          "I haven't been feeling well since yesterday.",
+          "I've been feeling a bit unwell since yesterday."
+        ],
+        "forbidden_changes": [
+          "병명이나 원인을 추가하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-03",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "우리 약속을 다음 주로 미룰 수 있을까?",
+        "context": "친구와 잡아 둔 약속을 변경하려고 한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker asks to postpone an existing plan to next week."
+        ],
+        "acceptable_rewrites": [
+          "Could we move our plans to next week?",
+          "Can we postpone our plans until next week?"
+        ],
+        "forbidden_changes": [
+          "새 약속을 잡는 것으로 바꾸거나 날짜를 지어내지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-04",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "지금은 밖에 나가고 싶지 않아.",
+        "context": "친구가 외출을 제안했다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker does not want to go out now."
+        ],
+        "acceptable_rewrites": [
+          "I don't feel like going out right now.",
+          "I'd rather not go out right now."
+        ],
+        "forbidden_changes": [
+          "외출할 수 없다고 능력이나 의무의 문제로 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-05",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "생각보다 오래 걸렸어.",
+        "context": "친구에게 방금 마친 작업에 대해 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "A completed task took more time than expected."
+        ],
+        "acceptable_rewrites": [
+          "It took longer than I expected.",
+          "That took more time than I thought it would."
+        ],
+        "forbidden_changes": [
+          "예상보다 빨랐다고 비교 방향을 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-06",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "이번 주말에는 아직 계획 없어.",
+        "context": "친구가 이번 주말 일정을 물었다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker has no plans for this weekend yet."
+        ],
+        "acceptable_rewrites": [
+          "I don't have any plans for this weekend yet.",
+          "I haven't made any plans for this weekend yet."
+        ],
+        "forbidden_changes": [
+          "주말 내내 반드시 시간이 된다고 단정하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-07",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "내가 잘못 이해한 것 같아.",
+        "context": "친구와 대화하다가 자신의 이해가 틀렸을 가능성을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker suspects they misunderstood."
+        ],
+        "acceptable_rewrites": [
+          "I think I misunderstood.",
+          "I may have misunderstood."
+        ],
+        "forbidden_changes": [
+          "상대방이 잘못 이해했다고 주체를 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-08",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "자세히 설명해 줘서 고마워.",
+        "context": "친구가 자세하게 설명해 준 직후다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker thanks the listener for a detailed explanation."
+        ],
+        "acceptable_rewrites": [
+          "Thanks for explaining it in detail.",
+          "Thanks for walking me through it."
+        ],
+        "forbidden_changes": [
+          "설명을 아직 요청하는 것으로 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-09",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "거의 다 끝냈는데 마지막 부분이 남았어.",
+        "context": "친구에게 작업 진행 상황을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "Most of the work is finished.",
+          "The final part is still unfinished."
+        ],
+        "acceptable_rewrites": [
+          "I'm almost done, but I still have the last part left.",
+          "I've nearly finished; I just have the final part to do."
+        ],
+        "forbidden_changes": [
+          "작업이 모두 끝났다고 하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-10",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "그 영화는 별로였지만 음악은 좋았어.",
+        "context": "방금 본 영화에 대한 감상을 친구에게 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker did not particularly like the film.",
+          "The speaker liked the music."
+        ],
+        "acceptable_rewrites": [
+          "I wasn't keen on the movie, but I liked the music.",
+          "I didn't really like the film, but the music was good."
+        ],
+        "forbidden_changes": [
+          "영화와 음악의 평가를 뒤집거나 영화를 극도로 싫어한다고 과장하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-11",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "오늘은 평소보다 일찍 출발해야 해.",
+        "context": "친구에게 자신의 오늘 일정을 말한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker needs to depart earlier than usual today."
+        ],
+        "acceptable_rewrites": [
+          "I need to leave earlier than usual today.",
+          "I have to head out earlier than I normally do today."
+        ],
+        "forbidden_changes": [
+          "늦게 출발한다고 바꾸거나 구체 시각을 추가하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-12",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "아직 결정 못 했어. 조금만 더 생각해 볼게.",
+        "context": "친구가 선택을 재촉하지 않고 기다리고 있다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker has not decided.",
+          "The speaker intends to think more."
+        ],
+        "acceptable_rewrites": [
+          "I haven't decided yet. I'll think about it a little more.",
+          "I'm still undecided. Let me give it a bit more thought."
+        ],
+        "forbidden_changes": [
+          "특정 선택을 했다고 덧붙이지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_direct",
+        "context_required": false
+      }
+    },
+    {
+      "id": "ko-13",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "혹시 오늘 중으로 확인해 주실 수 있을까요?",
+        "context": "직장 동료에게 문서 검토를 정중하게 부탁한다. 확인은 검토를 뜻한다.",
+        "register": "polite_workplace"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker politely requests a document review today."
+        ],
+        "acceptable_rewrites": [
+          "Could you take a look at the document by the end of today?",
+          "Would you be able to review the document today?"
+        ],
+        "forbidden_changes": [
+          "내일로 기한을 바꾸거나 명령조로 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-14",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "이번에는 제가 살게요.",
+        "context": "친구와 식당에서 식사를 마쳤고 계산하려는 상황이다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker offers to pay for this meal."
+        ],
+        "acceptable_rewrites": [
+          "This one's on me.",
+          "I'll get the bill this time."
+        ],
+        "forbidden_changes": [
+          "물건을 구매한다거나 항상 계산한다고 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-15",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "좀 부담스러워.",
+        "context": "친구가 처음 만난 모임에서 갑자기 발표해 보라고 했다. 발표 요청에 대한 반응이다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker feels some discomfort about the unexpected request."
+        ],
+        "acceptable_rewrites": [
+          "That feels like a bit much for me.",
+          "I'm not quite comfortable with that."
+        ],
+        "forbidden_changes": [
+          "금전적 부담이나 확정적인 거절로 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-16",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "그렇게까지 할 필요는 없을 것 같아.",
+        "context": "친구가 자신을 도와주려고 하루 휴가를 쓰겠다고 제안했다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker thinks the proposed help is more than necessary."
+        ],
+        "acceptable_rewrites": [
+          "I don't think you need to go that far.",
+          "I don't think you need to do that much."
+        ],
+        "forbidden_changes": [
+          "도움 자체가 전혀 필요 없다고 확대하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-17",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "먼저 들어갈게.",
+        "context": "회식 자리에서 다른 사람들은 남아 있고 자신은 먼저 귀가한다.",
+        "register": "polite_social"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker is leaving the gathering to go home before the others."
+        ],
+        "acceptable_rewrites": [
+          "I'll head home first.",
+          "I'm going to head home now."
+        ],
+        "forbidden_changes": [
+          "방 안으로 들어간다는 뜻으로 옮기지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-18",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "그 사람한테 아직 답장 못 받았어.",
+        "context": "앞선 대화에서 Elena에게 보낸 이메일을 이야기했다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "Elena has not replied to the speaker yet."
+        ],
+        "acceptable_rewrites": [
+          "I haven't heard back from Elena yet.",
+          "Elena hasn't replied to me yet."
+        ],
+        "forbidden_changes": [
+          "다른 사람 이름을 넣거나 거절당했다고 단정하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-19",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "제가 이해한 게 맞다면 일정이 하루 늦춰진 거죠?",
+        "context": "직장 회의에서 일정 변경을 확인한다.",
+        "register": "polite_workplace"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker checks whether the schedule was delayed by one day."
+        ],
+        "acceptable_rewrites": [
+          "If I've understood correctly, the schedule has been pushed back by a day, right?",
+          "Just to check, has the schedule been moved back by one day?"
+        ],
+        "forbidden_changes": [
+          "일정이 확정되었다고 단정하거나 하루 앞당겨졌다고 하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-20",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "저는 괜찮아요. 먼저 하세요.",
+        "context": "한 대뿐인 복사기를 동료와 동시에 쓰려다가 순서를 양보한다.",
+        "register": "polite_workplace"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker yields the copier to the colleague and can wait."
+        ],
+        "acceptable_rewrites": [
+          "Please, go ahead. I can wait.",
+          "You can use it first. I don't mind waiting."
+        ],
+        "forbidden_changes": [
+          "건강이 괜찮다는 말로만 옮기지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-21",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "말 나온 김에 다음 주 일정도 정하자.",
+        "context": "친구와 이번 주 모임 일정을 이야기하고 있다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker suggests planning next week while discussing schedules."
+        ],
+        "acceptable_rewrites": [
+          "While we're on the subject, let's plan next week too.",
+          "Speaking of plans, let's sort out next week as well."
+        ],
+        "forbidden_changes": [
+          "이미 정해진 일정이라고 하거나 일정을 만들어 넣지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-22",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "아쉽지만 이번에는 못 갈 것 같아.",
+        "context": "친구가 모임에 초대했고 자신의 불참 가능성을 전한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker regrets that they probably cannot attend this time."
+        ],
+        "acceptable_rewrites": [
+          "Unfortunately, I don't think I can make it this time.",
+          "I'm sorry, but I probably won't be able to come this time."
+        ],
+        "forbidden_changes": [
+          "확정 참석이나 앞으로도 참석 불가로 바꾸지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-23",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "이 부분은 다시 한번 확인하고 말씀드릴게요.",
+        "context": "직장 회의 중 자신도 확신하지 못하는 내용에 대해 답한다.",
+        "register": "polite_workplace"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker will verify this part before replying further."
+        ],
+        "acceptable_rewrites": [
+          "I'll double-check this part and get back to you.",
+          "Let me check this again, and I'll let you know."
+        ],
+        "forbidden_changes": [
+          "이미 확인을 끝냈다거나 근거 없는 결론을 추가하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    },
+    {
+      "id": "ko-24",
+      "input": {
+        "task": "ko_to_en",
+        "user_text": "괜히 말을 꺼냈나 봐.",
+        "context": "친구 앞에서 민감한 화제를 꺼낸 뒤 어색해져서 후회한다.",
+        "register": "casual"
+      },
+      "expected_output": {
+        "expected_action": "rewrite",
+        "meaning_units": [
+          "The speaker tentatively regrets bringing up the topic."
+        ],
+        "acceptable_rewrites": [
+          "Maybe I shouldn't have brought it up.",
+          "I think I might have been better off not mentioning it."
+        ],
+        "forbidden_changes": [
+          "상대가 화냈다고 단정하거나 후회를 확정적인 자기 비난으로 과장하지 않는다."
+        ],
+        "explanation_requirements": []
+      },
+      "metadata": {
+        "category": "ko_context",
+        "context_required": true
+      }
+    }
+  ]
+}

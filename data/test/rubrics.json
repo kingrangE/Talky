@@ -1,0 +1,227 @@
+{
+  "version": "1.0",
+  "review_status": "draft_pending_human_review",
+  "policy": {
+    "reference_matching": "References are examples, not exhaustive answers. Accept faithful paraphrases and standard American or British variants. Do not score by exact match.",
+    "english_target": "Contemporary conversational English appropriate to the stated situation and register; idioms, slang and contractions are optional, not evidence of quality.",
+    "meaning_priority": "A fluent expression that changes a material meaning unit fails expression_success regardless of naturalness.",
+    "context_boundary": "Judge claims only against input available at that turn. Future user turns and evaluator-only facts cannot support earlier claims. Record exact model-visible input and context delivery separately.",
+    "aggregation": "Keep suite, category and metric results separate. Null is not zero. Errors and missing outputs are not successes; report completion and valid-score denominators. Do not average the three suites into a human-likeness score.",
+    "human_review": "Reference outputs and calibration labels are authored drafts, not native-speaker certification. Compare human and automatic labels before relying on the judge."
+  },
+  "suites": {
+    "memory": {
+      "judge": "talky/evaluation-judge",
+      "metrics": {
+        "correctness": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": "expected_behavior is clarify",
+          "anchors": {
+            "0": "Wrong, contradictory, or none of the required facts.",
+            "1": "Some required facts are correct.",
+            "2": "All required facts are correct without contradiction."
+          }
+        },
+        "faithfulness": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": null,
+          "anchors": {
+            "0": "The key answer or claimed recall is unsupported or contradicted.",
+            "1": "Some material claims are unsupported.",
+            "2": "All material claims are supported, or no factual claims were made."
+          }
+        },
+        "hallucination": {
+          "values": [
+            0,
+            1
+          ],
+          "null_when": null,
+          "anchors": {
+            "0": "No unsupported personal information or pretended shared memory.",
+            "1": "At least one unsupported personal claim, contradiction or pretended recall."
+          }
+        },
+        "clarification_success": {
+          "values": [
+            0,
+            1
+          ],
+          "null_when": "expected_behavior is absent or answer",
+          "anchors": {
+            "0": "No useful clarification, or unsupported recall/guessing.",
+            "1": "No unsupported recall, and asks a question that resolves missing information or reference."
+          }
+        }
+      }
+    },
+    "dialogue": {
+      "judge": "talky/dialogue-judge",
+      "metrics": {
+        "responsiveness": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": "Not in applicable_metrics, or no opportunity to assess in the supplied prefix.",
+          "anchors": {
+            "0": "Ignores or misreads the current point.",
+            "1": "Addresses the topic generically or misses a material detail.",
+            "2": "Responds to the specific content and current intent."
+          }
+        },
+        "dialogue_flow": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": "Not in applicable_metrics, or no opportunity to assess in the supplied prefix.",
+          "anchors": {
+            "0": "Repeated questions, unwanted topic persistence or ignores a stop request.",
+            "1": "Mostly coherent but repetitive, burdensome or awkward transitions.",
+            "2": "Follows topic changes, respects pace and closes when requested."
+          }
+        },
+        "memory_use": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": "Not in applicable_metrics, or no opportunity to assess in the supplied prefix.",
+          "anchors": {
+            "0": "Misattributes, ignores a needed known fact, or uses memory intrusively.",
+            "1": "Uses some relevant facts but misses a cue or repeats unnecessary recall.",
+            "2": "Uses supported relevant memory at the right time and leaves unrelated facts out."
+          }
+        },
+        "knowledge_update": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": "Not in applicable_metrics, or no opportunity to assess in the supplied prefix.",
+          "anchors": {
+            "0": "Uses a superseded fact as current or loses the old/current distinction.",
+            "1": "Acknowledges an update but later mixes old and current facts.",
+            "2": "Retains the latest facts and answers historical questions using the former facts."
+          }
+        },
+        "error_recovery": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": "Not in applicable_metrics, or no opportunity to assess in the supplied prefix.",
+          "anchors": {
+            "0": "Persists with a corrected referent or role error.",
+            "1": "Acknowledges a correction but only partly applies it or repeats the error.",
+            "2": "Updates the intended referent/role and preserves it in subsequent turns."
+          }
+        },
+        "affect_alignment": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": "Not in applicable_metrics, or no opportunity to assess in the supplied prefix.",
+          "anchors": {
+            "0": "Dismisses, invents or exaggerates feelings, or gives advice after being asked not to.",
+            "1": "Acknowledges emotion but remains generic or misses a change in mood.",
+            "2": "Matches the expressed intensity and requested listening/advice mode, including changes."
+          }
+        }
+      }
+    },
+    "expression": {
+      "judge": "talky/expression-judge",
+      "metrics": {
+        "meaning_preserved": {
+          "values": [
+            0,
+            1
+          ],
+          "null_when": null,
+          "anchors": {
+            "0": "Changes, adds or drops a material meaning unit.",
+            "1": "Preserves meaning, including speaker, negation, time, degree, condition and intent."
+          }
+        },
+        "grammar_correct": {
+          "values": [
+            0,
+            1
+          ],
+          "null_when": null,
+          "anchors": {
+            "0": "Contains a grammatical error in the intended variety.",
+            "1": "Grammatical in an accepted English variety; natural spoken fragments are allowed."
+          }
+        },
+        "naturalness": {
+          "values": [
+            0,
+            1,
+            2
+          ],
+          "null_when": null,
+          "anchors": {
+            "0": "Unnatural or hard to understand.",
+            "1": "Understandable but noticeably awkward for the stated situation.",
+            "2": "A natural expression for this situation; elaborate phrasing is not required."
+          }
+        },
+        "register_fit": {
+          "values": [
+            0,
+            1
+          ],
+          "null_when": null,
+          "anchors": {
+            "0": "Tone is unsuitable for the relationship or situation.",
+            "1": "Tone suits the stated relationship and situation."
+          }
+        },
+        "unnecessary_correction": {
+          "values": [
+            0,
+            1
+          ],
+          "null_when": null,
+          "anchors": {
+            "0": "No harmful overcorrection or false claim that a valid expression is wrong.",
+            "1": "Introduces an error, changes meaning unnecessarily, or calls a valid expression incorrect."
+          }
+        },
+        "explanation_correct": {
+          "values": [
+            0,
+            1
+          ],
+          "null_when": "task is ko_to_en",
+          "anchors": {
+            "0": "Explanation is missing when required, wrong, or contradicts the actual edit.",
+            "1": "Explanation matches the edit and is accurate; does not overstate stylistic rules."
+          }
+        }
+      },
+      "derived_metrics": {
+        "expression_success": "meaning_preserved == 1 and grammar_correct == 1 and naturalness == 2 and register_fit == 1 and unnecessary_correction == 0 and (task == ko_to_en or explanation_correct == 1)"
+      },
+      "context_delivery": "Harness check: when metadata.context_required is true, record whether the intended context was actually supplied to the evaluated model. Do not award context-dependent scores using information the model could not see; mark those scores null with status insufficient_context and report the delivery failure separately."
+    }
+  }
+}

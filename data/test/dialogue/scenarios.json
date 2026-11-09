@@ -1,0 +1,1228 @@
+{
+  "version": "1.0",
+  "suite": "dialogue",
+  "source_version": "1.2",
+  "reference_status": "draft_pending_human_review",
+  "cases": [
+    {
+      "id": "d01",
+      "title": "연습한 발표를 망친 뒤 이야기하기",
+      "source_set_id": "s1",
+      "delivery": "scripted_user_turns",
+      "focus": "responsiveness",
+      "applicable_metrics": [
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d01-u01",
+          "language": "ko",
+          "user_text": "오늘 발표를 망쳤어. 주말 내내 준비했는데 머리가 하얘졌어.",
+          "expected_output": {
+            "required_behaviors": [
+              "많이 준비했는데 말이 나오지 않아 속상한 상황을 구체적으로 받아 준다."
+            ],
+            "forbidden_behaviors": [
+              "즉시 취미로 화제를 돌리거나 발표 결과를 지어내지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d01-u02",
+          "language": "ko",
+          "user_text": "발표 내용보다 사람들이 나를 이상하게 봤을까 봐 신경 쓰여.",
+          "expected_output": {
+            "required_behaviors": [
+              "걱정의 초점이 내용에서 타인의 시선으로 바뀐 것을 반영한다."
+            ],
+            "forbidden_behaviors": [
+              "아무도 이상하게 보지 않았다고 근거 없이 보장하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d01-u03",
+          "language": "en",
+          "user_text": "One colleague said the slides were clear, though.",
+          "expected_output": {
+            "required_behaviors": [
+              "슬라이드에 대한 긍정적인 피드백과 사용자의 걱정을 함께 반영한다."
+            ],
+            "forbidden_behaviors": [
+              "발표가 전부 성공했다고 결론 내리지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d01-u04",
+          "language": "ko",
+          "user_text": "지금은 연습 방법보다 그냥 이 얘기를 좀 하고 싶어.",
+          "expected_output": {
+            "required_behaviors": [
+              "해결책을 멈추고 사용자가 경험을 말할 여지를 준다."
+            ],
+            "forbidden_behaviors": [
+              "연습 계획이나 교정 강의를 나열하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d01-u05",
+          "language": "en",
+          "user_text": "The worst part was the silence when I forgot the next line.",
+          "expected_output": {
+            "required_behaviors": [
+              "말을 잊은 순간의 침묵이 가장 힘들었다는 구체 내용을 받아 준다."
+            ],
+            "forbidden_behaviors": [
+              "앞에서 이미 말한 걱정을 처음 듣는 것처럼 되묻지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d01-u06",
+          "language": "en",
+          "user_text": "Thanks. That's enough for today; please don't ask another question.",
+          "expected_output": {
+            "required_behaviors": [
+              "짧게 대화를 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "새 질문이나 새 화제를 추가하지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d02",
+      "title": "부분적으로 해결된 업무 문제 따라가기",
+      "source_set_id": "s2",
+      "delivery": "scripted_user_turns",
+      "focus": "responsiveness",
+      "applicable_metrics": [
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d02-u01",
+          "language": "en",
+          "user_text": "The demo worked, but the search results took ten seconds to appear.",
+          "expected_output": {
+            "required_behaviors": [
+              "데모의 성공과 검색 지연을 구분해 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "데모 전체가 실패했다고 바꾸지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d02-u02",
+          "language": "ko",
+          "user_text": "준은 기능보다 기다리는 시간이 더 문제라고 했어.",
+          "expected_output": {
+            "required_behaviors": [
+              "Jun이 지적한 대기 시간에 초점을 맞춘다."
+            ],
+            "forbidden_behaviors": [
+              "Jun이 기능을 싫어한다고 단정하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d02-u03",
+          "language": "ko",
+          "user_text": "코드를 고쳐 달라는 건 아니고 영어로 상황을 설명해 보고 싶어.",
+          "expected_output": {
+            "required_behaviors": [
+              "영어로 상황을 설명하는 연습을 돕는다."
+            ],
+            "forbidden_behaviors": [
+              "코드 해결책으로 전환하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d02-u04",
+          "language": "en",
+          "user_text": "The dashboard shows the right results, just not quickly enough.",
+          "expected_output": {
+            "required_behaviors": [
+              "정확성은 괜찮고 속도가 부족하다는 설명에 맞춰 이어간다."
+            ],
+            "forbidden_behaviors": [
+              "오답이 나온다고 바꾸거나 문장 교정만 하고 대화를 무시하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d02-u05",
+          "language": "en",
+          "user_text": "I also want to mention that the delay only happens on the first search.",
+          "expected_output": {
+            "required_behaviors": [
+              "최초 검색에만 발생한다는 새 범위를 반영한다."
+            ],
+            "forbidden_behaviors": [
+              "모든 검색이 느리다고 일반화하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d02-u06",
+          "language": "ko",
+          "user_text": "이제 이 얘기는 여기까지만 할게. 추가 질문 없이 마무리해 줘.",
+          "expected_output": {
+            "required_behaviors": [
+              "추가 질문 없이 짧게 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "새 연습 과제를 제시하지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d03",
+      "title": "여행에서 가족 이야기로 화제 전환",
+      "source_set_id": "s3",
+      "delivery": "scripted_user_turns",
+      "focus": "dialogue_flow",
+      "applicable_metrics": [
+        "dialogue_flow",
+        "responsiveness"
+      ],
+      "turns": [
+        {
+          "id": "d03-u01",
+          "language": "ko",
+          "user_text": "여행 준비는 잠깐 쉬고 싶어. 오늘은 집에서 저녁 먹은 얘기나 하자.",
+          "expected_output": {
+            "required_behaviors": [
+              "여행 계획을 내려놓고 오늘 저녁 이야기로 전환한다."
+            ],
+            "forbidden_behaviors": [
+              "계속 호텔이나 공항을 묻지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d03-u02",
+          "language": "en",
+          "user_text": "I made soup, but it turned out much saltier than I expected.",
+          "expected_output": {
+            "required_behaviors": [
+              "수프가 예상보다 짰다는 말에 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "식당에서 먹었다고 바꾸지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d03-u03",
+          "language": "ko",
+          "user_text": "그냥 조금 먹었어. 레시피 조언은 괜찮아.",
+          "expected_output": {
+            "required_behaviors": [
+              "조언을 원하지 않는다는 의사를 따른다."
+            ],
+            "forbidden_behaviors": [
+              "소금 줄이는 방법을 나열하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d03-u04",
+          "language": "en",
+          "user_text": "My dad laughed because he did the same thing last week.",
+          "expected_output": {
+            "required_behaviors": [
+              "아버지와 나눈 상황을 받아 대화를 확장한다."
+            ],
+            "forbidden_behaviors": [
+              "새 사실 없이 과거 추억을 공유했다고 주장하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d03-u05",
+          "language": "ko",
+          "user_text": "그런데 이제 영어 얘기는 말고 내일 산책할지 고민하는 얘기를 하고 싶어.",
+          "expected_output": {
+            "required_behaviors": [
+              "산책 고민으로 화제를 옮긴다."
+            ],
+            "forbidden_behaviors": [
+              "이전 수프 이야기를 붙잡거나 영어 학습을 강요하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d03-u06",
+          "language": "en",
+          "user_text": "I'm leaning toward a short walk. Let's leave it there for tonight.",
+          "expected_output": {
+            "required_behaviors": [
+              "짧은 산책 쪽으로 마음이 기운 상태를 받아 주고 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "다음 질문을 붙이지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d04",
+      "title": "짧은 대답과 쉬운 영어 요청",
+      "source_set_id": "s2",
+      "delivery": "scripted_user_turns",
+      "focus": "dialogue_flow",
+      "applicable_metrics": [
+        "dialogue_flow",
+        "responsiveness"
+      ],
+      "turns": [
+        {
+          "id": "d04-u01",
+          "language": "en",
+          "user_text": "Work was busy. I don't have much energy to talk.",
+          "expected_output": {
+            "required_behaviors": [
+              "부담이 적은 짧은 응답으로 이어간다."
+            ],
+            "forbidden_behaviors": [
+              "긴 설명이나 여러 질문을 한꺼번에 던지지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d04-u02",
+          "language": "ko",
+          "user_text": "쉬운 영어로 짧게 이야기해 줘. 질문은 한 번에 하나만 해 줘.",
+          "expected_output": {
+            "required_behaviors": [
+              "쉬운 어휘와 짧은 문장을 쓰고 질문은 최대 하나만 한다."
+            ],
+            "forbidden_behaviors": [
+              "복잡한 표현과 질문 목록을 쓰지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d04-u03",
+          "language": "en",
+          "user_text": "Mostly meetings.",
+          "expected_output": {
+            "required_behaviors": [
+              "회의가 많아 피곤하다는 앞선 흐름을 유지한다."
+            ],
+            "forbidden_behaviors": [
+              "회의가 많았는지 이미 답한 내용을 다시 묻지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d04-u04",
+          "language": "ko",
+          "user_text": "회사 얘기보다는 퇴근하고 쉬는 얘기를 하자.",
+          "expected_output": {
+            "required_behaviors": [
+              "퇴근 후 휴식으로 화제를 옮긴다."
+            ],
+            "forbidden_behaviors": [
+              "프로젝트 회의나 업무 일정을 계속 묻지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d04-u05",
+          "language": "ko",
+          "user_text": "오늘은 아무것도 안 하고 음악만 들을까 해.",
+          "expected_output": {
+            "required_behaviors": [
+              "음악을 들으며 쉬려는 계획에 맞춰 짧게 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "생산적인 활동을 해야 한다고 압박하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d04-u06",
+          "language": "en",
+          "user_text": "That sounds good. I'll go rest now. No more questions, please.",
+          "expected_output": {
+            "required_behaviors": [
+              "짧게 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "마지막에 후속 질문을 하지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d05",
+      "title": "필요한 때만 기억 활용하기",
+      "source_set_id": "s1",
+      "delivery": "scripted_user_turns",
+      "focus": "memory_use",
+      "applicable_metrics": [
+        "memory_use",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d05-u01",
+          "language": "ko",
+          "user_text": "금요일에 도윤이랑 저녁 먹을 때 과자도 좀 가져갈까 해.",
+          "expected_output": {
+            "required_behaviors": [
+              "도윤과의 저녁 계획에 반응하고 간식 성분 확인을 관련 있게 언급할 수 있다."
+            ],
+            "forbidden_behaviors": [
+              "호두가 든 간식을 안전하다고 권하거나 친구의 취향을 지어내지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d05-u02",
+          "language": "ko",
+          "user_text": "내가 피해야 할 견과류가 있었지?",
+          "expected_output": {
+            "required_behaviors": [
+              "원본의 호두 알레르기를 정확하게 답한다."
+            ],
+            "forbidden_behaviors": [
+              "땅콩이나 다른 사용자의 알레르기와 혼동하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d05-u03",
+          "language": "en",
+          "user_text": "Yes, walnuts. I will check the ingredients before buying anything.",
+          "expected_output": {
+            "required_behaviors": [
+              "호두 확인과 성분표 확인 계획을 받아 준다."
+            ],
+            "forbidden_behaviors": [
+              "이미 확인한 견과류를 또 묻거나 안전을 보장하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d05-u04",
+          "language": "en",
+          "user_text": "Changing the subject, I finished a funny book last night.",
+          "expected_output": {
+            "required_behaviors": [
+              "책 이야기로 자연스럽게 전환한다."
+            ],
+            "forbidden_behaviors": [
+              "관련 없는 알레르기를 다시 꺼내지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d05-u05",
+          "language": "ko",
+          "user_text": "고양이가 책 위에 올라와서 마지막 장을 못 읽었어. 이름 기억나?",
+          "expected_output": {
+            "required_behaviors": [
+              "고양이 이름 Mochi를 기억해 현재 상황과 연결한다."
+            ],
+            "forbidden_behaviors": [
+              "고양이 나이나 품종을 만들어 내지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d05-u06",
+          "language": "en",
+          "user_text": "Right, Mochi. I'll tell you about the ending another time. Let's stop here.",
+          "expected_output": {
+            "required_behaviors": [
+              "대화를 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "원본에 없는 책 결말을 추측하거나 질문을 붙이지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d06",
+      "title": "여행 기억 적용과 불필요한 회상 억제",
+      "source_set_id": "s3",
+      "delivery": "scripted_user_turns",
+      "focus": "memory_use",
+      "applicable_metrics": [
+        "memory_use",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d06-u01",
+          "language": "en",
+          "user_text": "I want to practise asking about ingredients at Saffron Table.",
+          "expected_output": {
+            "required_behaviors": [
+              "식재료를 묻는 연습에 맞춰 땅콩 알레르기를 고려한다."
+            ],
+            "forbidden_behaviors": [
+              "호두 알레르기로 혼동하거나 가게가 안전하다고 보장하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d06-u02",
+          "language": "ko",
+          "user_text": "내 알레르기를 먼저 말하고 싶은데 어떤 재료였는지 기억해?",
+          "expected_output": {
+            "required_behaviors": [
+              "땅콩 알레르기라고 답한다."
+            ],
+            "forbidden_behaviors": [
+              "다른 사용자의 개인 정보를 가져오지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d06-u03",
+          "language": "en",
+          "user_text": "Yes, peanuts. I can ask the staff before ordering.",
+          "expected_output": {
+            "required_behaviors": [
+              "직원에게 주문 전 확인하는 계획에 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "특정 메뉴에 땅콩이 없다고 추측하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d06-u04",
+          "language": "ko",
+          "user_text": "이제 음식 말고 아버지 선물 얘기를 하자. 내가 뭘 사기로 했지?",
+          "expected_output": {
+            "required_behaviors": [
+              "아버지 Daniel께 줄 나무 새 장식품을 기억한다."
+            ],
+            "forbidden_behaviors": [
+              "취미가 도예인 다른 인물과 섞지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d06-u05",
+          "language": "ko",
+          "user_text": "좋아. 그런데 오늘은 선물 계획도 그만 이야기하고 싶어. 그냥 쉬려고.",
+          "expected_output": {
+            "required_behaviors": [
+              "계획 이야기를 멈추고 쉬려는 의사를 따른다."
+            ],
+            "forbidden_behaviors": [
+              "호텔, 워크숍, 알레르기를 줄줄이 회상하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d06-u06",
+          "language": "en",
+          "user_text": "I'll take a break now. Please just say goodbye.",
+          "expected_output": {
+            "required_behaviors": [
+              "간단히 인사한다."
+            ],
+            "forbidden_behaviors": [
+              "후속 질문을 하지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d07",
+      "title": "약속 날짜와 장소 변경 유지",
+      "source_set_id": "s1",
+      "delivery": "scripted_user_turns",
+      "focus": "knowledge_update",
+      "applicable_metrics": [
+        "knowledge_update",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d07-u01",
+          "language": "ko",
+          "user_text": "도윤이랑 금요일 저녁에 만나기로 했던 거 기억나?",
+          "expected_output": {
+            "required_behaviors": [
+              "원본의 금요일 저녁 약속을 기억한다."
+            ],
+            "forbidden_behaviors": [
+              "새 날짜를 아직 반영한 척하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d07-u02",
+          "language": "en",
+          "user_text": "We moved it to Saturday. Friday no longer works.",
+          "expected_output": {
+            "required_behaviors": [
+              "최신 약속 요일을 토요일로 갱신한다."
+            ],
+            "forbidden_behaviors": [
+              "금요일과 토요일에 각각 약속이 있다고 해석하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d07-u03",
+          "language": "ko",
+          "user_text": "식당도 메이플키친 말고 River Table로 바꿨어.",
+          "expected_output": {
+            "required_behaviors": [
+              "현재 식당을 River Table로 갱신한다."
+            ],
+            "forbidden_behaviors": [
+              "이름이 비슷한 다른 원본 장소와 혼동하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d07-u04",
+          "language": "ko",
+          "user_text": "그럼 지금은 언제 어디서 만나기로 한 거야?",
+          "expected_output": {
+            "required_behaviors": [
+              "토요일에 River Table에서 만난다고 답한다."
+            ],
+            "forbidden_behaviors": [
+              "원본의 금요일이나 Maple Kitchen을 현재 약속으로 답하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d07-u05",
+          "language": "en",
+          "user_text": "Before we changed it, what was the original plan?",
+          "expected_output": {
+            "required_behaviors": [
+              "원래 계획은 금요일 저녁 Maple Kitchen이었다고 구분한다."
+            ],
+            "forbidden_behaviors": [
+              "최신 사실로 과거 기록을 덮어쓰거나 과거를 모른다고 하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d07-u06",
+          "language": "en",
+          "user_text": "Great. Remind me of the current plan once more, then let's stop.",
+          "expected_output": {
+            "required_behaviors": [
+              "토요일 River Table이라는 최신 계획을 짧게 확인하고 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "과거와 현재를 섞거나 질문을 붙이지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d08",
+      "title": "역할 변경과 과거 담당자 구분",
+      "source_set_id": "s2",
+      "delivery": "scripted_user_turns",
+      "focus": "knowledge_update",
+      "applicable_metrics": [
+        "knowledge_update",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d08-u01",
+          "language": "en",
+          "user_text": "We have a change on Harbor: Min is now the PM instead of Sera.",
+          "expected_output": {
+            "required_behaviors": [
+              "Harbor의 현재 PM을 Min으로 갱신한다."
+            ],
+            "forbidden_behaviors": [
+              "원본에 Sera라고 되어 있다는 이유로 갱신을 거부하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d08-u02",
+          "language": "ko",
+          "user_text": "세라는 이제 Harbor 자문만 맡아. Cedar 담당자는 바뀌지 않았어.",
+          "expected_output": {
+            "required_behaviors": [
+              "Sera의 현재 역할을 자문으로 구분하고 Cedar 변경을 만들지 않는다."
+            ],
+            "forbidden_behaviors": [
+              "Cedar PM이 Sera로 바뀌었다고 추론하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d08-u03",
+          "language": "ko",
+          "user_text": "그럼 지금 Harbor PM과 Cedar PM은 각각 누구야?",
+          "expected_output": {
+            "required_behaviors": [
+              "두 프로젝트 모두 현재 PM은 Min이라고 답한다."
+            ],
+            "forbidden_behaviors": [
+              "한 사람이 두 프로젝트를 맡을 수 없다고 임의로 가정하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d08-u04",
+          "language": "en",
+          "user_text": "And who was the Harbor PM before this change?",
+          "expected_output": {
+            "required_behaviors": [
+              "변경 전 Harbor PM은 Sera였다고 답한다."
+            ],
+            "forbidden_behaviors": [
+              "현재 PM Min을 과거 담당자로 답하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d08-u05",
+          "language": "en",
+          "user_text": "For the next meeting, I need the current Harbor PM, not the former one.",
+          "expected_output": {
+            "required_behaviors": [
+              "현재 담당자 Min을 기준으로 답한다."
+            ],
+            "forbidden_behaviors": [
+              "이전 담당자를 현재 역할로 되돌리지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d08-u06",
+          "language": "ko",
+          "user_text": "좋아. 지금 담당자만 한 번 확인해 주고 질문 없이 마무리하자.",
+          "expected_output": {
+            "required_behaviors": [
+              "Harbor의 현재 PM Min을 확인하고 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "이전 담당자나 새 질문을 추가하지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d09",
+      "title": "저장소 지칭을 명시적으로 정정",
+      "source_set_id": "s2",
+      "delivery": "scripted_user_turns",
+      "focus": "error_recovery",
+      "applicable_metrics": [
+        "error_recovery",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d09-u01",
+          "language": "ko",
+          "user_text": "저장소 기본 브랜치가 자꾸 헷갈려. 일단 return-flow 얘기부터 하자.",
+          "expected_output": {
+            "required_behaviors": [
+              "return-flow를 대상으로 대화를 시작한다."
+            ],
+            "forbidden_behaviors": [
+              "ledger-core를 처음부터 대상으로 삼지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d09-u02",
+          "language": "en",
+          "user_text": "What is its default branch again?",
+          "expected_output": {
+            "required_behaviors": [
+              "return-flow의 integration을 답한다."
+            ],
+            "forbidden_behaviors": [
+              "stable이라고 답하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d09-u03",
+          "language": "ko",
+          "user_text": "아, 내가 저장소 이름을 잘못 말했네. ledger-core를 물으려던 거야.",
+          "expected_output": {
+            "required_behaviors": [
+              "사용자가 대상을 ledger-core로 정정한 것을 받아 준다."
+            ],
+            "forbidden_behaviors": [
+              "모델이 앞서 실수했다고 불필요하게 주장하거나 return-flow를 고집하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d09-u04",
+          "language": "en",
+          "user_text": "For that repository, which branch should I use as the base?",
+          "expected_output": {
+            "required_behaviors": [
+              "정정된 대상 ledger-core의 stable을 답한다."
+            ],
+            "forbidden_behaviors": [
+              "integration으로 되돌아가지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d09-u05",
+          "language": "en",
+          "user_text": "And what work is that repository for?",
+          "expected_output": {
+            "required_behaviors": [
+              "ledger-core가 결제 대사 작업용임을 기억한다."
+            ],
+            "forbidden_behaviors": [
+              "환불 자동화 저장소로 혼동하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d09-u06",
+          "language": "ko",
+          "user_text": "이제 ledger-core의 용도와 기본 브랜치만 요약하고 끝내자.",
+          "expected_output": {
+            "required_behaviors": [
+              "결제 대사와 stable을 요약하고 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "return-flow의 정보를 섞거나 질문을 붙이지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d10",
+      "title": "자신과 가족의 취향 구분",
+      "source_set_id": "s3",
+      "delivery": "scripted_user_turns",
+      "focus": "error_recovery",
+      "applicable_metrics": [
+        "error_recovery",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d10-u01",
+          "language": "en",
+          "user_text": "I want to talk about the wooden bird collection.",
+          "expected_output": {
+            "required_behaviors": [
+              "나무 새 장식품 수집 이야기에 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "수집가가 사용자 자신이라고 단정하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d10-u02",
+          "language": "ko",
+          "user_text": "먼저 분명히 할게. 새 장식품 모으는 사람은 내가 아니라 아버지 Daniel이야.",
+          "expected_output": {
+            "required_behaviors": [
+              "수집 취향의 주체가 Daniel임을 명확히 반영한다."
+            ],
+            "forbidden_behaviors": [
+              "사용자의 취향으로 저장하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d10-u03",
+          "language": "ko",
+          "user_text": "나는 이번 여행에서 그분께 선물하려는 거고.",
+          "expected_output": {
+            "required_behaviors": [
+              "사용자는 선물을 준비하는 사람임을 구분한다."
+            ],
+            "forbidden_behaviors": [
+              "사용자가 선물을 받는다고 바꾸지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d10-u04",
+          "language": "en",
+          "user_text": "So who collects them, and who is buying the gift?",
+          "expected_output": {
+            "required_behaviors": [
+              "Daniel이 수집하고 사용자가 선물을 산다고 답한다."
+            ],
+            "forbidden_behaviors": [
+              "두 역할을 뒤집지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d10-u05",
+          "language": "en",
+          "user_text": "Which shop did I choose for the gift?",
+          "expected_output": {
+            "required_behaviors": [
+              "Willow Crafts라고 답한다."
+            ],
+            "forbidden_behaviors": [
+              "도예 재료를 사는 Clay House와 혼동하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d10-u06",
+          "language": "ko",
+          "user_text": "좋아. 선물 받을 사람과 물건만 확인하고 마무리하자.",
+          "expected_output": {
+            "required_behaviors": [
+              "Daniel께 드릴 나무 새 장식품을 확인하고 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "새로운 취향이나 질문을 추가하지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d11",
+      "title": "조언을 원하지 않는 상황에서 경청",
+      "source_set_id": "s1",
+      "delivery": "scripted_user_turns",
+      "focus": "affect_alignment",
+      "applicable_metrics": [
+        "affect_alignment",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d11-u01",
+          "language": "ko",
+          "user_text": "오늘은 괜히 기분이 가라앉네. 이유는 잘 모르겠어.",
+          "expected_output": {
+            "required_behaviors": [
+              "이유를 모르는 낮은 기분을 차분하게 받아 준다."
+            ],
+            "forbidden_behaviors": [
+              "질병이나 원인을 단정하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d11-u02",
+          "language": "ko",
+          "user_text": "뭘 해야 하는지 조언하지 말고 그냥 잠깐 이야기해 줘.",
+          "expected_output": {
+            "required_behaviors": [
+              "조언 없이 대화하려는 요청을 따른다."
+            ],
+            "forbidden_behaviors": [
+              "운동이나 명상 등 할 일 목록을 제시하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d11-u03",
+          "language": "en",
+          "user_text": "I sat by the window with Mochi for a while.",
+          "expected_output": {
+            "required_behaviors": [
+              "창가에서 Mochi와 보낸 시간을 구체적으로 받아 준다."
+            ],
+            "forbidden_behaviors": [
+              "곧 나아질 것이라고 보장하거나 다른 화제로 뛰지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d11-u04",
+          "language": "en",
+          "user_text": "It wasn't a terrible day. Just a quiet, low-energy one.",
+          "expected_output": {
+            "required_behaviors": [
+              "감정의 강도가 낮다는 정정을 반영한다."
+            ],
+            "forbidden_behaviors": [
+              "아주 끔찍한 하루나 극심한 고통으로 과장하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d11-u05",
+          "language": "ko",
+          "user_text": "그래도 조금 이야기하니까 괜찮네. 억지로 긍정적으로 만들 필요는 없어.",
+          "expected_output": {
+            "required_behaviors": [
+              "조금 나아진 상태를 받아 주되 긍정을 강요하지 않는다."
+            ],
+            "forbidden_behaviors": [
+              "교훈이나 과장된 칭찬을 붙이지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d11-u06",
+          "language": "en",
+          "user_text": "I'm going to rest now. No questions, just a short goodbye.",
+          "expected_output": {
+            "required_behaviors": [
+              "짧은 인사로 마무리한다."
+            ],
+            "forbidden_behaviors": [
+              "추가 질문이나 조언을 넣지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    },
+    {
+      "id": "d12",
+      "title": "걱정에서 안도와 기대감으로 변하는 감정",
+      "source_set_id": "s3",
+      "delivery": "scripted_user_turns",
+      "focus": "affect_alignment",
+      "applicable_metrics": [
+        "affect_alignment",
+        "responsiveness",
+        "dialogue_flow"
+      ],
+      "turns": [
+        {
+          "id": "d12-u01",
+          "language": "en",
+          "user_text": "I'm nervous about getting from the airport to the hotel.",
+          "expected_output": {
+            "required_behaviors": [
+              "공항에서 호텔로 이동하는 걱정에 맞춰 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "근거 없는 소요 시간이나 길 안내를 만들어 내지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d12-u02",
+          "language": "ko",
+          "user_text": "노선은 알아뒀으니까 지금은 길 안내보다 긴장되는 기분을 말하고 싶어.",
+          "expected_output": {
+            "required_behaviors": [
+              "정보 안내를 멈추고 감정을 이야기하려는 의도를 따른다."
+            ],
+            "forbidden_behaviors": [
+              "셔틀 경로를 계속 설명하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d12-u03",
+          "language": "ko",
+          "user_text": "방금 Iris가 도착하면 연락하라고 했어. 조금 안심돼.",
+          "expected_output": {
+            "required_behaviors": [
+              "새 연락 덕분에 조금 안심된 감정 변화를 반영한다."
+            ],
+            "forbidden_behaviors": [
+              "아직도 불안하기만 하다고 취급하거나 Iris가 데리러 온다고 추측하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d12-u04",
+          "language": "en",
+          "user_text": "Now I'm actually looking forward to the trip again.",
+          "expected_output": {
+            "required_behaviors": [
+              "걱정에서 기대감으로 바뀐 현재 감정에 맞춰 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "이전의 불안만 반복해서 강조하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d12-u05",
+          "language": "en",
+          "user_text": "I don't need a packing list. I just wanted to share that.",
+          "expected_output": {
+            "required_behaviors": [
+              "소식을 나누려는 목적에 맞춰 반응한다."
+            ],
+            "forbidden_behaviors": [
+              "짐 목록이나 새 준비 과제를 제시하지 않는다."
+            ]
+          }
+        },
+        {
+          "id": "d12-u06",
+          "language": "ko",
+          "user_text": "오늘은 여기까지. 짧게 인사만 해 줘.",
+          "expected_output": {
+            "required_behaviors": [
+              "짧게 인사한다."
+            ],
+            "forbidden_behaviors": [
+              "질문이나 조언을 덧붙이지 않는다."
+            ]
+          }
+        }
+      ],
+      "expected_output": {
+        "required_behaviors": [
+          "시나리오의 각 턴에서 요구한 행동을 실제로 지킨다.",
+          "사용자가 마무리를 요청하면 대화를 끝낸다."
+        ],
+        "forbidden_behaviors": [
+          "개인 정보나 함께 나눈 과거 대화를 지어내지 않는다.",
+          "미래 사용자 턴이나 채점 기준을 답변의 근거로 사용하지 않는다."
+        ]
+      }
+    }
+  ]
+}

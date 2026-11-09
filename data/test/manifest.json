@@ -1,0 +1,61 @@
+{
+  "version": "2.0",
+  "name": "Talky conversation and expression benchmark",
+  "synthetic": true,
+  "reference_status": "draft_pending_human_review",
+  "rubrics_file": "rubrics.json",
+  "calibration_file": "calibration/examples.json",
+  "suites": {
+    "memory": {
+      "case_count": 90,
+      "case_key": "questions",
+      "dataset_files": [
+        "single_hop/s1_daily_life.json",
+        "single_hop/s2_work_projects.json",
+        "single_hop/s3_travel_plans.json",
+        "multi_hop/s1_daily_life.json",
+        "multi_hop/s2_work_projects.json",
+        "multi_hop/s3_travel_plans.json",
+        "hallucination/s1_daily_life.json",
+        "hallucination/s2_work_projects.json",
+        "hallucination/s3_travel_plans.json"
+      ],
+      "source_files": [
+        "conversations/s1_daily_life.json",
+        "conversations/s2_work_projects.json",
+        "conversations/s3_travel_plans.json"
+      ],
+      "judge_name": "talky/evaluation-judge",
+      "judge_file": "../../prompts/evaluation-judge.md",
+      "execution": "independent_questions"
+    },
+    "dialogue": {
+      "case_count": 12,
+      "case_key": "cases",
+      "dataset_files": [
+        "dialogue/scenarios.json"
+      ],
+      "source_files": [
+        "conversations/s1_daily_life.json",
+        "conversations/s2_work_projects.json",
+        "conversations/s3_travel_plans.json"
+      ],
+      "judge_name": "talky/dialogue-judge",
+      "judge_file": "../../prompts/dialogue-judge.md",
+      "execution": "six_scripted_user_turns_per_case"
+    },
+    "expression": {
+      "case_count": 60,
+      "case_key": "cases",
+      "dataset_files": [
+        "language/ko_to_en.json",
+        "language/en_correction.json"
+      ],
+      "source_files": [],
+      "judge_name": "talky/expression-judge",
+      "judge_file": "../../prompts/expression-judge.md",
+      "execution": "independent_expressions"
+    }
+  },
+  "split": "development"
+}
