@@ -1,7 +1,7 @@
 import pytest
 import json
 
-from app.evaluate import Benchmark, ExpressionScores, items_for, read, review_flags, score_values, select_items
+from app.evaluate import Benchmark, ExpressionScores, items_for, judge_conflicts, read, review_flags, score_values, select_items
 from app.graph_db import recall
 
 
@@ -117,6 +117,14 @@ def test_english_only_explanation_is_reviewed_without_replacing_the_judge_grade(
     assert scores['explanation_correct'] == 1
     output['candidate']['note'] = '동사를 강조할 때 really를 써요.'
     assert review_flags('expression',output,{},scores)['explanation_korean_present'] == 1
+
+
+def test_judge_cannot_list_unsupported_claims_and_award_full_grounding():
+    verdict = {'unsupported_claims':['Your cat is named Luna.'],'faithfulness':2,'hallucination':0}
+    assert judge_conflicts('memory',verdict) == {'judge_conflict':1}
+    assert verdict['hallucination'] == 0
+    verdict.update(faithfulness=0,hallucination=1)
+    assert judge_conflicts('memory',verdict) == {'judge_conflict':0}
 
 
 def test_replay_preserves_candidate_and_provenance_without_model_or_graph(tmp_path):

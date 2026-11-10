@@ -181,3 +181,4 @@ python -m pytest tests/test_retrieval_dataset.py tests/test_conversation_dataset
 - judge 지시를 바꾸면 `--replay-dir`로 기존 응답도 같은 새 judge 버전에서 재채점한다. 새 보고서는 원래 생성 모델·프롬프트·코드 정보를 `generation_source`에 보존한다. 재생한 입력과 출력은 그대로이며 원래 실행 파일과 점수를 덮어쓰지 않는다.
 - `explanation_korean_present`는 설명에 한글이 있는지 확인하는 보조 지표다. 한국어 설명의 정확성 검사는 아니며, 영어 설명을 만점 처리한 자동 채점과 충돌하면 검토 표시를 남긴다. 물음표 검사와 함께 원래 judge 점수를 자동으로 바꾸지 않는다.
 - calibration 예시와 judge 기준 모두 사람 검수 전 초안이다. 자동 채점의 일치도가 개선돼도 사람 검증이 끝났다고 표현하지 않는다. 개선에 사용한 162개는 개발 평가 자료이며, 일반화 성능은 별도 미사용 자료에서 확인해야 한다.
+- `judge_conflict=1`은 기억 judge가 `unsupported_claims`를 적어 놓고도 `hallucination=0` 또는 `faithfulness=2`를 준 모순이다. 원래 판정을 보존하고 검토 대상으로 표시한다. `judge_success=1`은 출력 형식 검증을 통과했다는 뜻이며 의미적으로 일관된 채점의 보증이 아니다.

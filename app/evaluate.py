@@ -208,6 +208,14 @@ def review_flags(suite, output, expected, scores):
     return flags
 
 
+def judge_conflicts(suite, verdict):
+    if suite != 'memory':
+        return {}
+    # A judge cannot both list unsupported claims and declare every claim supported.
+    conflict = bool(verdict['unsupported_claims']) and (verdict['hallucination'] == 0 or verdict['faithfulness'] == 2)
+    return {'judge_conflict': int(conflict)}
+
+
 class Benchmark:
     def __init__(self, judge_model, report_dir):
         self.client = get_client()
@@ -414,6 +422,9 @@ class Benchmark:
                 scores['visible_evidence_recall'] = len(gold & visible) / len(gold)
             if not metadata.get('calibration_output'):
                 scores.update(review_flags(suite, output, expected_output, scores))
+            scores.update(judge_conflicts(suite, verdict))
+            if scores.get('judge_conflict'):
+                scores['review_required'] = 1
             self.append(suite, {'case_id':cid, 'stage':'evaluation', 'status':status, 'scores':scores, 'verdict':verdict})
             self.client.flush()
             print(f'[{suite}] {cid}: {status} {scores}', flush=True)
