@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
 from app.llm.factory import get_structured_llm
 from app.llm.prompt_registry import builtin_text, invoke_with_prompt
-from app.runtime import bounded_messages
+from app.runtime import bounded_history, bounded_messages
 
 BETTER_EXPR_PROMPT = builtin_text("talky/better-expression")
 
@@ -19,10 +19,14 @@ class BetterExpressionOutput(BaseModel):
 
 
 def _build_messages(state: GraphState) -> list:
-    return [
+    messages = [
         SystemMessage(content=state.get("common_prompt_texts", {}).get("talky/better-expression", BETTER_EXPR_PROMPT)),
-        HumanMessage(content=state["user_text"]),
     ]
+    for message in bounded_history(state.get('history') or []):
+        cls = HumanMessage if message['role'] == 'user' else AIMessage
+        messages.append(cls(content=message['content']))
+    messages.append(HumanMessage(content=state['user_text']))
+    return messages
 
 
 def better_expr_node(state: GraphState) -> dict:
