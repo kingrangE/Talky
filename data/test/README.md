@@ -182,3 +182,36 @@ python -m pytest tests/test_retrieval_dataset.py tests/test_conversation_dataset
 - `explanation_korean_present`는 설명에 한글이 있는지 확인하는 보조 지표다. 한국어 설명의 정확성 검사는 아니며, 영어 설명을 만점 처리한 자동 채점과 충돌하면 검토 표시를 남긴다. 물음표 검사와 함께 원래 judge 점수를 자동으로 바꾸지 않는다.
 - calibration 예시와 judge 기준 모두 사람 검수 전 초안이다. 자동 채점의 일치도가 개선돼도 사람 검증이 끝났다고 표현하지 않는다. 개선에 사용한 162개는 개발 평가 자료이며, 일반화 성능은 별도 미사용 자료에서 확인해야 한다.
 - `judge_conflict=1`은 기억 judge가 `unsupported_claims`를 적어 놓고도 `hallucination=0` 또는 `faithfulness=2`를 준 모순이다. 원래 판정을 보존하고 검토 대상으로 표시한다. `judge_success=1`은 출력 형식 검증을 통과했다는 뜻이며 의미적으로 일관된 채점의 보증이 아니다.
+
+## 2026-11-10 개선 실험 결과
+
+- 데이터셋은 버전 2.0의 표현 60문항, 기억 90문항, 대화 12시나리오를 모두 사용했다. 생성 모델은 `ax4-light`, 최대 출력은 768토큰으로 유지했다. 대화는 총 72회 왕복이며, 실제 평가 전용 Neo4j 적재본을 재사용했다. 원본 대화와 정답은 변경하지 않았다.
+- 개선 전 응답은 `20261109T092307Z-a6997d`, 개선 후 실행은 `20261110T055722Z-21f4ee`다. 비교용으로 개선 전 응답 162개를 `20261110T074630Z-845832`에서 재채점했다. 세 영역 모두 원래 생성 출력과 재생 출력의 완전 일치를 확인했다. 두 비교 실험의 judge는 `exaone3.5:7.8b`, 세 judge 프롬프트는 모두 v2다. 개선 후 앱 프롬프트도 staging v2로 고정했으며 production 라벨은 변경하지 않았다.
+- 개선 코드의 기준 commit은 `b965a7d`다. 아래 수치는 같은 judge에서 비교한 결과이며, 최초 v1 judge의 점수를 그대로 개선 후 점수와 비교하지 않았다. 여러 개선을 함께 적용한 전후 실험이므로 각 변경의 독립적인 기여도까지 측정한 결과는 아니다.
+
+| 지표 | 개선 전 | 개선 후 | 해석 |
+| --- | ---: | ---: | --- |
+| 정답 근거를 일부라도 검색한 문항 | 3/60 | 49/60 | 원본 메시지 ID 기준, 정답형 질문만 집계 |
+| 필요한 근거를 모두 검색한 문항 | 2/60 | 36/60 | 검색 자체의 완전 재현, 답변 정답과 별개 |
+| 문항별 근거 재현율의 평균 | 4.4% | 70.8% | 근거가 여러 개인 문항의 부분 재현 포함 |
+| 실제 모델 입력에 남은 근거 재현율의 평균 | 3.9% | 67.5% | 길이 제한 이후 입력에 원문 전체가 있는지 확인 |
+| 필요한 맥락이 전달된 표현 문항 | 12/26 | 26/26 | 맥락 전달 여부, 표현 품질 보증은 아님 |
+| 설명에 한글이 포함된 영어 교정 | 9/36 | 36/36 | 언어 보조 검사, 정확하고 자연스러운 한국어 설명인지 별도 검토 필요 |
+| 종료 응답에 물음표가 있는 시나리오 | 5/12 | 1/12 | 질문·인용·요청 위반을 의미적으로 완전 판별하는 지표는 아님 |
+| Single-Hop 완전 정답 | 2/30 | 23/30 | 자동 judge의 2점 판정, 사람 검토 전 |
+| Multi-Hop 완전 정답 | 1/30 | 13/30 | 자동 judge의 2점 판정, 사람 검토 전 |
+| Hallucination 문항의 날조 감지 | 6/30 | 2/30 | 같은 v2 judge의 잠정 판정, 낮을수록 좋음 |
+| Hallucination 문항의 확인 질문 성공 | 24/30 | 28/30 | 같은 v2 judge의 잠정 판정 |
+
+| 평가 영역 | 개선 전 응답의 v2 재채점 | 개선 후 생성·채점 |
+| --- | --- | --- |
+| 표현 지도 | [Langfuse](https://jp.cloud.langfuse.com/project/cmw8xa5hx02wcad0gsua5v11g/experiments/results?baseline=8b28bb65754b60fd) | [Langfuse](https://jp.cloud.langfuse.com/project/cmw8xa5hx02wcad0gsua5v11g/experiments/results?baseline=b64dcde497970f9d) |
+| 기억·신뢰성 | [Langfuse](https://jp.cloud.langfuse.com/project/cmw8xa5hx02wcad0gsua5v11g/experiments/results?baseline=f4aae2c7a56422df) | [Langfuse](https://jp.cloud.langfuse.com/project/cmw8xa5hx02wcad0gsua5v11g/experiments/results?baseline=22e19113bffc71aa) |
+| 대화 경험 | [Langfuse](https://jp.cloud.langfuse.com/project/cmw8xa5hx02wcad0gsua5v11g/experiments/results?baseline=7f3b3c4fce733550) | [Langfuse](https://jp.cloud.langfuse.com/project/cmw8xa5hx02wcad0gsua5v11g/experiments/results?baseline=95ccaf832d88e84a) |
+
+- 구현과 검증은 `36b5ef3`(중복 제거), `9b53a63`(원문 검색·관련도 순위), `7410f66`(교정 맥락 전달), `1eb393e`(대화·지도 지시), `84e4d8f`(채점 검토·기존 응답 재생), `b965a7d`(채점 모순 표시)로 나눠 커밋했다. 전체 회귀 검사는 84개 통과, 환경 의존 검사 20개 생략이었다.
+- 비교용 두 실험은 각각 162개 모두 생성 결과 보유·채점 완료이며 채점 오류는 0개다. 전체 324개 항목의 원격 점수와 입력·출력 저장을 대조했다. 재채점 중 DNS 오류로 전송되지 않은 `s2-sh01`의 점수 9개와 judge 기록은 로컬의 원래 판정으로 복구하고 복구 시점·사유를 표시했다. 복구 과정에서 모델을 실행하거나 원래 점수를 바꾸지 않았다.
+- 채점기의 신뢰도 문제는 남아 있다. v2 judge의 calibration 초안 점수 완전 일치는 `exaone3.5:7.8b`가 9/12, 더 큰 `ax4-light`가 8/12였다. 크기만으로 교체하지 않고 기존 모델을 양쪽 비교에 사용했다. 검증 중 중단한 부분 실행과 calibration은 위 162개 비교 집계에서 제외했다.
+- 자동 judge는 개선 전 영어 설명 27개를 한국어 설명 요구에 맞지 않는데도 만점 처리했다. 기억 판정의 내부 모순은 개선 전 36/90개, 개선 후 6/90개에 표시됐다. 개선 후 기억은 총 11개, 대화는 1개가 검토 대상으로 표시돼 있다. 이 표시의 감소만으로 실제 채점 정확도가 좋아졌다고 해석하지 않는다. 원래 점수는 보존했고, 자동 품질 점수는 잠정 결과다.
+- 개선 후에도 `d07`은 종료 요청 뒤 추가 질문을 한다. `d09`의 최종 답변은 ledger-core 설명과 기본 브랜치를 일반적인 추측으로 답하는 문제가 남아 있는데도 judge는 높은 점수를 줬다. `review_required=0`도 사람 검수를 통과했다는 뜻이 아니다. 검색에서 일부 근거를 못 찾는 11문항과 Multi-Hop 실패, 정보 갱신·정정 유지, 종료 응답을 추가로 검토해야 한다.
+- 같은 개발 자료를 보고 개선한 결과이므로 미사용 자료나 실제 사람의 선호로 일반화 성능을 확인한 실험이 아니다. 음성·UI·인증·RDB 저장을 포함한 전체 서비스 실행, 원어민 검수, production 배포는 수행하지 않았다.
