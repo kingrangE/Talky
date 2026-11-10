@@ -52,11 +52,10 @@ def memory_recall_node(state: GraphState) -> dict:
     if not user_text or not user_id:
         return {"retrieved_memory": []}
     topics = _extract_topics(user_text)
-    if not topics:
-        return {"retrieved_memory": []}
     memory = recall_related(
         user_id,
         topics,
         current_conversation_id=state.get("conversation_id"),
+        query_text=user_text,
     )
     return {"retrieved_memory": memory, "memory_topics": topics}

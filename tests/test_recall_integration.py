@@ -25,7 +25,7 @@ def graph(monkeypatch):
                    (oc:Conversation {id:$ocid, test_scope:$scope}),
                    (a:Topic {name:$a, test_scope:$scope}),
                    (b:Topic {name:$b, test_scope:$scope}),
-                   (old:Message {id:$old, text:'Blue Bookshop is in Yeonnam-dong.', role:'user', lang:'en', ts:datetime('2025-01-01T00:00:00Z'), test_scope:$scope}),
+                   (old:Message {id:$old, text:'파란책방은 연남동에 있어요. Blue Bookshop is in Yeonnam-dong.', role:'user', lang:'en', ts:datetime('2025-01-01T00:00:00Z'), test_scope:$scope}),
                    (recent:Message {id:$recent, text:'I bought coffee today.', role:'user', lang:'en', ts:datetime('2025-01-02T00:00:00Z'), test_scope:$scope}),
                    (private:Message {id:$private, text:'Blue Bookshop is my private memory.', role:'user', lang:'en', ts:datetime(), test_scope:$scope}),
                    (u)-[:HAD]->(c), (other)-[:HAD]->(oc),
@@ -47,3 +47,15 @@ def test_paths_do_not_duplicate_messages_or_mix_users(graph):
     assert len(ids) == len(set(ids)) == 2
     assert graph+'-private' not in ids
     assert recall.recall_related(graph, [graph+'/books'], current_conversation_id=graph+'-conversation', raise_errors=True) == []
+
+
+@pytest.mark.parametrize('question', ['Which neighborhood is Blue Bookshop in?', '파란책방은 어느 동네에 있나요?'])
+def test_text_match_recovers_older_evidence_without_matching_topics(graph, question):
+    rows = recall.recall_related(graph, ['unmatched-topic'], query_text=question, limit=1, raise_errors=True)
+    assert [row['message_id'] for row in rows] == [graph+'-old']
+    assert recall.recall_related(graph, [], query_text=question, current_conversation_id=graph+'-conversation', raise_errors=True) == []
+
+
+def test_relevance_precedes_recency_with_graph_candidates(graph):
+    rows = recall.recall_related(graph, [graph+'/books'], query_text='Where is Blue Bookshop?', limit=1, raise_errors=True)
+    assert rows[0]['message_id'] == graph+'-old'

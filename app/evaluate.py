@@ -269,10 +269,10 @@ class Benchmark:
 
     def retrieve(self, set_id, question, case_id):
         topics = _extract_topics(question, raise_errors=True)
-        memory = recall_related(f'{self.namespace}:{set_id}', [f'{self.namespace}/{topic}' for topic in topics], current_conversation_id=f'{self.namespace}:trial:{case_id}', raise_errors=True)
+        memory = recall_related(f'{self.namespace}:{set_id}', [f'{self.namespace}/{topic}' for topic in topics], current_conversation_id=f'{self.namespace}:trial:{case_id}', raise_errors=True, query_text=question)
         for item in memory:
             item['source_message_id'] = item['message_id'].split(':', 1)[1]
-            item['topic'] = item['topic'].split('/', 1)[1]
+            item['topic'] = item['topic'].rsplit('/', 1)[-1]
             if item.get('ts') is not None:
                 item['ts'] = str(item['ts'])
         return memory, topics
