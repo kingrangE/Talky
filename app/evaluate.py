@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 import uuid
@@ -168,7 +169,7 @@ def score_values(suite, verdict, metadata, inputs, expected):
     if suite != 'memory' and verdict.get('status') == 'invalid_output':
         scores = {key: None for key in scores}
     if suite == 'expression' and metadata.get('context_required') and not metadata.get('context_provided', inputs['task'] == 'ko_to_en'):
-        # The existing correction node receives no history; do not credit hidden context.
+        # Missing context is an input-delivery failure, not a hidden source of correct meaning.
         for name in ('meaning_preserved', 'register_fit'):
             scores[name] = None
     if suite == 'expression':
@@ -199,6 +200,11 @@ def review_flags(suite, output, expected, scores):
         flags['closing_question_mark'] = int('?' in output['turns'][-1]['reply'])
         if flags['closing_question_mark'] and scores.get('dialogue_flow') == 2:
             flags['review_required'] = 1
+    if suite == 'expression' and 'note' in output.get('candidate', {}):
+        # shortcut: Hangul presence detects plainly English-only notes, not explanation quality.
+        flags['explanation_korean_present'] = int(bool(re.search('[가-힣]', output['candidate']['note'])))
+        if not flags['explanation_korean_present'] and scores.get('explanation_correct') == 1:
+            flags['review_required'] = 1
     return flags
 
 
@@ -223,6 +229,7 @@ class Benchmark:
         self.namespace = 'eval-' + hashlib.sha256(json.dumps(index_spec, sort_keys=True).encode()).hexdigest()[:16]
         self.graph_ready = False
         self.judges = {}
+        self.replay_outputs = {}
         metadata = {'run_id': self.run_id, 'dataset_version': self.manifest['version'], 'model': self.config.OPENAI_MODEL if self.config.use_openai else self.config.MODEL_NAME, 'judge_model': judge_model, 'prompt_refs': self.refs, 'scope': 'text_components; memory_and_dialogue_use_actual_neo4j_retrieval', 'reference_status': self.manifest['reference_status']}
         metadata['code_commit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
         metadata['code_dirty'] = subprocess.run(['git', 'diff', '--quiet'], cwd=ROOT).returncode != 0
@@ -234,6 +241,19 @@ class Benchmark:
     def append(self, suite, row):
         with (self.report_dir / f'{suite}.jsonl').open('a') as handle:
             handle.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')
+
+    def load_replay(self, directory, suites):
+        original = json.loads((directory/'run.json').read_text())
+        if original['dataset_version'] != self.manifest['version']:
+            raise ValueError('Replay dataset version differs from the current benchmark')
+        for suite in suites:
+            for line in (directory/f'{suite}.jsonl').read_text().splitlines():
+                row = json.loads(line)
+                if row['stage'] == 'generation':
+                    self.replay_outputs[(suite,row['case_id'])] = row['output']
+        self.metadata.update(execution_mode='judge_replay', generation_source=original,
+                             generation_source_directory=str(directory.resolve()))
+        (self.report_dir/'run.json').write_text(json.dumps(self.metadata,ensure_ascii=False,indent=2)+'\n')
 
     def prepare_graph(self):
         if self.graph_ready:
@@ -299,6 +319,11 @@ class Benchmark:
     def task(self, *, item, **kwargs):
         inputs, metadata = item['input'], item['metadata']
         suite, cid = metadata['suite'], metadata['case_id']
+        if self.replay_outputs:
+            output = copy.deepcopy(self.replay_outputs[(suite,cid)])
+            self.append(suite, {'case_id':cid,'stage':'generation','output':output,'replayed':True})
+            print(f'[{suite}] {cid}: replaying saved output; no generation', flush=True)
+            return output
         if metadata.get('calibration_output') is not None:
             print(f'[{suite}] {cid}: using calibration candidate', flush=True)
             return metadata['calibration_output']
@@ -342,7 +367,9 @@ class Benchmark:
             payload['source_conversation_for_judge_only'] = self.sources[input['set_id']]
         elif suite == 'dialogue':
             payload['conversation_to_evaluate'] = [{'turn_id':t['turn_id'],'user':t['user_text'],'tutor':t['reply']} for t in output['turns']]
-            payload['model_visible_context_by_turn'] = {t['turn_id']:t['model_visible_input'] for t in output['turns']}
+            # The transcript already contains the history prefix; avoid repeating it six times.
+            payload['model_visible_system_context_by_turn'] = {t['turn_id']:[m for m in t['model_visible_input'] if m.get('role') == 'system'] for t in output['turns']}
+            payload['history_is_transcript_prefix'] = True
             payload['applicable_metrics'] = expected_output['applicable_metrics']
             if output.get('evaluation_scope'):
                 payload['evaluation_scope'] = output['evaluation_scope']
@@ -397,7 +424,11 @@ class Benchmark:
             return [Evaluation(name='generation_success',value=1), Evaluation(name='judge_success',value=0,comment=type(exc).__name__)]
 
     def run(self, suite, items):
-        if suite not in ('expression', 'calibration'):
+        if self.replay_outputs:
+            missing = [item['metadata']['case_id'] for item in items if (suite,item['metadata']['case_id']) not in self.replay_outputs]
+            if missing:
+                raise ValueError(f'Replay is missing generated outputs: {missing}')
+        if suite not in ('expression', 'calibration') and not self.replay_outputs:
             self.prepare_graph()
         result = self.client.run_experiment(name=f'talky-{suite}-v2', run_name=f'{self.run_id}-{suite}', data=items, task=self.task, evaluators=[self.evaluate], max_concurrency=1, metadata={'run_id':self.run_id,'dataset_version':'2.0','model':self.metadata['model'],'judge_model':self.judge_model,'code_commit':self.metadata['code_commit']})
         self.client.flush()
@@ -450,13 +481,18 @@ def main():
     parser.add_argument('--limit',type=int)
     parser.add_argument('--cases',help='Comma-separated case IDs within one suite')
     parser.add_argument('--judge-model',required=True)
+    parser.add_argument('--replay-dir',type=Path,help='Rejudge saved outputs without generation or retrieval')
     args = parser.parse_args()
     if args.limit is not None and args.limit < 1:
         parser.error('--limit must be positive')
     if args.cases and args.suite == 'all':
         parser.error('--cases needs a single suite')
+    if args.replay_dir and args.suite == 'calibration':
+        parser.error('Calibration already uses fixed candidates; it does not need --replay-dir')
     benchmark = Benchmark(args.judge_model, ROOT/'.data/evaluations')
     suites = ['expression','memory','dialogue'] if args.suite == 'all' else [args.suite]
+    if args.replay_dir:
+        benchmark.load_replay(args.replay_dir,suites)
     try:
         for suite in suites:
             data = benchmark.calibration_items() if suite == 'calibration' else items_for(suite)

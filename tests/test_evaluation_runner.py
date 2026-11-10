@@ -1,4 +1,5 @@
 import pytest
+import json
 
 from app.evaluate import Benchmark, ExpressionScores, items_for, read, review_flags, score_values, select_items
 from app.graph_db import recall
@@ -106,3 +107,36 @@ def test_question_in_scripted_goodbye_flags_conflicting_flow_score():
     assert flags == {'review_required':1, 'closing_question_mark':1}
     output['turns'][0]['reply'] = 'Take care!'
     assert review_flags('dialogue',output,{}, {'dialogue_flow':2})['closing_question_mark'] == 0
+
+
+def test_english_only_explanation_is_reviewed_without_replacing_the_judge_grade():
+    scores = {'explanation_correct':1}
+    output = {'candidate':{'suggestion':'I really like it.','note':'Use really before the verb.'}}
+    flags = review_flags('expression',output,{},scores)
+    assert flags == {'review_required':1,'explanation_korean_present':0}
+    assert scores['explanation_correct'] == 1
+    output['candidate']['note'] = '동사를 강조할 때 really를 써요.'
+    assert review_flags('expression',output,{},scores)['explanation_korean_present'] == 1
+
+
+def test_replay_preserves_candidate_and_provenance_without_model_or_graph(tmp_path):
+    source = tmp_path/'source'
+    source.mkdir()
+    original = {'run_id':'old-run','dataset_version':'2.0','model':'original-model','prompt_refs':{'test':{'version':1}}}
+    (source/'run.json').write_text(json.dumps(original))
+    output = {'candidate':{'english_expression':'Saved output'},'context_provided':True,'model_visible_input':[]}
+    (source/'expression.jsonl').write_text(json.dumps({'stage':'generation','case_id':'ko-01','output':output})+'\n')
+    benchmark = Benchmark.__new__(Benchmark)
+    benchmark.manifest = read('manifest.json')
+    benchmark.report_dir = tmp_path/'new'
+    benchmark.report_dir.mkdir()
+    benchmark.metadata = {}
+    benchmark.replay_outputs = {}
+    benchmark.load_replay(source,['expression'])
+    item = next(i for i in items_for('expression') if i['metadata']['case_id']=='ko-01')
+    assert benchmark.task(item=item) == output
+    assert benchmark.metadata['generation_source'] == original
+    assert json.loads((source/'run.json').read_text()) == original
+    missing = next(i for i in items_for('expression') if i['metadata']['case_id']=='ko-02')
+    with pytest.raises(ValueError,match='missing generated outputs'):
+        benchmark.run('expression',[missing])
