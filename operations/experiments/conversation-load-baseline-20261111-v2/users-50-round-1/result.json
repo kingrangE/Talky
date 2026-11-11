@@ -1,0 +1,936 @@
+{
+  "users": 50,
+  "workers": 4,
+  "mode": "real",
+  "horizon_seconds": 90,
+  "elapsed_seconds": 92.13676112500252,
+  "summary": {
+    "attempted": 50,
+    "accepted": 32,
+    "completed": 4,
+    "error_or_harness_timeout_count": 46,
+    "error_or_harness_timeout_rate": 0.92,
+    "admission_rejections": 18,
+    "terminal_failures": 0,
+    "harness_timeouts": 28,
+    "text_p95_seconds": null,
+    "text_p99_seconds": null,
+    "text_observed_count": 6,
+    "text_max_observed_seconds": 84.01100453799882,
+    "text_over_10s_or_unavailable": 50,
+    "full_completion_p95_seconds": 82.84957132999261,
+    "audio_completed": 4,
+    "correction_degraded": 0,
+    "limits_met_in_sample": false,
+    "qualification": "fail",
+    "slo_pass": false,
+    "qualification_note": "Browser/HTTP rendering and sustained 50-user sessions require a separate deployment test; synthetic results never qualify."
+  },
+  "queue_peaks": {
+    "queued": 32,
+    "processing": 4
+  },
+  "queue_samples": [
+    {
+      "elapsed": 0.572,
+      "queued": 7,
+      "processing": 0
+    },
+    {
+      "elapsed": 1.584,
+      "queued": 32,
+      "processing": 0
+    },
+    {
+      "elapsed": 2.593,
+      "queued": 32,
+      "processing": 0
+    },
+    {
+      "elapsed": 3.604,
+      "queued": 32,
+      "processing": 0
+    },
+    {
+      "elapsed": 4.616,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 5.631,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 6.646,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 7.664,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 8.695,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 9.727,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 10.779,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 11.805,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 12.819,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 13.837,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 14.856,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 15.891,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 16.952,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 17.97,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 18.988,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 20.003,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 21.094,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 22.107,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 23.138,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 24.152,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 25.173,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 26.295,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 27.365,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 28.646,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 29.712,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 31.281,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 32.39,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 33.472,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 34.55,
+      "queued": 28,
+      "processing": 4
+    },
+    {
+      "elapsed": 35.617,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 36.749,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 37.794,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 38.829,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 39.882,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 41.002,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 42.143,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 43.197,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 44.222,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 45.315,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 46.504,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 47.551,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 48.59,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 49.615,
+      "queued": 27,
+      "processing": 4
+    },
+    {
+      "elapsed": 50.78,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 51.809,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 52.825,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 53.852,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 54.862,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 56.184,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 57.432,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 58.712,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 60.215,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 61.546,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 62.924,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 64.114,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 65.199,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 66.42,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 67.779,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 68.833,
+      "queued": 26,
+      "processing": 4
+    },
+    {
+      "elapsed": 69.873,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 70.928,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 71.986,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 73.053,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 74.083,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 75.095,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 76.386,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 77.476,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 78.53,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 79.729,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 80.765,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 81.875,
+      "queued": 25,
+      "processing": 4
+    },
+    {
+      "elapsed": 82.922,
+      "queued": 24,
+      "processing": 4
+    },
+    {
+      "elapsed": 84.1,
+      "queued": 24,
+      "processing": 4
+    },
+    {
+      "elapsed": 85.179,
+      "queued": 24,
+      "processing": 4
+    },
+    {
+      "elapsed": 86.477,
+      "queued": 24,
+      "processing": 4
+    },
+    {
+      "elapsed": 88.002,
+      "queued": 24,
+      "processing": 4
+    },
+    {
+      "elapsed": 89.188,
+      "queued": 24,
+      "processing": 4
+    }
+  ],
+  "rows": [
+    {
+      "index": 0,
+      "user_id": "949fb5f7-650c-4c33-9033-f421f0de2985",
+      "conversation_id": "0748ba13-647b-4849-8683-489f30fa458f",
+      "request_id": "058a619b-cb12-4f76-8d97-929f547e71b0",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.9668584589962848
+    },
+    {
+      "index": 1,
+      "user_id": "ba176a32-7cf2-41b7-ae94-8dc66795b82b",
+      "conversation_id": "a8feebd8-1e71-4d32-b1b2-a9492f568028",
+      "request_id": "6b76644e-0ff0-4b3a-a508-059cd24eaf2b",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.9334959590050858
+    },
+    {
+      "index": 2,
+      "user_id": "77a973b5-3ec3-4197-9e23-913a8d6c32ef",
+      "conversation_id": "ac9cba79-8996-47a5-bcf2-c6813ee47962",
+      "request_id": "5da931aa-750a-4b98-a7fc-ae1c0a57eb3d",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.3160039170033997
+    },
+    {
+      "index": 3,
+      "user_id": "7e6c53e2-7552-4dea-baca-059113544482",
+      "conversation_id": "05ce9c33-a23a-4b81-b797-f8e66a957d59",
+      "request_id": "7dcf38d6-e340-479a-a4ac-2dc730260b1d",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.8575158339954214
+    },
+    {
+      "index": 4,
+      "user_id": "363bfe36-567e-4304-a658-29d155cc2c17",
+      "conversation_id": "5fe2e160-cd1e-43a9-8c25-be4465237ee5",
+      "request_id": "50ae5c11-2b17-441f-87bd-d0f53cf9a64c",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.8861432089906884
+    },
+    {
+      "index": 5,
+      "user_id": "153295c4-13a2-44b2-b90b-48a7adc72c31",
+      "conversation_id": "e7f791ac-8f16-4c3d-beff-d595f7f2e340",
+      "request_id": "4b49cc40-64a0-44c1-989f-27e4bd71c536",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 1.102313042996684
+    },
+    {
+      "index": 6,
+      "user_id": "b38f29c1-5f29-4c45-b76f-3badfa64ac69",
+      "conversation_id": "969d6091-a6c8-4ddc-b0ce-5f30533f7881",
+      "request_id": "ad2908c6-4945-4026-bb82-513e08e87701",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 1.075301542005036
+    },
+    {
+      "index": 7,
+      "user_id": "433b55c3-731b-4e8c-a192-5d22da92ae1c",
+      "conversation_id": "8bf889b4-797f-4920-8be7-3a077dcbf96b",
+      "request_id": "3f8cf0cd-f50f-4d1e-8ae7-de8ccb218260",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.3237125000014203
+    },
+    {
+      "index": 8,
+      "user_id": "67e6352c-b6e0-4902-b3ab-b021b80e6767",
+      "conversation_id": "3531dc7c-899b-4fa9-89cc-bf1ad55c3c63",
+      "request_id": "b04a5842-dffa-4df1-81a5-19d6cbba489e",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.9137736669945298
+    },
+    {
+      "index": 9,
+      "user_id": "4cb472d8-d2bb-42b0-8b17-b289d376e26a",
+      "conversation_id": "f6be8c55-f135-41a8-9349-7d58641fa6b5",
+      "request_id": "0715c8e1-2e44-45e9-91c0-29b6ee3b0d7e",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.414735209007631
+    },
+    {
+      "index": 10,
+      "user_id": "466d2472-ef38-492e-8da1-89c552637ab3",
+      "conversation_id": "0a8d3651-c8ca-4e10-9b36-df148a9d80eb",
+      "request_id": "50e707c0-ec93-4e03-b69c-f087321c1687",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.3850693749991478
+    },
+    {
+      "index": 11,
+      "user_id": "33b4f3b8-bc71-4c06-ba6d-4fec3be693a4",
+      "conversation_id": "fff395c6-3f04-4098-8aed-a9a9da1be5ab",
+      "request_id": "805fc470-7dc9-469d-adf2-1bffdea6ee3f",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.2103411669959314
+    },
+    {
+      "index": 12,
+      "user_id": "a707a493-69c2-4f88-9555-f4bc0f3dd8b8",
+      "conversation_id": "497f436b-a5dc-4b11-95bf-d9464f8b7630",
+      "request_id": "a210792e-0ac4-4fa7-8e5a-cc2057b9b4a0",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.311097793004592
+    },
+    {
+      "index": 13,
+      "user_id": "4856b09f-5279-4cda-ba77-565fb548d29c",
+      "conversation_id": "873c861a-1b78-46f1-b066-ea9ed631b775",
+      "request_id": "48bda4bc-93a2-44a6-8631-b3b2c1369e22",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.7130312090012012
+    },
+    {
+      "index": 14,
+      "user_id": "902382f5-5473-4f31-848c-17b6919534e7",
+      "conversation_id": "202ec08d-a289-49eb-9125-554b00c58de2",
+      "request_id": "27cdedea-a820-4648-871a-423ea28eb204",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.3084089169860817
+    },
+    {
+      "index": 15,
+      "user_id": "e0ab1f8a-4bf4-4923-9bc2-0d125c00e42f",
+      "conversation_id": "b3e5f7f2-0eea-4387-ae80-9227b8f62961",
+      "request_id": "bf55e56c-a28e-4dd1-bfb1-e42edc2a92ad",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.2875289999938104
+    },
+    {
+      "index": 16,
+      "user_id": "337ab922-9626-4b64-9cc9-011398448b67",
+      "conversation_id": "99ce484a-9d08-41c1-b904-a5ba37ff8171",
+      "request_id": "9307bed4-170a-4dd8-b13b-b91ca7753c44",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.3002577089937404
+    },
+    {
+      "index": 17,
+      "user_id": "dd351b23-14d8-416c-8951-38030576f2c9",
+      "conversation_id": "8701e285-9089-42c6-99cf-ac80c122642d",
+      "request_id": "57f59cfe-c051-4f05-8f29-b6589529ac49",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.6170676669862587
+    },
+    {
+      "index": 18,
+      "user_id": "199bfa39-1bc0-42d0-82b4-9f7dd349692a",
+      "conversation_id": "3cdef8e5-8e3b-4acb-889b-01406811704c",
+      "request_id": "eee2f4fb-2f9e-43a9-a380-6057dacb9e86",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 1.1553544589987723
+    },
+    {
+      "index": 19,
+      "user_id": "a9acebb6-a3e1-426f-ad28-d2a85478d079",
+      "conversation_id": "5e7bcdd5-5b29-4c73-a860-65006d4e9b5a",
+      "request_id": "b10a4864-ae5c-40d7-9baa-31be797a22cb",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.6945484169991687
+    },
+    {
+      "index": 20,
+      "user_id": "877e11fc-24ab-40cc-9536-4c38e890adb7",
+      "conversation_id": "5f3e5946-fef4-48de-8146-c1db153dc2ac",
+      "request_id": "d729f348-3949-4aa0-af49-59a3db863561",
+      "outcome": "completed",
+      "accepted": true,
+      "admission_seconds": 0.3189912079978967,
+      "text_seconds": 40.92990314400231,
+      "attempts": 1,
+      "error_code": null,
+      "completion_seconds": 82.84957132999261,
+      "audio_completed": true,
+      "correction_degraded": false
+    },
+    {
+      "index": 21,
+      "user_id": "96c7dc25-a22c-437a-9d74-7da5136ba3a7",
+      "conversation_id": "ad075e75-953a-4510-bc0f-eb0107a9294d",
+      "request_id": "e28dc9da-6d46-414d-8451-c7c7d55f38c4",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.5482887499965727
+    },
+    {
+      "index": 22,
+      "user_id": "12b1a845-f730-4e25-a555-a739a2092df6",
+      "conversation_id": "0c01b6ad-f243-4c58-9337-cfce8cc1ba6b",
+      "request_id": "a858a271-35a1-4e8d-870d-01d7ed33bf7e",
+      "outcome": "completed",
+      "accepted": true,
+      "admission_seconds": 0.2632721669942839,
+      "text_seconds": 37.7027071420016,
+      "attempts": 1,
+      "error_code": null,
+      "completion_seconds": 69.7819200320082,
+      "audio_completed": true,
+      "correction_degraded": false
+    },
+    {
+      "index": 23,
+      "user_id": "7c180968-c8c8-494f-bf1b-358fde08cfc8",
+      "conversation_id": "4ca8b398-1b9d-4b5a-b8e2-f70678ca53db",
+      "request_id": "4607aaad-9be6-465b-88d1-482f61cfb665",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.5574061259976588
+    },
+    {
+      "index": 24,
+      "user_id": "15b2ddee-f3dd-4aa3-931c-ad3459459b79",
+      "conversation_id": "fbf9018d-6fb8-4b7c-a51f-371ee6b20c31",
+      "request_id": "e256780f-0399-42ac-9b3f-cc8a02a84a87",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.426290417992277
+    },
+    {
+      "index": 25,
+      "user_id": "4043b458-7c28-42bc-b6a8-8b468749790b",
+      "conversation_id": "a06412af-b65b-40f2-a8f0-63682b0ff6d3",
+      "request_id": "eb3a5e7f-3a1f-4070-8515-a1c94b88ce40",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.2291374589985935
+    },
+    {
+      "index": 26,
+      "user_id": "6695fbd2-a098-4c39-b8e1-43ec36895410",
+      "conversation_id": "0c5d9717-e1f4-4257-a9f2-82ae6ee82799",
+      "request_id": "5ce3cf73-172d-436e-bf1d-6669a7ddb9dd",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.6594985419942532
+    },
+    {
+      "index": 27,
+      "user_id": "c938fe3a-8ae7-4088-8b7d-6795785963ee",
+      "conversation_id": "2c486df4-b758-480d-ae93-c4d6970f8c2b",
+      "request_id": "14754ad9-2f96-483e-82b1-2e7894f1a2b4",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.7928498759865761
+    },
+    {
+      "index": 28,
+      "user_id": "40c0ceee-3df4-4603-882c-624d414323c5",
+      "conversation_id": "5e3b69b5-03ab-445b-b1f2-e088f78de425",
+      "request_id": "76eb22c6-ed2f-46a9-b806-ce84ddd5e4d8",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.5176339589961572
+    },
+    {
+      "index": 29,
+      "user_id": "c283780f-e988-49bb-bc19-c513894d2727",
+      "conversation_id": "118ad522-a03c-490b-9170-50e828d0e445",
+      "request_id": "4740c250-a6b0-4d2a-8718-c964267f52f7",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.198157958991942
+    },
+    {
+      "index": 30,
+      "user_id": "0b47b710-0944-481b-a75d-b8572d64b7aa",
+      "conversation_id": "992d9c7a-41f2-41d4-bfc0-368f41c010bb",
+      "request_id": "3adf6996-fc02-4e9e-a72c-6a5ef050c06e",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.3697436669899616
+    },
+    {
+      "index": 31,
+      "user_id": "99a6dcdd-eeec-4ac2-9c9f-46d626e9157d",
+      "conversation_id": "358c6c3c-50ef-448f-8cbb-7fd24f383d2c",
+      "request_id": "6b53c95e-3dce-45e7-b6a1-581a86675cfa",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.731487458004267
+    },
+    {
+      "index": 32,
+      "user_id": "b5255a0f-2a1c-42b1-bb93-036cb9a65019",
+      "conversation_id": "66fa21e2-7cb1-4eae-b230-a912d3f87ef1",
+      "request_id": "12d84f1e-9d7f-4510-b43b-5427c437f553",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 1.1224510419997387
+    },
+    {
+      "index": 33,
+      "user_id": "826c4d6b-5b99-4c89-a1ba-387040c4385e",
+      "conversation_id": "8f0755c5-3608-4ad3-92dd-1602e5ca2bbc",
+      "request_id": "a8ca3e15-f012-4def-a41a-d41cd1cf0ba1",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.40476979200320784,
+      "text_seconds": 84.01100453799882
+    },
+    {
+      "index": 34,
+      "user_id": "7f975bbf-4a13-49b7-b468-add53bb57c8a",
+      "conversation_id": "96ccee23-bf49-4634-988c-4100d880c14d",
+      "request_id": "99d921f5-b3f2-4532-b860-2aa6180afa55",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 1.170874499992351
+    },
+    {
+      "index": 35,
+      "user_id": "c5280c16-2c4b-4cb0-932c-c9d981d8c9ad",
+      "conversation_id": "779a715f-4f53-4f1d-a94b-31431158c1c6",
+      "request_id": "72a6a21c-d88e-4c8c-bd9d-175645756d08",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.6705855839973083
+    },
+    {
+      "index": 36,
+      "user_id": "84eab57a-0604-4249-b553-59a6b50019d4",
+      "conversation_id": "dc4683e2-a383-451a-a6c5-f5f6f93d589f",
+      "request_id": "9f2b46bc-6cfe-40fb-9424-1bdc0369d09a",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.6059544579911744
+    },
+    {
+      "index": 37,
+      "user_id": "52ebb8be-38e7-43bb-b5dc-34481fc723ec",
+      "conversation_id": "cbf48028-0009-4f57-853d-e22641003a07",
+      "request_id": "5ebe1a19-becd-4fb7-93ad-5e651ec7f9ed",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.238610541986418
+    },
+    {
+      "index": 38,
+      "user_id": "8c72b706-8719-41c6-a50f-46524dd9006c",
+      "conversation_id": "eae67403-370a-49c0-9b25-724dd2ba7a6c",
+      "request_id": "2746bdd2-c5e7-4ec4-9826-f3ab2eae9da6",
+      "outcome": "completed",
+      "accepted": true,
+      "admission_seconds": 0.2504544589901343,
+      "text_seconds": 28.56846176298859,
+      "attempts": 1,
+      "error_code": null,
+      "completion_seconds": 50.701994064991595,
+      "audio_completed": true,
+      "correction_degraded": false
+    },
+    {
+      "index": 39,
+      "user_id": "79a7fdca-9116-4b07-83c5-b7c88e7d06b6",
+      "conversation_id": "51ef6831-6e90-4a33-8cfd-c73678c9072b",
+      "request_id": "ae0b1de4-1b65-4c48-b1be-ff0ecef6b773",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 1.1363602500059642
+    },
+    {
+      "index": 40,
+      "user_id": "c2c79a07-d4e9-4156-b18f-adda1421fc0e",
+      "conversation_id": "5adf4ae7-b77f-4945-9e71-99b9b16f2d74",
+      "request_id": "7b2571aa-25a3-4640-8512-9521093423e9",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.200272624992067
+    },
+    {
+      "index": 41,
+      "user_id": "a75b3bed-7ba4-4f0a-8d11-75507dd2b56f",
+      "conversation_id": "ca2e6a0d-4878-4e74-8936-4c897356dfac",
+      "request_id": "dc7f30d8-7391-4e1c-ab2f-b121690fc2d7",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 1.0358995839924319
+    },
+    {
+      "index": 42,
+      "user_id": "223574b2-521a-497f-b898-e16e85753b4f",
+      "conversation_id": "d07b6c58-d37f-4278-ac9f-7ce6860417b8",
+      "request_id": "ee5584be-95b6-4f9f-8f07-cf2f41f25334",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.2186412929877406
+    },
+    {
+      "index": 43,
+      "user_id": "cdddfaec-8675-4778-b2bd-b9e42ffb3044",
+      "conversation_id": "09bbea7b-446a-417f-9f99-2921b31eabc3",
+      "request_id": "228b57bd-df67-4e1e-98d3-cb18eaf05139",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.3554943750059465,
+      "text_seconds": 70.84545869800786
+    },
+    {
+      "index": 44,
+      "user_id": "7296b256-7252-4dcb-a185-330d9baed829",
+      "conversation_id": "140ea5f6-fddd-40c5-ad31-213e9a1a016c",
+      "request_id": "b72d7af1-f929-427c-81c9-affbe94c1b57",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.701499501010403
+    },
+    {
+      "index": 45,
+      "user_id": "d02efd89-dc8e-4caf-8541-b1cdc84de3ec",
+      "conversation_id": "e4fed5f3-0bb7-48bf-b0e4-627209bc23a8",
+      "request_id": "88449a59-c714-470b-bf4a-e86a23faaf8e",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.8142758330068318
+    },
+    {
+      "index": 46,
+      "user_id": "35cd48c7-31cc-4aac-869f-1bb9f57fb47e",
+      "conversation_id": "e4a8f4fc-e708-423a-a63a-d7833b5ecfe1",
+      "request_id": "462c9a1c-23a6-4573-9201-b112aa6a9911",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.3745388759998605
+    },
+    {
+      "index": 47,
+      "user_id": "83f0ba43-0266-4e2b-9527-4880afdd387a",
+      "conversation_id": "30f987e3-01c2-431f-8568-a46c21d09175",
+      "request_id": "afbd16d7-7e50-4e31-b028-2e6ec0e9237e",
+      "outcome": "rejected",
+      "accepted": false,
+      "error_type": "ValueError",
+      "admission_seconds": 1.4364136250078445
+    },
+    {
+      "index": 48,
+      "user_id": "8087974a-1d2b-4486-8356-b033b591d945",
+      "conversation_id": "c62ad2b9-e83e-442a-ba09-624a30738586",
+      "request_id": "c1a6a788-4d02-483b-b606-92d65374f243",
+      "outcome": "harness_timeout",
+      "accepted": true,
+      "admission_seconds": 0.476980374995037
+    },
+    {
+      "index": 49,
+      "user_id": "de05fc2c-50ba-4551-9ca3-b1a979a946a9",
+      "conversation_id": "8ca69749-45ae-4b99-adc0-7be9960fba92",
+      "request_id": "502aeca3-cd34-4779-95a2-350ba4a7c514",
+      "outcome": "completed",
+      "accepted": true,
+      "admission_seconds": 0.22606220800662413,
+      "text_seconds": 23.071905844000867,
+      "attempts": 1,
+      "error_code": null,
+      "completion_seconds": 35.55122434900841,
+      "audio_completed": true,
+      "correction_degraded": false
+    }
+  ]
+}

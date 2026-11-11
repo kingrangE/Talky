@@ -1,0 +1,242 @@
+{
+  "users": 1,
+  "workers": 4,
+  "mode": "real",
+  "horizon_seconds": 90,
+  "elapsed_seconds": 38.370231059991056,
+  "summary": {
+    "attempted": 1,
+    "accepted": 1,
+    "completed": 1,
+    "error_or_harness_timeout_count": 0,
+    "error_or_harness_timeout_rate": 0.0,
+    "admission_rejections": 0,
+    "terminal_failures": 0,
+    "harness_timeouts": 0,
+    "text_p95_seconds": 28.045228262999444,
+    "text_p99_seconds": 28.045228262999444,
+    "text_observed_count": 1,
+    "text_max_observed_seconds": 28.045228262999444,
+    "text_over_10s_or_unavailable": 1,
+    "full_completion_p95_seconds": 38.34929580899188,
+    "audio_completed": 1,
+    "correction_degraded": 0,
+    "limits_met_in_sample": false,
+    "qualification": "fail",
+    "slo_pass": false,
+    "qualification_note": "Browser/HTTP rendering and sustained 50-user sessions require a separate deployment test; synthetic results never qualify."
+  },
+  "queue_peaks": {
+    "queued": 1,
+    "processing": 1
+  },
+  "queue_samples": [
+    {
+      "elapsed": 0.046,
+      "queued": 1,
+      "processing": 0
+    },
+    {
+      "elapsed": 1.054,
+      "queued": 1,
+      "processing": 0
+    },
+    {
+      "elapsed": 2.075,
+      "queued": 1,
+      "processing": 0
+    },
+    {
+      "elapsed": 3.083,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 4.094,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 5.108,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 6.136,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 7.147,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 8.151,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 9.16,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 10.201,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 11.223,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 12.244,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 13.261,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 14.281,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 15.392,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 16.576,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 17.597,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 18.607,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 19.617,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 20.776,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 21.811,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 22.825,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 23.864,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 24.886,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 25.995,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 27.012,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 28.046,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 29.071,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 30.086,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 31.096,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 32.103,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 33.11,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 34.127,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 35.292,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 36.334,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 37.341,
+      "queued": 0,
+      "processing": 1
+    },
+    {
+      "elapsed": 38.351,
+      "queued": 0,
+      "processing": 0
+    }
+  ],
+  "rows": [
+    {
+      "index": 0,
+      "user_id": "1c907fe4-16c7-48c7-b118-312931819a98",
+      "conversation_id": "097bd8c2-27e6-4370-bac4-5e51604250f8",
+      "request_id": "91f8edfd-e1dd-4547-8cf1-9ce76110f618",
+      "outcome": "completed",
+      "accepted": true,
+      "admission_seconds": 0.04103999999642838,
+      "text_seconds": 28.045228262999444,
+      "attempts": 1,
+      "error_code": null,
+      "completion_seconds": 38.34929580899188,
+      "audio_completed": true,
+      "correction_degraded": false
+    }
+  ]
+}
