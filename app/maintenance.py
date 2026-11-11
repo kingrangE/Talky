@@ -34,6 +34,8 @@ def run(stop):
                 try:
                     iterator = None
                     while not stop.is_set():
+                        connection.execute(text('SELECT 1'))
+                        connection.commit()
                         run_expiry_cleanup(sweep=False)
                         if iterator is None:
                             import time
