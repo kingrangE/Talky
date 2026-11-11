@@ -1,0 +1,43 @@
+{
+  "measurement": "Pure local rule decision CPU microbenchmark, excludes module startup, logging, DB, LLM and end-to-end response. Not a 50-user SLO result.",
+  "cases": [
+    {
+      "case": "greeting",
+      "search": false,
+      "reason": "social_only",
+      "iterations": 10000,
+      "p50_us": 0.75,
+      "p95_us": 0.792,
+      "p99_us": 0.875
+    },
+    {
+      "case": "thanks",
+      "search": false,
+      "reason": "social_only",
+      "iterations": 10000,
+      "p50_us": 0.75,
+      "p95_us": 0.875,
+      "p99_us": 1.0
+    },
+    {
+      "case": "personal_reference",
+      "search": true,
+      "reason": "possible_memory",
+      "iterations": 10000,
+      "p50_us": 0.375,
+      "p95_us": 0.458,
+      "p99_us": 0.541
+    },
+    {
+      "case": "context",
+      "search": true,
+      "reason": "context_dependency",
+      "iterations": 10000,
+      "p50_us": 0.542,
+      "p95_us": 0.666,
+      "p99_us": 0.75
+    }
+  ],
+  "existing_load_profile_searches": 5,
+  "existing_load_profile_inputs": 5
+}

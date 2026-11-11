@@ -331,3 +331,30 @@ def test_correction_rejects_stale_attempt_and_foreign_owner(chat):
     with pytest.raises(ValueError):
         repo.save_correction(**{**kwargs,'user_id':str(uuid.uuid4())})
     assert queue.get_turn(job['id'],chat[0])['result']['better_expression'] is None
+
+
+def test_skipping_memory_read_still_persists_and_projects_the_turn(chat,monkeypatch):
+    from app.agents import conversation_graph as graph
+    from app.agents.nodes import memory
+    from app.graph_db import worker
+    builder=graph.build_conversation_graph;builder.cache_clear()
+    def forbidden(*_a,**_kw):
+        pytest.fail('pure greeting searched memory')
+    monkeypatch.setattr(memory,'_extract_topics',forbidden)
+    monkeypatch.setattr(memory,'recall_related',forbidden)
+    monkeypatch.setattr(graph,'load_conversation_prompt_node',lambda _: {})
+    monkeypatch.setattr(graph,'en_reply_node',lambda _: {'ai_reply':'Hello there!'})
+    monkeypatch.setattr(graph,'better_expr_node',lambda _: {})
+    monkeypatch.setattr(graph,'tts_node',lambda _: {})
+    projected=[]
+    monkeypatch.setattr(worker,'ingest_turn',lambda **kw:projected.append(kw) or True)
+    try:
+        submit(chat,text='Hello!')
+        queue.process_turn(queue.claim_turn())
+        messages=repo.load_messages(chat[1],chat[0])
+        assert [m['content'] for m in messages]==['Hello!','Hello there!']
+        assert worker.process_one()
+        assert projected[0]['user_text']=='Hello!'
+        assert projected[0]['ai_text']=='Hello there!'
+    finally:
+        builder.cache_clear()
