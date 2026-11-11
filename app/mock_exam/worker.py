@@ -13,6 +13,7 @@ from app.mock_exam.repository import claim_job, fail_job, recover_jobs
 from app.mock_exam.service import _finalize_report, _process_response, run_expiry_cleanup
 from app.runtime import ModelBusy, inference_slot
 from app.settings import get_settings
+from app.conversation import claim_turn, fail_turn, process_turn
 
 log = logging.getLogger(__name__)
 WORKER_LOCK = 74201933
@@ -43,11 +44,13 @@ def _run_worker(channel) -> None:
             job = None
             try:
                 with inference_slot(for_exam=True):
-                    job = claim_job()
+                    job = claim_job() or claim_turn()
                     if job:
                         channel.send("started")
                         try:
-                            if job["kind"] == "response":
+                            if job['kind'] == 'conversation':
+                                process_turn(job)
+                            elif job["kind"] == "response":
                                 _process_response(
                                     job["id"], job["session_id"], job["question_number"],
                                     job["encrypted_audio_path"], job["client_metrics"],
@@ -57,7 +60,7 @@ def _run_worker(channel) -> None:
                                 _finalize_report(job["session_id"], job["attempt"])
                         except Exception as exc:
                             log.warning("exam job failed: %s", type(exc).__name__)
-                            fail_job(job, type(exc).__name__)
+                            (fail_turn if job['kind']=='conversation' else fail_job)(job, type(exc).__name__)
                         finally:
                             channel.send("idle")
             except ModelBusy:

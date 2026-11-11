@@ -3,13 +3,12 @@ from __future__ import annotations
 import logging
 import math
 import time
-from functools import lru_cache
 from typing import Any
 
 from app.audio.stt_engine import transcribe_detailed
 from app.audio.validation import validate_audio
 from app.mock_exam.content import load_exam_set
-from app.mock_exam.privacy import EncryptedAudioStore
+from app.mock_exam.privacy import audio_store
 from app.mock_exam.repository import (
     cleanup_expired, complete_response, create_response, get_session, list_responses,
     queue_audio_deletion, referenced_audio_paths, requeue_report, save_report,
@@ -20,13 +19,19 @@ from app.mock_exam.scoring_graph import build_scoring_graph
 log = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=1)
-def audio_store() -> EncryptedAudioStore:
-    return EncryptedAudioStore()
-
-
 def run_expiry_cleanup() -> int:
+    from datetime import datetime, timezone
+    from sqlalchemy import select
+    from app.db.models import ConversationTurn, PendingAudioDeletion
+    from app.db.postgres import session_scope
     store = audio_store()
+    with session_scope() as session:
+        for turn in session.scalars(select(ConversationTurn).where(
+                ConversationTurn.audio_expires_at <= datetime.now(timezone.utc)).with_for_update(skip_locked=True)):
+            for path in (turn.input_audio_path, turn.output_audio_path):
+                if path:
+                    session.merge(PendingAudioDeletion(path=path))
+            turn.input_audio_path=turn.output_audio_path=None
     removed = cleanup_expired(store.delete)
     referenced = referenced_audio_paths()
     # A crash between file creation and DB commit can leave an unreferenced upload.

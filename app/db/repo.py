@@ -12,7 +12,7 @@ from typing import Any
 
 from sqlalchemy import func, select, update
 
-from app.db.models import Conversation, GraphSyncEvent, Message, PromptVersion, Rating, Report, User
+from app.db.models import Conversation, ConversationTurn, GraphSyncEvent, Message, PendingAudioDeletion, PromptVersion, Rating, Report, User
 from app.db.postgres import session_scope
 from app.settings import get_settings
 from app.llm.prompt_registry import common_references, publish_user_prompt, read_reference
@@ -144,6 +144,10 @@ def delete_conversation(conversation_id: str, user_id: str | uuid.UUID) -> None:
     with session_scope() as s:
         conv = _owned_conversation(s, cid, user_id, lock=True)
         s.add(GraphSyncEvent(conversation_id=cid, user_id=_to_uuid(user_id), kind='delete', payload={}))
+        for turn in s.scalars(select(ConversationTurn).where(ConversationTurn.conversation_id == cid)):
+            for path in (turn.input_audio_path, turn.output_audio_path):
+                if path:
+                    s.merge(PendingAudioDeletion(path=path))
         s.delete(conv)
 
 
@@ -164,10 +168,22 @@ def save_turn(
     english_expression: str | None = None,
     better_expression: str | None = None,
     memory_topics: list[str] | None = None,
+    request_id: str | None = None,
+    expected_attempt: int | None = None,
 ) -> tuple[str, str]:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
         conv = _owned_conversation(s, cid, user_id, lock=True)
+        turn = s.get(ConversationTurn, _to_uuid(request_id), with_for_update=True) if request_id else None
+        if request_id:
+            if not turn or turn.conversation_id != cid or turn.user_id != _to_uuid(user_id):
+                raise ValueError('Conversation request does not belong to user')
+            if turn.status == 'completed':
+                return turn.result['user_message_id'], turn.result['assistant_message_id']
+            if turn.status != 'processing' or turn.attempts != expected_attempt:
+                raise ValueError('Stale conversation attempt')
+            if turn.result:
+                return turn.result['user_message_id'], turn.result['assistant_message_id']
         if conv.ended_at is not None:
             raise ValueError("Conversation has ended")
         previous = s.scalar(select(Message.id).where(Message.conversation_id == cid)
@@ -182,6 +198,11 @@ def save_turn(
             'user_message_id':str(user_msg.id), 'assistant_message_id':str(ai_msg.id),
             'previous_message_id':str(previous) if previous else None, 'topics':memory_topics or [],
         }))
+        if turn:
+            turn.updated_at = datetime.now(timezone.utc)
+            turn.result = {'user_text':user_text,'ai_reply':ai_reply,'language':language,
+                           'english_expression':english_expression,'better_expression':better_expression,
+                           'user_message_id':str(user_msg.id),'assistant_message_id':str(ai_msg.id)}
         return str(user_msg.id), str(ai_msg.id)
 
 
@@ -214,6 +235,9 @@ def save_report(
     with session_scope() as s:
         conv = _owned_conversation(s, cid, user_id, lock=True)
         if ended:
+            if s.scalar(select(ConversationTurn.id).where(ConversationTurn.conversation_id == cid,
+                         ConversationTurn.status.in_(['queued','processing'])).limit(1)):
+                raise ValueError('대화 응답을 처리 중입니다. 완료 후 종료해 주세요.')
             conv.ended_at = datetime.now(timezone.utc)
         if memory_topics:
             s.add(GraphSyncEvent(conversation_id=cid, user_id=_to_uuid(user_id), kind='topics', payload={'topics':memory_topics}))

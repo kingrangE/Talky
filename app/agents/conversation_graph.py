@@ -1,6 +1,6 @@
 """Turn 단위 LangGraph.
 
-load_prompt → STT → memory_recall → router → (ko_coach | en_reply → better_expr) → TTS → persist
+load_prompt → STT → memory_recall → router → (ko_coach | en_reply → better_expr) → persist → TTS
 이후 Phase F 에서 ending_graph 가 별도로 추가됨.
 """
 
@@ -40,9 +40,9 @@ def build_conversation_graph():
     g.add_conditional_edges(
         "memory_recall", route_by_lang, {"ko": "ko_coach", "en": "en_reply"}
     )
-    g.add_edge("ko_coach", "tts")
+    g.add_edge("ko_coach", "persist")
     g.add_edge("en_reply", "better_expr")
-    g.add_edge("better_expr", "tts")
-    g.add_edge("tts", "persist")
-    g.add_edge("persist", END)
+    g.add_edge("better_expr", "persist")
+    g.add_edge("persist", "tts")
+    g.add_edge("tts", END)
     return g.compile()

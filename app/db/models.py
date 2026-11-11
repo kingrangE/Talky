@@ -324,3 +324,30 @@ class GraphSyncEvent(Base):
     last_error: Mapped[str | None] = mapped_column(String(128))
     available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+
+
+class ConversationTurn(Base):
+    __tablename__ = 'conversation_turns'
+    __table_args__ = (
+        CheckConstraint("status IN ('queued','processing','completed','failed')", name='conversation_turn_status'),
+        Index('ix_conversation_turn_queue', 'status', 'queue_deadline', 'created_at'),
+        Index('one_active_conversation_turn', 'conversation_id', unique=True,
+              postgresql_where="status IN ('queued','processing')"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    input_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_text: Mapped[str | None] = mapped_column(Text)
+    input_audio_path: Mapped[str | None] = mapped_column(Text)
+    output_audio_path: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default='queued')
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict | None] = mapped_column(JSONB)
+    error_code: Mapped[str | None] = mapped_column(String(128))
+    queue_deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    audio_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)

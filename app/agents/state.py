@@ -28,6 +28,8 @@ class GraphState(TypedDict, total=False):
     common_prompt_refs: dict
     common_prompt_texts: dict[str, str]
     trace_id: str
+    request_id: str
+    turn_attempt: int
 
     # 회상 (Phase E)
     retrieved_memory: list[dict[str, Any]]

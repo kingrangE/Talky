@@ -10,6 +10,7 @@ import time
 import tempfile
 import uuid
 from pathlib import Path
+from functools import lru_cache
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -134,3 +135,8 @@ class EncryptedAudioStore:
             path.parent.rmdir()
         except OSError:
             pass
+
+
+@lru_cache(maxsize=1)
+def audio_store() -> EncryptedAudioStore:
+    return EncryptedAudioStore()

@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 
 import streamlit as st
 
@@ -9,7 +10,8 @@ st.set_page_config(page_title="Talky")
 
 from dotenv import load_dotenv  # noqa: E402
 
-from app.agents.conversation_graph import build_conversation_graph  # noqa: E402
+from app.conversation import submit_turn, get_turn, active_turn  # noqa: E402
+from app.mock_exam.privacy import audio_store  # noqa: E402
 from app.agents.ending_graph import build_ending_graph  # noqa: E402
 from app.db.repo import (  # noqa: E402
     create_conversation,
@@ -45,14 +47,12 @@ if app_mode == "Speaking Mock Test":
 @st.cache_resource
 def _bootstrap() -> dict:
     return {
-        "graph": build_conversation_graph(),
         "ending_graph": build_ending_graph(),
     }
 
 
 USER_ID = require_user()
 boot = _bootstrap()
-GRAPH = boot["graph"]
 ENDING_GRAPH = boot["ending_graph"]
 
 
@@ -60,17 +60,12 @@ MODEL_LABEL = cfg.OPENAI_MODEL if cfg.use_openai else cfg.MODEL_NAME
 SERVER_LABEL = "OpenAI" if cfg.use_openai else cfg.OLLAMA_BASE_URL
 
 
-def _build_state_input(*, cid: str, **extra) -> dict:
-    return {
-        "conversation_id": cid,
-        "user_id": str(USER_ID),
-        **extra,
-    }
-
 st.title("Talky - English Conversation AI Agent")
 
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
+if "pending_turn_id" not in st.session_state:
+    st.session_state.pending_turn_id = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "editing_conv_id" not in st.session_state:
@@ -96,6 +91,7 @@ with st.sidebar:
         try:
             cid = create_conversation(user_id=USER_ID)
             st.session_state.conversation_id = cid
+            st.session_state.pending_turn_id = None
             st.session_state.messages = []
             st.session_state.pending_audio = None
             st.session_state.show_report_for = None
@@ -164,6 +160,8 @@ with st.sidebar:
                     use_container_width=True,
                 ):
                     st.session_state.conversation_id = cid
+                    pending = active_turn(cid, USER_ID)
+                    st.session_state.pending_turn_id = pending["id"] if pending else None
                     st.session_state.messages = load_messages(cid, USER_ID)
                     st.session_state.pending_audio = None
                     st.session_state.show_report_for = (
@@ -179,6 +177,7 @@ with st.sidebar:
                         delete_conversation(cid, USER_ID)
                         if st.session_state.conversation_id == cid:
                             st.session_state.conversation_id = None
+                            st.session_state.pending_turn_id = None
                             st.session_state.messages = []
                             st.session_state.pending_audio = None
                             st.session_state.show_report_for = None
@@ -226,101 +225,55 @@ def _render_message(m: dict) -> None:
                 st.markdown(m["better_expression"])
 
 
-def _push_session_messages(
-    cid: str,
-    user_text: str,
-    ai_reply: str,
-    language: str | None,
-    english_expression: str | None,
-    better_expression: str | None,
-) -> None:
-    """graph 의 persist 노드가 DB 저장을 처리하므로, 여기선 화면용 세션 상태만 갱신."""
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": user_text,
-            "language": language,
-            "english_expression": english_expression,
-            "better_expression": None,
-        }
-    )
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": ai_reply,
-            "language": language,
-            "english_expression": None,
-            "better_expression": better_expression,
-        }
-    )
-
-    if len(st.session_state.messages) == 2:
-        title = user_text[:30] + ("..." if len(user_text) > 30 else "")
-        update_conversation_title(cid, title, USER_ID)
-    st.session_state.messages = st.session_state.messages[-200:]
-
-
-def _invoke_turn(state_input: dict) -> dict:
-    with inference_slot():
-        return GRAPH.invoke(state_input)
+def _submit(**payload) -> None:
+    cid = _ensure_conversation(payload.get("user_text") or "")
+    job = submit_turn(request_id=str(uuid.uuid4()), conversation_id=cid,
+                      user_id=USER_ID, **payload)
+    st.session_state.pending_turn_id = job["id"]
+    st.session_state.pending_audio = None
 
 
 def handle_user_message(prompt: str) -> None:
-    st.session_state.pending_audio = None
-    cid = _ensure_conversation(prompt)
-
-    history = [
-        {"role": m["role"], "content": m["content"]}
-        for m in st.session_state.messages
-    ]
-    state_input = _build_state_input(cid=cid, user_text=prompt, history=history)
-    with st.spinner("생각 중..."):
-        result = _invoke_turn(state_input)
-
-    _push_session_messages(
-        cid,
-        user_text=result.get("user_text", prompt),
-        ai_reply=result.get("ai_reply") or "",
-        language=result.get("language"),
-        english_expression=result.get("english_expression"),
-        better_expression=result.get("better_expression"),
-    )
-    st.session_state.pending_audio = result.get("audio_reply")
+    _submit(user_text=prompt)
 
 
 def handle_voice_message(audio_bytes: bytes) -> None:
-    cid = _ensure_conversation("")
-    history = [
-        {"role": m["role"], "content": m["content"]}
-        for m in st.session_state.messages
-    ]
-    state_input = _build_state_input(
-        cid=cid, audio_bytes=audio_bytes, history=history
-    )
-    with st.spinner("듣는 중..."):
-        result = _invoke_turn(state_input)
+    _submit(audio_bytes=audio_bytes)
 
-    user_text = (result.get("user_text") or "").strip()
-    if not user_text:
-        st.warning("음성을 인식하지 못했어요. 다시 말씀해 주세요.")
+
+@st.fragment(run_every=1)
+def _poll_turn() -> None:
+    rid = st.session_state.pending_turn_id
+    if not rid:
         return
-
-    _push_session_messages(
-        cid,
-        user_text=user_text,
-        ai_reply=result.get("ai_reply") or "",
-        language=result.get("language"),
-        english_expression=result.get("english_expression"),
-        better_expression=result.get("better_expression"),
-    )
-
-    st.session_state.pending_audio = result.get("audio_reply")
+    try:
+        job = get_turn(rid, USER_ID)
+    except ValueError:
+        st.session_state.pending_turn_id = None
+        st.rerun()
+    if job["status"] in {"queued", "processing"}:
+        st.info("응답을 준비하고 있습니다. 다른 대화를 열어도 처리는 계속됩니다.")
+        return
+    st.session_state.pending_turn_id = None
+    st.session_state.messages = load_messages(job["conversation_id"], USER_ID)
+    if job["status"] == "completed":
+        if job["output_audio_path"]:
+            try:
+                st.session_state.pending_audio = audio_store().load(job["output_audio_path"])
+            except (OSError, ValueError):
+                st.warning("음성을 불러오지 못했습니다. 대화 내용은 저장되었습니다.")
+    else:
+        st.session_state.turn_error = "응답을 완료하지 못했습니다. 잠시 후 다시 보내주세요."
+    st.rerun()
 
 
 if st.session_state.show_report_for:
     render_report(st.session_state.show_report_for, str(USER_ID))
 else:
-    audio_bytes = mic_input(key=f"voice_input_{st.session_state.voice_turn}")
+    if st.session_state.pop("turn_error", None):
+        st.warning("응답을 완료하지 못했습니다. 잠시 후 다시 보내주세요.")
+    _poll_turn()
+    audio_bytes = None if st.session_state.pending_turn_id else mic_input(key=f"voice_input_{st.session_state.voice_turn}")
     if audio_bytes:
         h = hashlib.sha1(audio_bytes).hexdigest()
         if st.session_state.last_voice_hash != h:
@@ -339,7 +292,7 @@ else:
         st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
         st.session_state.pending_audio = None
 
-    text_prompt = st.chat_input("Type a message", max_chars=cfg.MAX_USER_TEXT_CHARS)
+    text_prompt = st.chat_input("Type a message", max_chars=cfg.MAX_USER_TEXT_CHARS, disabled=bool(st.session_state.pending_turn_id))
     if text_prompt:
         try:
             handle_user_message(text_prompt)

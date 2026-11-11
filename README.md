@@ -258,3 +258,9 @@ TALKY_TEST_POSTGRES_DSN='postgresql+psycopg://USER:PASSWORD@localhost:5432/talky
 - 원본 대화가 삭제됐으면 늦게 도착한 저장 작업도 Graph 삭제로 처리합니다. 회상 노드에서도 PostgreSQL의 현재 소유권·존재 여부를 확인하므로 삭제된 대화를 동기화 대기 중에 다시 제공하지 않습니다.
 - 재전송해도 메시지 ID·원래 시간·대화 연결을 유지하고 토픽 작업은 Neo4j의 완료 표식으로 중복 집계를 막습니다. PostgreSQL 커밋 전에 프로세스가 종료돼도 미완료 작업은 남아 다시 처리됩니다. 이는 재시도와 멱등성을 조합한 방식이며 두 DB의 분산 트랜잭션은 아닙니다.
 - 기존 설치는 앱·worker를 중지한 뒤 `python -m alembic upgrade head`를 실행하고 `python -m app.graph_db.worker` 또는 Compose의 `graph-worker`를 함께 시작해야 합니다. 대기 작업이 남은 상태의 스키마 downgrade는 거부합니다. 동기화가 지연되면 장기 기억이 일시적으로 덜 검색될 수 있으므로 작업 지연을 관측해야 합니다.
+
+### 대화 요청의 저장과 복구
+
+대화 입력은 PostgreSQL의 요청 큐에 저장한 뒤 `python -m app.mock_exam.worker` 작업자가 처리합니다. 웹 화면을 닫거나 다른 대화로 이동해도 접수한 요청은 남으며, 같은 대화를 다시 선택하면 진행 상태를 조회합니다. 요청 번호로 중복 입력을 구분하고, 대화별로 한 요청만 처리합니다. 기본 전체 대기 한도는 32건, 접수 후 대기 제한은 300초입니다. `CONVERSATION_QUEUE_LIMIT`, `CONVERSATION_QUEUE_WAIT_SECONDS`로 조정합니다.
+
+텍스트 응답과 Graph Outbox는 같은 트랜잭션으로 저장합니다. 이후 음성 합성이 실패해도 텍스트는 유지됩니다. 저장 후 작업자가 중단되면 재시도는 저장된 응답을 사용하므로 LLM을 다시 호출하거나 메시지를 중복 저장하지 않습니다. 음성 입출력은 기존 암호화 저장소와 72시간 보존 정책을 공유합니다. 배포 전 `alembic upgrade head`를 실행하고, 웹과 작업자를 함께 운영해야 합니다.
