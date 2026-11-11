@@ -16,6 +16,8 @@ def persist_node(state: GraphState) -> dict:
     language = state.get("language")
     eng_expr = state.get("english_expression")
     bet_expr = state.get("better_expression")
+    if state.get("correction_status") == "failed":
+        bet_expr = "표현 교정을 완료하지 못했습니다. 대화 답변은 정상적으로 생성되었습니다."
 
     user_msg_id, assistant_msg_id = save_turn(
         cid, state["user_id"], user_text, ai_reply, language=language,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
@@ -30,7 +32,11 @@ def _build_messages(state: GraphState) -> list:
 
 
 def better_expr_node(state: GraphState) -> dict:
-    llm = get_structured_llm(BetterExpressionOutput)
-    out: BetterExpressionOutput = invoke_with_prompt(llm, bounded_messages(_build_messages(state)), state, "talky/better-expression")
+    try:
+        llm = get_structured_llm(BetterExpressionOutput)
+        out: BetterExpressionOutput = invoke_with_prompt(llm, bounded_messages(_build_messages(state)), state, "talky/better-expression")
+    except Exception as exc:
+        logging.getLogger('talky.metrics').warning('correction_unavailable error_type=%s', type(exc).__name__)
+        return {"better_expression": None, "correction_status": "failed"}
     combined = f"**Try:** {out.suggestion}\n\n*{out.note}*"
-    return {"better_expression": combined}
+    return {"better_expression": combined, "correction_status": "completed"}

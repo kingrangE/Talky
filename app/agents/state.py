@@ -38,5 +38,6 @@ class GraphState(TypedDict, total=False):
     # 출력
     ai_reply: str
     english_expression: Optional[str]
+    correction_status: str
     better_expression: Optional[str]
     audio_reply: Optional[bytes]

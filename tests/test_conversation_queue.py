@@ -65,7 +65,8 @@ def test_lease_recovery_fences_old_attempt_and_commits_only_once(chat, pg_db):
         assert session.scalar(select(func.count()).select_from(GraphSyncEvent)) == 1
 
 
-def test_text_is_committed_before_tts_failure(chat, monkeypatch):
+@pytest.mark.parametrize("correction_error", [False, True])
+def test_text_is_committed_before_tts_failure(chat, monkeypatch, correction_error):
     from app.agents import conversation_graph as graph
     from app.agents.nodes import tts
     builder = graph.build_conversation_graph
@@ -74,7 +75,11 @@ def test_text_is_committed_before_tts_failure(chat, monkeypatch):
     monkeypatch.setattr(graph, 'stt_node', lambda _: {'language': 'en'})
     monkeypatch.setattr(graph, 'memory_recall_node', lambda _: {})
     monkeypatch.setattr(graph, 'en_reply_node', lambda _: {'ai_reply': 'Hello there.'})
-    monkeypatch.setattr(graph, 'better_expr_node', lambda _: {})
+    if correction_error:
+        from app.agents.nodes import better_expr
+        monkeypatch.setattr(better_expr, 'get_structured_llm', lambda _: (_ for _ in ()).throw(ValueError('invalid JSON')))
+    else:
+        monkeypatch.setattr(graph, 'better_expr_node', lambda _: {})
     monkeypatch.setattr(tts, 'synthesize', lambda *_: (_ for _ in ()).throw(RuntimeError('tts offline')))
     try:
         job = submit(chat)
