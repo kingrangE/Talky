@@ -70,12 +70,13 @@ def test_ratings_evolution_and_agent_prompt_are_user_owned(db):
     result = evolve_graph.insert_node({
         **alice_state, "user_id": str(alice), "new_prompt_content": "Alice prefers short answers",
     })
-    assert repo.get_active_prompt(alice)["id"] == result["new_prompt_id"]
+    assert repo.get_active_prompt(alice)["id"] == first["id"]
+    assert result["new_prompt_id"] != first["id"]
     assert repo.get_active_prompt(bob)["id"] == bob_prompt["id"]
     assert repo.count_unconsumed_ratings(alice, first["id"])[0] == 0
     assert repo.count_unconsumed_ratings(bob, bob_prompt["id"])[0] == 1
 
-    # 기존 대화는 RDB의 고정 버전, 새 대화는 개선 버전을 사용한다.
+    # 검증 전 후보는 기존 대화와 새 대화 모두에 적용되지 않는다.
     loaded = prompts.load_conversation_prompt_node({
         "user_id": str(alice), "conversation_id": cid, "system_prompt": "spoofed",
     })
@@ -86,7 +87,7 @@ def test_ratings_evolution_and_agent_prompt_are_user_owned(db):
     new_cid = repo.create_conversation(user_id=alice)
     assert prompts.load_conversation_prompt_node({
         "user_id": str(alice), "conversation_id": new_cid,
-    })["system_prompt"] == "Alice prefers short answers"
+    })["system_prompt"] == first["content"]
     with pytest.raises(prompts.ActivePromptMissing):
         prompts.load_conversation_prompt_node({"user_id": str(bob), "conversation_id": cid})
 

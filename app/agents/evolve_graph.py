@@ -161,7 +161,7 @@ def insert_node(state: EvolveState) -> dict:
         rationale=state.get("rationale"),
         parent_id=state["current_prompt"]["id"],
         diff_summary=state.get("diff_summary") or [],
-        activate=True,
+        activate=False,
         rating_snapshot=state["rating_snapshot"],
     )
     return {"new_prompt_id": new_id}
@@ -223,7 +223,7 @@ def run_evolve_if_needed(user_id: str, threshold: int | None = None) -> dict[str
                 out = graph.invoke(state_in)
                 new_id = out.get("new_prompt_id")
                 if new_id:
-                    return {"action": "evolved", "prompt_id": new_id}
+                    return {"action": "candidate_created", "prompt_id": new_id}
                 return None
             finally:
                 conn.execute(

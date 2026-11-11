@@ -70,8 +70,8 @@ def render_report(conversation_id: str, user_id: str) -> None:
                         prompt_update = run_evolve_if_needed(user_id)
                 except ModelBusy:
                     st.info("별점을 저장했습니다. 모델 작업이 끝난 뒤 개선을 다시 확인할 수 있습니다.")
-                if prompt_update and prompt_update["action"] == "evolved":
-                    st.toast("📈 system prompt 가 새 버전으로 진화되었습니다.")
+                if prompt_update and prompt_update["action"] == "candidate_created":
+                    st.toast("프롬프트 개선 후보를 저장했습니다. 검증 전에는 대화에 적용하지 않습니다.")
                 elif prompt_update and prompt_update["action"] == "rolled_back":
                     st.toast("↩️ 품질 하락이 감지되어 이전 system prompt로 롤백했습니다.")
             st.session_state.show_report_for = None
