@@ -157,6 +157,10 @@ def test_streamlit_submits_polls_and_displays_committed_worker_result(chat, monk
     job = queue.claim_turn()
     repo.save_turn(chat[1], chat[0], 'Hello from UI', 'Reply from worker',
                    request_id=rid, expected_attempt=job['attempt'])
+    app.run(timeout=15)
+    assert [m['content'] for m in app.session_state.messages] == ['Hello from UI', 'Reply from worker']
+    assert app.session_state.pending_turn_id == rid
+    assert app.chat_input[0].disabled
     queue.process_turn(job)
     app.run(timeout=15)
     assert not app.exception

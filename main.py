@@ -251,6 +251,12 @@ def _poll_turn() -> None:
     except ValueError:
         st.session_state.pending_turn_id = None
         st.rerun()
+    if (job.get("result") and job["conversation_id"] == st.session_state.conversation_id
+            and job["status"] in {"queued", "processing"}):
+        committed = load_messages(job["conversation_id"], USER_ID)
+        if committed != st.session_state.messages:
+            st.session_state.messages = committed
+            st.rerun()
     if job["status"] in {"queued", "processing"}:
         st.info("응답을 준비하고 있습니다. 다른 대화를 열어도 처리는 계속됩니다.")
         return
