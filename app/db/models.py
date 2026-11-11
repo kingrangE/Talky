@@ -332,6 +332,8 @@ class ConversationTurn(Base):
     __tablename__ = 'conversation_turns'
     __table_args__ = (
         CheckConstraint("status IN ('queued','processing','completed','failed')", name='conversation_turn_status'),
+        Index('ix_conversation_audio_expiry', 'audio_expires_at',
+              postgresql_where='input_audio_path IS NOT NULL OR output_audio_path IS NOT NULL'),
         Index('ix_conversation_turn_queue', 'status', 'queue_deadline', 'created_at'),
         Index('one_active_conversation_turn', 'conversation_id', unique=True,
               postgresql_where="status IN ('queued','processing')"),

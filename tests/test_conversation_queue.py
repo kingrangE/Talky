@@ -104,3 +104,57 @@ def test_global_queue_limit_and_expiry(chat, pg_db, monkeypatch):
     assert queue.claim_turn() is None
     assert queue.get_turn(job['id'], chat[0])['status'] == 'failed'
     assert submit(other)['id']
+
+
+def test_audio_expiry_preserves_live_audio_and_retries_failed_deletion(chat, pg_db, tmp_path, monkeypatch):
+    from app.mock_exam import service
+    from app.mock_exam.privacy import EncryptedAudioStore
+    from app.db.models import PendingAudioDeletion
+    from app.mock_exam.repository import referenced_audio_paths
+    store = EncryptedAudioStore(tmp_path/'audio')
+    monkeypatch.setattr(service, 'audio_store', lambda: store)
+    expired = store.save(chat[1], 1, b'expired')
+    live = store.save(chat[1], 1, b'live')
+    now = datetime.now(timezone.utc)
+    with pg_db[1]() as session:
+        for path, expiry in [(expired, now-timedelta(hours=1)), (live, now+timedelta(hours=1))]:
+            session.add(ConversationTurn(id=uuid.uuid4(), conversation_id=uuid.UUID(chat[1]),
+                user_id=uuid.UUID(chat[0]), input_digest='a'*64, status='completed', input_audio_path=path,
+                queue_deadline=now, audio_expires_at=expiry))
+    delete = store.delete
+    monkeypatch.setattr(store, 'delete', lambda _: (_ for _ in ()).throw(OSError('injected')))
+    service.run_expiry_cleanup()
+    assert referenced_audio_paths() == {live}
+    with pg_db[1]() as session:
+        assert session.get(PendingAudioDeletion, expired) is not None
+    assert store.load(live) == b'live'
+    monkeypatch.setattr(store, 'delete', delete)
+    service.run_expiry_cleanup()
+    assert not (store.root/expired).exists()
+    assert store.load(live) == b'live'
+
+
+def test_streamlit_submits_polls_and_displays_committed_worker_result(chat, monkeypatch):
+    import sys
+    from streamlit.testing.v1 import AppTest
+    monkeypatch.setitem(sys.modules, '__main__', sys.modules['__main__'])
+    app = AppTest.from_file('main.py')
+    app.session_state.auth_user_id = chat[0]
+    app.session_state.conversation_id = chat[1]
+    app.run(timeout=15)
+    assert not app.exception
+    app.chat_input[0].set_value('Hello from UI').run(timeout=15)
+    assert not app.exception
+    rid = app.session_state.pending_turn_id
+    assert queue.get_turn(rid, chat[0])['status'] == 'queued'
+    assert app.chat_input[0].disabled
+    job = queue.claim_turn()
+    repo.save_turn(chat[1], chat[0], 'Hello from UI', 'Reply from worker',
+                   request_id=rid, expected_attempt=job['attempt'])
+    queue.process_turn(job)
+    app.run(timeout=15)
+    assert not app.exception
+    assert app.session_state.pending_turn_id is None
+    assert not app.chat_input[0].disabled
+    contents = [m['content'] for m in app.session_state.messages]
+    assert contents == ['Hello from UI', 'Reply from worker']

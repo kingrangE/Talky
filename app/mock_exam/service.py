@@ -21,13 +21,15 @@ log = logging.getLogger(__name__)
 
 def run_expiry_cleanup() -> int:
     from datetime import datetime, timezone
-    from sqlalchemy import select
+    from sqlalchemy import select, or_
     from app.db.models import ConversationTurn, PendingAudioDeletion
     from app.db.postgres import session_scope
     store = audio_store()
     with session_scope() as session:
         for turn in session.scalars(select(ConversationTurn).where(
-                ConversationTurn.audio_expires_at <= datetime.now(timezone.utc)).with_for_update(skip_locked=True)):
+                ConversationTurn.audio_expires_at <= datetime.now(timezone.utc),
+                or_(ConversationTurn.input_audio_path.is_not(None), ConversationTurn.output_audio_path.is_not(None)))
+                .order_by(ConversationTurn.audio_expires_at).with_for_update(skip_locked=True).limit(1000)):
             for path in (turn.input_audio_path, turn.output_audio_path):
                 if path:
                     session.merge(PendingAudioDeletion(path=path))

@@ -499,6 +499,7 @@ def referenced_audio_paths() -> set[str]:
         paths = set(s.scalars(select(MockExamResponse.encrypted_audio_path).where(
             MockExamResponse.encrypted_audio_path.is_not(None)
         )).all())
-        for row in s.execute(select(ConversationTurn.input_audio_path, ConversationTurn.output_audio_path)):
+        for row in s.execute(select(ConversationTurn.input_audio_path, ConversationTurn.output_audio_path).where(
+                or_(ConversationTurn.input_audio_path.is_not(None), ConversationTurn.output_audio_path.is_not(None)))):
             paths.update(path for path in row if path)
         return paths
