@@ -66,6 +66,10 @@ def submit_turn(*, request_id, conversation_id, user_id, user_text=None, audio_b
             if session.scalar(select(ConversationTurn.id).where(ConversationTurn.conversation_id==cid,
                 ConversationTurn.status.in_(['queued','processing'])).limit(1)):
                 raise ValueError('이 대화의 이전 응답을 처리 중입니다.')
+            user_count=session.scalar(select(func.count()).select_from(ConversationTurn).where(
+                ConversationTurn.user_id==uid, ConversationTurn.status.in_(['queued','processing'])))
+            if user_count>=cfg.CONVERSATION_USER_QUEUE_LIMIT:
+                raise ValueError('진행 중인 요청이 많습니다. 기존 응답이 끝난 후 보내주세요.')
             count=session.scalar(select(func.count()).select_from(ConversationTurn).where(
                 ConversationTurn.status.in_(['queued','processing'])))
             if count>=cfg.CONVERSATION_QUEUE_LIMIT:

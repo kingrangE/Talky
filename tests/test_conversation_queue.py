@@ -164,3 +164,27 @@ def test_streamlit_submits_polls_and_displays_committed_worker_result(chat, monk
     assert not app.chat_input[0].disabled
     contents = [m['content'] for m in app.session_state.messages]
     assert contents == ['Hello from UI', 'Reply from worker']
+
+
+def test_user_quota_preserves_other_users_capacity(chat, pg_db, monkeypatch):
+    monkeypatch.setenv('CONVERSATION_USER_QUEUE_LIMIT', '1')
+    from app.settings import get_settings
+    get_settings.cache_clear()
+    first = submit(chat)
+    assert submit(chat, first['id'])['id'] == first['id']
+    with pg_db[1]() as session:
+        other_user = User(display_name='other')
+        session.add(other_user)
+        session.flush()
+        own = Conversation(user_id=uuid.UUID(chat[0]))
+        other = Conversation(user_id=other_user.id)
+        session.add_all([own, other])
+        session.flush()
+        own_chat, other_chat = (chat[0], str(own.id)), (str(other_user.id), str(other.id))
+    with pytest.raises(ValueError, match='진행 중인 요청'):
+        submit(own_chat)
+    assert submit(other_chat)['id']
+    job = queue.claim_turn()
+    repo.save_turn(chat[1], chat[0], 'Hello', 'Hi', request_id=job['id'], expected_attempt=job['attempt'])
+    queue.process_turn(job)
+    assert submit(own_chat)['id']
