@@ -192,3 +192,19 @@ def test_user_quota_preserves_other_users_capacity(chat, pg_db, monkeypatch):
     repo.save_turn(chat[1], chat[0], 'Hello', 'Hi', request_id=job['id'], expected_attempt=job['attempt'])
     queue.process_turn(job)
     assert submit(own_chat)['id']
+
+
+def test_permanent_failure_stops_and_transient_failure_waits(chat, pg_db):
+    from datetime import datetime, timezone
+    first = submit(chat)
+    claimed = queue.claim_turn()
+    queue.fail_turn(claimed, ValueError('invalid input'))
+    assert queue.get_turn(first['id'], chat[0])['status'] == 'failed'
+    second = submit(chat)
+    claimed = queue.claim_turn()
+    queue.fail_turn(claimed, TimeoutError('temporary'))
+    assert queue.get_turn(second['id'], chat[0])['status'] == 'queued'
+    assert queue.claim_turn() is None
+    with pg_db[1]() as session:
+        session.get(ConversationTurn, uuid.UUID(second['id'])).lease_until = datetime.now(timezone.utc)
+    assert queue.claim_turn()['attempt'] == 2

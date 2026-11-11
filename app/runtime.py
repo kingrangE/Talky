@@ -106,3 +106,24 @@ def format_memory(memory: list[dict], header: str) -> str:
             lines.append(line)
             remaining -= len(line.encode("utf-8")) + 1
     return header + "\n".join(lines) if lines else ""
+
+
+# Per-job deadline is independent from the PostgreSQL lease's recovery grace period.
+from contextvars import ContextVar
+import time
+_job_deadline = ContextVar('job_deadline', default=None)
+
+
+@contextmanager
+def job_budget(seconds):
+    token = _job_deadline.set(time.monotonic() + seconds)
+    try:
+        yield
+    finally:
+        _job_deadline.reset(token)
+
+
+def require_budget(seconds=1):
+    deadline = _job_deadline.get()
+    if deadline is not None and deadline - time.monotonic() < seconds:
+        raise TimeoutError('insufficient remaining job budget')

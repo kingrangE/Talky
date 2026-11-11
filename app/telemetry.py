@@ -10,6 +10,9 @@ log = logging.getLogger('talky.metrics')
 def timed_stage(name, operation):
     @wraps(operation)
     def run(state):
+        from app.runtime import require_budget
+        from app.settings import get_settings
+        require_budget(get_settings().LLM_TIMEOUT_SECONDS if name in {'en_reply','ko_coach','better_expr','memory_recall'} else 1)
         started = time.monotonic()
         outcome = 'ok'
         try:

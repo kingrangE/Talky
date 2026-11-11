@@ -11,7 +11,7 @@ import time
 
 from app.mock_exam.repository import claim_job, fail_job, recover_jobs
 from app.mock_exam.service import _finalize_report, _process_response, run_expiry_cleanup
-from app.runtime import ModelBusy, inference_slot
+from app.runtime import ModelBusy, inference_slot, job_budget
 from app.settings import get_settings
 from app.conversation import claim_turn, fail_turn, process_turn
 
@@ -44,28 +44,33 @@ def _run_worker(channel) -> None:
                     wait_ms = max(0, (datetime.now(timezone.utc) - datetime.fromisoformat(job["created_at"])).total_seconds()*1000)
                     outcome = "ok"
                     try:
-                        if job['kind'] == 'conversation':
-                            process_turn(job)
-                        elif job["kind"] == "response":
-                            _process_response(
-                                job["id"], job["session_id"], job["question_number"],
-                                job["encrypted_audio_path"], job["client_metrics"], job["attempt"],
-                            )
-                        else:
-                            _finalize_report(job["session_id"], job["attempt"])
+                        with job_budget(get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS):
+                            _process_job(job)
                     except Exception as exc:
                         outcome = "error"
                         log.warning("job failed: %s", type(exc).__name__)
-                        (fail_turn if job['kind']=='conversation' else fail_job)(job, type(exc).__name__)
+                        (fail_turn if job["kind"] == "conversation" else fail_job)(job, exc)
                     finally:
-                        log.info(json.dumps({'event': 'job', 'kind': job['kind'], 'outcome': outcome,
-                            'attempt': job['attempt'], 'queue_wait_ms': round(wait_ms, 2),
-                            'duration_ms': round((time.monotonic()-started)*1000, 2)}))
+                        log.info(json.dumps({"event": "job", "kind": job["kind"], "outcome": outcome,
+                            "attempt": job["attempt"], "queue_wait_ms": round(wait_ms, 2),
+                            "duration_ms": round((time.monotonic()-started)*1000, 2)}))
                         channel.send("idle")
         except ModelBusy:
             pass
         if job is None:
             time.sleep(0.5)
+
+
+def _process_job(job):
+    if job['kind'] == 'conversation':
+        process_turn(job)
+    elif job["kind"] == "response":
+        _process_response(
+            job["id"], job["session_id"], job["question_number"],
+            job["encrypted_audio_path"], job["client_metrics"], job["attempt"],
+        )
+    else:
+        _finalize_report(job["session_id"], job["attempt"])
 
 
 def _stop_process(process) -> None:

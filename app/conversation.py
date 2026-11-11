@@ -4,7 +4,7 @@ import logging
 import json
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import or_, func, select, text, update
 
 from app.audio.validation import validate_audio
 from app.db.models import ConversationTurn, PendingAudioDeletion
@@ -119,7 +119,8 @@ def claim_turn():
             ConversationTurn.queue_deadline<=now).values(status='failed',error_code='queue_expired',updated_at=now))
         session.flush()
         row=session.scalars(select(ConversationTurn).where(ConversationTurn.status=='queued',
-            ConversationTurn.queue_deadline>now).order_by(ConversationTurn.created_at,ConversationTurn.id)
+            ConversationTurn.queue_deadline>now,
+            or_(ConversationTurn.lease_until.is_(None), ConversationTurn.lease_until<=now)).order_by(ConversationTurn.created_at,ConversationTurn.id)
             .with_for_update(skip_locked=True).limit(1)).first()
         if row is None:
             return None
@@ -134,10 +135,16 @@ def fail_turn(job,error_code):
     with session_scope() as session:
         row=session.get(ConversationTurn,_to_uuid(job['id']),with_for_update=True)
         if row and row.status=='processing' and row.attempts==job['attempt']:
-            row.status='failed' if row.attempts>=get_settings().MOCK_EXAM_MAX_ATTEMPTS else 'queued'
-            row.error_code=error_code[:128]
-            row.lease_until=None
-            row.updated_at=datetime.now(timezone.utc)
+            from app.retry import retry_delay, error_name
+            now = datetime.now(timezone.utc)
+            delay = retry_delay(error_code, row.attempts)
+            retry = (delay is not None and row.attempts < get_settings().MOCK_EXAM_MAX_ATTEMPTS
+                     and now + delay < row.queue_deadline)
+            row.status = 'queued' if retry else 'failed'
+            row.error_code = error_name(error_code)
+            row.lease_until = now + delay if retry else None
+            row.updated_at = now
+
 
 
 def process_turn(job):

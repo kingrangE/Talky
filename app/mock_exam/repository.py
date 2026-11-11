@@ -305,6 +305,7 @@ def claim_job() -> dict[str, Any] | None:
         ):
             row = s.scalars(select(model).join(MockExamSession).where(
                 model.status == queued,
+                or_(model.lease_until.is_(None), model.lease_until <= now),
                 model.expires_at > now,
                 MockExamSession.expires_at > now,
                 MockExamSession.status.in_(["active", "scoring"]),
@@ -333,9 +334,13 @@ def _retry_or_fail(s, row, kind: str, error_code: str) -> None:
     row.updated_at = _now()
     row.lease_until = None
     session.updated_at = _now()
+    from app.retry import retry_delay, error_name
     if kind == "response":
-        row.error_code = error_code
-    if row.attempts < get_settings().MOCK_EXAM_MAX_ATTEMPTS:
+        row.error_code = error_name(error_code)
+    delay = retry_delay(error_code, row.attempts)
+    if (delay is not None and row.attempts < get_settings().MOCK_EXAM_MAX_ATTEMPTS
+            and _now() + delay < row.expires_at):
+        row.lease_until = _now() + delay
         row.status = "queued"
     else:
         row.status = "failed"
