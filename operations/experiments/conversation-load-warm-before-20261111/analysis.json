@@ -1,0 +1,181 @@
+{
+  "runs": [
+    {
+      "users": 1,
+      "attempted": 1,
+      "accepted": 1,
+      "completed": 1,
+      "error_or_harness_timeout_count": 0,
+      "error_or_harness_timeout_rate": 0.0,
+      "admission_rejections": 0,
+      "terminal_failures": 0,
+      "harness_timeouts": 0,
+      "text_p95_seconds": 25.550164012005553,
+      "text_p99_seconds": 25.550164012005553,
+      "text_observed_count": 1,
+      "text_max_observed_seconds": 25.550164012005553,
+      "text_over_10s_or_unavailable": 1,
+      "full_completion_p95_seconds": 33.326457432005554,
+      "audio_completed": 1,
+      "correction_degraded": 0,
+      "limits_met_in_sample": false,
+      "qualification": "fail",
+      "slo_pass": false,
+      "qualification_note": "Browser/HTTP rendering and sustained 50-user sessions require a separate deployment test; synthetic results never qualify.",
+      "application_error_rate": 0.0,
+      "stage_latency": {
+        "load_prompt": {
+          "count": 1,
+          "p50_ms": 80.38,
+          "p95_ms": 80.38,
+          "max_ms": 80.38
+        },
+        "stt": {
+          "count": 1,
+          "p50_ms": 0.04,
+          "p95_ms": 0.04,
+          "max_ms": 0.04
+        },
+        "memory_recall": {
+          "count": 1,
+          "p50_ms": 10246.3,
+          "p95_ms": 10246.3,
+          "max_ms": 10246.3
+        },
+        "en_reply": {
+          "count": 1,
+          "p50_ms": 5105.08,
+          "p95_ms": 5105.08,
+          "max_ms": 5105.08
+        },
+        "better_expr": {
+          "count": 1,
+          "p50_ms": 7679.68,
+          "p95_ms": 7679.68,
+          "max_ms": 7679.68
+        },
+        "persist": {
+          "count": 1,
+          "p50_ms": 1395.34,
+          "p95_ms": 1395.34,
+          "max_ms": 1395.34
+        },
+        "tts": {
+          "count": 1,
+          "p50_ms": 7329.48,
+          "p95_ms": 7329.48,
+          "max_ms": 7329.48
+        }
+      },
+      "resource_wait": {
+        "inference": {
+          "count": 3,
+          "p50_ms": 11.61,
+          "p95_ms": 15.36,
+          "max_ms": 15.36
+        },
+        "audio": {
+          "count": 1,
+          "p50_ms": 7.13,
+          "p95_ms": 7.13,
+          "max_ms": 7.13
+        }
+      }
+    },
+    {
+      "users": 50,
+      "attempted": 50,
+      "accepted": 32,
+      "completed": 5,
+      "error_or_harness_timeout_count": 45,
+      "error_or_harness_timeout_rate": 0.9,
+      "admission_rejections": 18,
+      "terminal_failures": 0,
+      "harness_timeouts": 27,
+      "text_p95_seconds": null,
+      "text_p99_seconds": null,
+      "text_observed_count": 6,
+      "text_max_observed_seconds": 80.07446749399242,
+      "text_over_10s_or_unavailable": 50,
+      "full_completion_p95_seconds": 89.44862216500042,
+      "audio_completed": 5,
+      "correction_degraded": 0,
+      "limits_met_in_sample": false,
+      "qualification": "fail",
+      "slo_pass": false,
+      "qualification_note": "Browser/HTTP rendering and sustained 50-user sessions require a separate deployment test; synthetic results never qualify.",
+      "application_error_rate": 0.36,
+      "stage_latency": {
+        "load_prompt": {
+          "count": 9,
+          "p50_ms": 26.63,
+          "p95_ms": 237.65,
+          "max_ms": 237.65
+        },
+        "stt": {
+          "count": 9,
+          "p50_ms": 0.03,
+          "p95_ms": 0.89,
+          "max_ms": 0.89
+        },
+        "memory_recall": {
+          "count": 7,
+          "p50_ms": 11830.35,
+          "p95_ms": 18238.62,
+          "max_ms": 18238.62
+        },
+        "en_reply": {
+          "count": 5,
+          "p50_ms": 11709.61,
+          "p95_ms": 30245.32,
+          "max_ms": 30245.32
+        },
+        "better_expr": {
+          "count": 5,
+          "p50_ms": 16903.59,
+          "p95_ms": 24792.87,
+          "max_ms": 24792.87
+        },
+        "persist": {
+          "count": 6,
+          "p50_ms": 596.92,
+          "p95_ms": 1468.38,
+          "max_ms": 1468.38
+        },
+        "tts": {
+          "count": 5,
+          "p50_ms": 12198.97,
+          "p95_ms": 16279.52,
+          "max_ms": 16279.52
+        },
+        "ko_coach": {
+          "count": 1,
+          "p50_ms": 10706.41,
+          "p95_ms": 10706.41,
+          "max_ms": 10706.41
+        }
+      },
+      "resource_wait": {
+        "inference": {
+          "count": 19,
+          "p50_ms": 8165.77,
+          "p95_ms": 24801.43,
+          "max_ms": 24801.43
+        },
+        "audio": {
+          "count": 6,
+          "p50_ms": 9.3,
+          "p95_ms": 5272.05,
+          "max_ms": 5272.05
+        }
+      }
+    }
+  ],
+  "notes": [
+    "p95 and p99 use nearest-rank across all attempted requests; rejected or unavailable text remains in denominator.",
+    "null percentile means unavailable/infinite under this profile, not zero latency.",
+    "Harness timeouts are reported separately from terminal application failures.",
+    "Worker startup is included. Host Ollama is shared; CPU voice runtime is Linux amd64 on Docker Desktop.",
+    "No browser render or HTTP transport measurement; no sustained-user or final p99 qualification."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "observed_date": "2026-11-11",
+  "host_cpu": "Apple M2 Pro",
+  "host_architecture": "arm64",
+  "host_memory_bytes": 17179869184,
+  "model": "ax4-light:latest",
+  "model_digest": "40316cf0eb00c29f272f5862c85f532b7e4f8279df8f7df744645b2e5ad02ef7",
+  "model_parameter_size": "7.3B",
+  "model_quantization": "Q4_K_M",
+  "audio_runtime_image": "talky-ops-release-check:local",
+  "audio_runtime_platform": "linux/amd64",
+  "execution": "Docker Desktop on arm64 host; voice CPU timing includes amd64 execution environment effects",
+  "gpu_utilization_measured": false,
+  "model_server_exclusive": false,
+  "worker_memory_scope": "RSS of four child workers, excludes host Ollama, Docker VM overhead, coordinator and other host applications",
+  "network_scope": "Dedicated PostgreSQL/Neo4j and host Ollama through host.docker.internal; excludes browser and HTTP service transport"
+}

@@ -1,0 +1,25 @@
+[
+  {
+    "users": 50,
+    "attempted": 50,
+    "accepted": 50,
+    "completed": 11,
+    "error_or_harness_timeout_count": 39,
+    "error_or_harness_timeout_rate": 0.78,
+    "admission_rejections": 0,
+    "terminal_failures": 0,
+    "harness_timeouts": 39,
+    "text_p95_seconds": null,
+    "text_p99_seconds": null,
+    "text_observed_count": 13,
+    "text_max_observed_seconds": 89.58268604100158,
+    "text_over_10s_or_unavailable": 50,
+    "full_completion_p95_seconds": 83.0053143309924,
+    "audio_completed": 11,
+    "correction_degraded": 0,
+    "limits_met_in_sample": false,
+    "qualification": "fail",
+    "slo_pass": false,
+    "qualification_note": "Browser/HTTP rendering and sustained 50-user sessions require a separate deployment test; synthetic results never qualify."
+  }
+]

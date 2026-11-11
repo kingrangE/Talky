@@ -1,0 +1,27 @@
+{
+  "started_at": "2026-11-11T10:55:11.615153+00:00",
+  "model": "ax4-light:latest",
+  "context": 16384,
+  "max_output_tokens": 4096,
+  "inference_capacity": 1,
+  "audio_capacity": 1,
+  "queue_limit": 32,
+  "python": "3.11.18",
+  "platform": "Linux-6.12.5-linuxkit-x86_64-with-glibc2.41",
+  "profile": "one simultaneous text request per distinct account; short history; 80% English, 20% Korean; real correction and Piper output",
+  "measurement": "DB result observed with 1s polls; excludes HTTP, browser rendering, voice input/STT and AWS",
+  "targets": {
+    "concurrent_users": 50,
+    "text_p95_seconds": 8,
+    "text_p99_seconds": 10,
+    "error_rate_strictly_below": 0.05
+  },
+  "commit": "5f6d679",
+  "tracked_tree_dirty": null,
+  "runner_sha256": "2b0ed437e76b1726280dcb36ba295fdcd737e88d4c2629a8b187f86b79e0174c",
+  "worker_startup_included": false,
+  "cache_state": "model may already be loaded; each worker process starts fresh",
+  "audio_cache": "/opt/talky/audio",
+  "host_description": "Apple M2 Pro 16GiB arm64; Linux amd64 audio runtime via Docker Desktop",
+  "resource_measurement": "Linux worker RSS and CPU seconds; host model GPU utilization not measured"
+}

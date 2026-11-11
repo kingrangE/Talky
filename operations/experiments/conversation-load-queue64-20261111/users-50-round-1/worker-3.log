@@ -1,0 +1,60 @@
+2026-11-11 10:58:24,244 15 talky.metrics {"event":"stage","stage":"load_prompt","outcome":"ok","duration_ms":13.43}
+2026-11-11 10:58:24,248 15 talky.metrics {"event":"stage","stage":"stt","outcome":"ok","duration_ms":0.52}
+2026-11-11 10:58:31,408 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 7110.54}
+2026-11-11 10:58:31,977 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:58:32,699 15 neo4j.notifications Received notification from DBMS server: {severity: INFORMATION} {code: Neo.ClientNotification.Schema.IndexOrConstraintAlreadyExists} {category: SCHEMA} {title: `CREATE CONSTRAINT graph_fence_id IF NOT EXISTS FOR (e:GraphConversationFence) REQUIRE (e.id) IS UNIQUE` has no effect.} {description: `CONSTRAINT graph_fence_id FOR (e:GraphConversationFence) REQUIRE (e.id) IS UNIQUE` already exists.} {position: None} for query: 'CREATE CONSTRAINT graph_fence_id IF NOT EXISTS FOR (f:GraphConversationFence) REQUIRE f.id IS UNIQUE'
+2026-11-11 10:58:32,706 15 neo4j.notifications Received notification from DBMS server: {severity: INFORMATION} {code: Neo.ClientNotification.Schema.IndexOrConstraintAlreadyExists} {category: SCHEMA} {title: `CREATE CONSTRAINT user_id IF NOT EXISTS FOR (e:User) REQUIRE (e.id) IS UNIQUE` has no effect.} {description: `CONSTRAINT user_id FOR (e:User) REQUIRE (e.id) IS UNIQUE` already exists.} {position: None} for query: 'CREATE CONSTRAINT user_id IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE'
+2026-11-11 10:58:32,711 15 neo4j.notifications Received notification from DBMS server: {severity: INFORMATION} {code: Neo.ClientNotification.Schema.IndexOrConstraintAlreadyExists} {category: SCHEMA} {title: `CREATE CONSTRAINT conv_id IF NOT EXISTS FOR (e:Conversation) REQUIRE (e.id) IS UNIQUE` has no effect.} {description: `CONSTRAINT conv_id FOR (e:Conversation) REQUIRE (e.id) IS UNIQUE` already exists.} {position: None} for query: 'CREATE CONSTRAINT conv_id IF NOT EXISTS FOR (c:Conversation) REQUIRE c.id IS UNIQUE'
+2026-11-11 10:58:32,714 15 neo4j.notifications Received notification from DBMS server: {severity: INFORMATION} {code: Neo.ClientNotification.Schema.IndexOrConstraintAlreadyExists} {category: SCHEMA} {title: `CREATE CONSTRAINT msg_id IF NOT EXISTS FOR (e:Message) REQUIRE (e.id) IS UNIQUE` has no effect.} {description: `CONSTRAINT msg_id FOR (e:Message) REQUIRE (e.id) IS UNIQUE` already exists.} {position: None} for query: 'CREATE CONSTRAINT msg_id IF NOT EXISTS FOR (m:Message) REQUIRE m.id IS UNIQUE'
+2026-11-11 10:58:32,723 15 neo4j.notifications Received notification from DBMS server: {severity: INFORMATION} {code: Neo.ClientNotification.Schema.IndexOrConstraintAlreadyExists} {category: SCHEMA} {title: `CREATE RANGE INDEX topic_name IF NOT EXISTS FOR (e:Topic) ON (e.name)` has no effect.} {description: `RANGE INDEX topic_name FOR (e:Topic) ON (e.name)` already exists.} {position: None} for query: 'CREATE INDEX topic_name IF NOT EXISTS FOR (t:Topic) ON (t.name)'
+2026-11-11 10:58:32,727 15 neo4j.notifications Received notification from DBMS server: {severity: INFORMATION} {code: Neo.ClientNotification.Schema.IndexOrConstraintAlreadyExists} {category: SCHEMA} {title: `CREATE RANGE INDEX expr_text IF NOT EXISTS FOR (e:Expression) ON (e.text)` has no effect.} {description: `RANGE INDEX expr_text FOR (e:Expression) ON (e.text)` already exists.} {position: None} for query: 'CREATE INDEX expr_text IF NOT EXISTS FOR (e:Expression) ON (e.text)'
+2026-11-11 10:58:32,731 15 neo4j.notifications Received notification from DBMS server: {severity: INFORMATION} {code: Neo.ClientNotification.Schema.IndexOrConstraintAlreadyExists} {category: SCHEMA} {title: `CREATE CONSTRAINT graph_sync_marker_id IF NOT EXISTS FOR (e:GraphSyncMarker) REQUIRE (e.id) IS UNIQUE` has no effect.} {description: `CONSTRAINT graph_sync_marker_id FOR (e:GraphSyncMarker) REQUIRE (e.id) IS UNIQUE` already exists.} {position: None} for query: 'CREATE CONSTRAINT graph_sync_marker_id IF NOT EXISTS FOR (e:GraphSyncMarker) REQUIRE e.id IS UNIQUE'
+2026-11-11 10:58:32,739 15 talky.metrics {"event":"stage","stage":"memory_recall","outcome":"ok","duration_ms":8489.69}
+2026-11-11 10:58:33,354 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 575.58}
+2026-11-11 10:58:35,393 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:58:37,444 15 talky.metrics {"event":"stage","stage":"ko_coach","outcome":"ok","duration_ms":4690.93}
+2026-11-11 10:58:37,614 15 talky.metrics {"event":"stage","stage":"persist","outcome":"ok","duration_ms":164.56}
+2026-11-11 10:58:37,621 15 talky.metrics {"event": "resource_wait", "resource": "audio", "duration_ms": 5.04}
+2026-11-11 10:58:40,926 15 talky.metrics {"event":"stage","stage":"tts","outcome":"ok","duration_ms":3308.57}
+2026-11-11 10:58:41,186 15 app.mock_exam.worker {"event": "job", "kind": "conversation", "outcome": "ok", "attempt": 1, "queue_wait_ms": 101.43, "duration_ms": 16990.99}
+2026-11-11 10:58:41,262 15 talky.metrics {"event":"stage","stage":"load_prompt","outcome":"ok","duration_ms":18.54}
+2026-11-11 10:58:41,264 15 talky.metrics {"event":"stage","stage":"stt","outcome":"ok","duration_ms":0.11}
+2026-11-11 10:58:50,308 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 9035.05}
+2026-11-11 10:58:50,807 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:58:51,657 15 talky.metrics {"event":"stage","stage":"memory_recall","outcome":"ok","duration_ms":10391.24}
+2026-11-11 10:58:55,438 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 3462.31}
+2026-11-11 10:58:57,292 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:58:58,889 15 talky.metrics {"event":"stage","stage":"en_reply","outcome":"ok","duration_ms":7139.81}
+2026-11-11 10:58:58,971 15 talky.metrics {"event":"stage","stage":"persist","outcome":"ok","duration_ms":71.3}
+2026-11-11 10:59:00,334 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 1332.53}
+2026-11-11 10:59:01,550 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:59:04,122 15 talky.metrics {"event":"stage","stage":"better_expr","outcome":"ok","duration_ms":5150.23}
+2026-11-11 10:59:04,190 15 talky.metrics {"event":"stage","stage":"persist_correction","outcome":"ok","duration_ms":61.97}
+2026-11-11 10:59:04,197 15 talky.metrics {"event": "resource_wait", "resource": "audio", "duration_ms": 4.82}
+2026-11-11 10:59:10,920 15 talky.metrics {"event":"stage","stage":"tts","outcome":"ok","duration_ms":6726.93}
+2026-11-11 10:59:11,378 15 app.mock_exam.worker {"event": "job", "kind": "conversation", "outcome": "ok", "attempt": 1, "queue_wait_ms": 17088.54, "duration_ms": 30159.19}
+2026-11-11 10:59:11,832 15 talky.metrics {"event":"stage","stage":"load_prompt","outcome":"ok","duration_ms":77.51}
+2026-11-11 10:59:11,836 15 talky.metrics {"event":"stage","stage":"stt","outcome":"ok","duration_ms":0.38}
+2026-11-11 10:59:15,384 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 3497.08}
+2026-11-11 10:59:15,825 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:59:16,703 15 talky.metrics {"event":"stage","stage":"memory_recall","outcome":"ok","duration_ms":4849.54}
+2026-11-11 10:59:23,686 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 6886.08}
+2026-11-11 10:59:24,378 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:59:25,755 15 talky.metrics {"event":"stage","stage":"en_reply","outcome":"ok","duration_ms":8967.45}
+2026-11-11 10:59:25,785 15 talky.metrics {"event":"stage","stage":"persist","outcome":"ok","duration_ms":25.7}
+2026-11-11 10:59:27,367 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 1570.07}
+2026-11-11 10:59:28,397 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:59:30,361 15 talky.metrics {"event":"stage","stage":"better_expr","outcome":"ok","duration_ms":4573.72}
+2026-11-11 10:59:30,421 15 talky.metrics {"event":"stage","stage":"persist_correction","outcome":"ok","duration_ms":52.1}
+2026-11-11 10:59:30,427 15 talky.metrics {"event": "resource_wait", "resource": "audio", "duration_ms": 3.81}
+2026-11-11 10:59:33,742 15 talky.metrics {"event":"stage","stage":"tts","outcome":"ok","duration_ms":3317.83}
+2026-11-11 10:59:33,834 15 app.mock_exam.worker {"event": "job", "kind": "conversation", "outcome": "ok", "attempt": 1, "queue_wait_ms": 47384.68, "duration_ms": 22229.98}
+2026-11-11 10:59:33,923 15 talky.metrics {"event":"stage","stage":"load_prompt","outcome":"ok","duration_ms":22.49}
+2026-11-11 10:59:33,926 15 talky.metrics {"event":"stage","stage":"stt","outcome":"ok","duration_ms":0.04}
+2026-11-11 10:59:39,828 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 5876.08}
+2026-11-11 10:59:40,199 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:59:41,077 15 talky.metrics {"event":"stage","stage":"memory_recall","outcome":"ok","duration_ms":7144.99}
+2026-11-11 10:59:48,937 15 talky.metrics {"event": "resource_wait", "resource": "inference", "duration_ms": 7839.1}
+2026-11-11 10:59:50,719 15 httpx HTTP Request: POST http://host.docker.internal:11434/api/chat "HTTP/1.1 200 OK"
+2026-11-11 10:59:52,801 15 talky.metrics {"event":"stage","stage":"en_reply","outcome":"ok","duration_ms":11706.88}
+2026-11-11 10:59:53,012 15 talky.metrics {"event":"stage","stage":"persist","outcome":"ok","duration_ms":155.07}
