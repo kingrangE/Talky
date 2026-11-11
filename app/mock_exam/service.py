@@ -19,7 +19,7 @@ from app.mock_exam.scoring_graph import build_scoring_graph
 log = logging.getLogger(__name__)
 
 
-def run_expiry_cleanup() -> int:
+def run_expiry_cleanup(*, sweep=True) -> int:
     from datetime import datetime, timezone
     from sqlalchemy import select, or_
     from app.db.models import ConversationTurn, PendingAudioDeletion
@@ -35,6 +35,8 @@ def run_expiry_cleanup() -> int:
                     session.merge(PendingAudioDeletion(path=path))
             turn.input_audio_path=turn.output_audio_path=None
     removed = cleanup_expired(store.delete)
+    if not sweep:
+        return removed
     referenced = referenced_audio_paths()
     # A crash between file creation and DB commit can leave an unreferenced upload.
     cutoff = time.time() - 3600

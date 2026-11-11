@@ -498,13 +498,15 @@ def cleanup_expired(audio_delete) -> int:
     return removed
 
 
-def referenced_audio_paths() -> set[str]:
+def referenced_audio_paths(candidates=None) -> set[str]:
     from app.db.models import ConversationTurn
     with session_scope() as s:
         paths = set(s.scalars(select(MockExamResponse.encrypted_audio_path).where(
-            MockExamResponse.encrypted_audio_path.is_not(None)
+            MockExamResponse.encrypted_audio_path.is_not(None),
+            *([MockExamResponse.encrypted_audio_path.in_(candidates)] if candidates is not None else [])
         )).all())
         for row in s.execute(select(ConversationTurn.input_audio_path, ConversationTurn.output_audio_path).where(
-                or_(ConversationTurn.input_audio_path.is_not(None), ConversationTurn.output_audio_path.is_not(None)))):
+                or_(ConversationTurn.input_audio_path.is_not(None), ConversationTurn.output_audio_path.is_not(None)),
+                *([or_(ConversationTurn.input_audio_path.in_(candidates), ConversationTurn.output_audio_path.in_(candidates))] if candidates is not None else []))):
             paths.update(path for path in row if path)
         return paths

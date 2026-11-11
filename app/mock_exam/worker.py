@@ -22,17 +22,10 @@ def _run_worker(channel) -> None:
     if get_settings().WORKER_WARMUP:
         from app.warmup import warmup
         warmup()
-    cleanup_at = 0.0
     prefer_chat = False
     while True:
         recover_jobs()
         channel.send("heartbeat")
-        if time.monotonic() >= cleanup_at:
-            try:
-                run_expiry_cleanup()
-            except Exception as exc:
-                log.warning("audio cleanup deferred: %s", type(exc).__name__)
-            cleanup_at = time.monotonic() + get_settings().MOCK_EXAM_CLEANUP_INTERVAL_SECONDS
         job = None
         try:
             with inference_slot(for_exam=True):
@@ -110,6 +103,8 @@ def main() -> None:
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_args: stop.set())
+    from app.maintenance import start
+    start(stop)
     context = multiprocessing.get_context("spawn")
     while not stop.is_set():
         receiver, sender = context.Pipe(duplex=False)
