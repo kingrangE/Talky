@@ -227,9 +227,9 @@ def _render_message(m: dict) -> None:
 
 def _submit(**payload) -> None:
     cid = _ensure_conversation(payload.get("user_text") or "")
-    job = submit_turn(request_id=str(uuid.uuid4()), conversation_id=cid,
-                      user_id=USER_ID, **payload)
-    st.session_state.pending_turn_id = job["id"]
+    from app.ui.submission import submit_pending
+    submit_pending(st.session_state, submit_turn, conversation_id=cid,
+                   user_id=USER_ID, **payload)
     st.session_state.pending_audio = None
 
 
@@ -273,6 +273,16 @@ else:
     if st.session_state.pop("turn_error", None):
         st.warning("응답을 완료하지 못했습니다. 잠시 후 다시 보내주세요.")
     _poll_turn()
+    uncertain = st.session_state.get("uncertain_submission")
+    if uncertain:
+        st.warning("요청 접수 여부를 확인하지 못했습니다. 같은 요청으로 다시 확인해주세요.")
+        if st.button("접수 다시 확인"):
+            try:
+                from app.ui.submission import submit_pending
+                submit_pending(st.session_state, submit_turn, **uncertain["intent"])
+                st.rerun()
+            except Exception:
+                st.warning("접수를 확인하지 못했습니다. 잠시 후 다시 확인해주세요.")
     audio_bytes = None if st.session_state.pending_turn_id else mic_input(key=f"voice_input_{st.session_state.voice_turn}")
     if audio_bytes:
         h = hashlib.sha1(audio_bytes).hexdigest()
@@ -284,6 +294,8 @@ else:
                 st.rerun()
             except (ModelBusy, ValueError, PromptUnavailable) as exc:
                 st.warning(str(exc))
+            except Exception:
+                st.warning("접수 여부를 확인하지 못했습니다. 접수 다시 확인을 이용해주세요.")
 
     for message in st.session_state.messages:
         _render_message(message)
