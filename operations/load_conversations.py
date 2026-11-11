@@ -66,7 +66,7 @@ def summary(rows, *, mode, min_samples=1000):
         'text_observed_count':sum(math.isfinite(value) for value in text),
         'text_max_observed_seconds':max((v for v in text if math.isfinite(v)),default=None),
         'text_over_10s_or_unavailable':sum(value>10 for value in text),
-        'full_completion_p95_seconds':percentile([r['completion_seconds'] for r in rows if 'completion_seconds' in r],.95),
+        'full_completion_p95_seconds':percentile([r['completion_seconds'] for r in rows if r['outcome']=='completed' and 'completion_seconds' in r],.95),
         'audio_completed':sum(row.get('audio_completed',False) for row in rows),
         'correction_degraded':sum(row.get('correction_degraded',False) for row in rows),
         'limits_met_in_sample':limits_met,

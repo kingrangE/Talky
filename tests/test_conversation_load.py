@@ -29,3 +29,12 @@ def test_synthetic_load_uses_distinct_accounts_real_queue_and_cleans_schema(pg_d
     assert len({row['user_id'] for row in result['rows']})==3
     assert all(row['attempts']==1 for row in result['rows'])
     assert not result['summary']['slo_pass']
+
+
+def test_completion_latency_excludes_fast_failures_but_error_rate_keeps_them():
+    rows=[{'accepted':True,'outcome':'failed','completion_seconds':.01} for _ in range(19)]
+    rows.append({'accepted':True,'outcome':'completed','text_seconds':1,'completion_seconds':10})
+    report=summary(rows,mode='real')
+    assert report['full_completion_p95_seconds']==10
+    assert report['error_or_harness_timeout_rate']==.95
+    assert not report['limits_met_in_sample']
