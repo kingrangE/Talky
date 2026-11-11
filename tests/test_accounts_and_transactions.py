@@ -182,7 +182,9 @@ def test_history_has_a_utf8_byte_budget(monkeypatch):
 def test_full_prompt_budget_keeps_instructions_and_current_input(monkeypatch):
     from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-    monkeypatch.setattr("app.runtime.get_settings", lambda: type("Config", (), {"LLM_MAX_INPUT_BYTES": 1024})())
+    monkeypatch.setenv("LLM_MAX_INPUT_BYTES", "1024")
+    from app.settings import get_settings
+    get_settings.cache_clear()
     messages = [SystemMessage(content="instructions"), HumanMessage(content="x" * 800),
                 AIMessage(content="old answer"), HumanMessage(content="current question")]
     selected = bounded_messages(messages)

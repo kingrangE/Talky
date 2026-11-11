@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     LANGFUSE_PROMPT_VERSIONS: dict[str, Annotated[int, Field(gt=0)]] = Field(default_factory=dict)
     LANGFUSE_RELEASE: str = ""
     LLM_TIMEOUT_SECONDS: Annotated[int, Field(ge=1, le=300)] = 60
+    LLM_CONTEXT_TOKENS: Annotated[int, Field(ge=4096, le=131072)] = 16384
     LLM_MAX_OUTPUT_TOKENS: Annotated[int, Field(ge=128, le=8192)] = 4096
     LLM_MAX_INPUT_BYTES: Annotated[int, Field(ge=1024, le=128000)] = 24000
     MAX_USER_TEXT_CHARS: Annotated[int, Field(ge=1, le=10000)] = 4000

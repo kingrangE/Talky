@@ -78,7 +78,8 @@ def bounded_messages(messages: list) -> list:
     selected = {index for index, message in enumerate(messages) if message.type == "system"}
     if messages:
         selected.add(len(messages) - 1)
-    remaining = get_settings().LLM_MAX_INPUT_BYTES - sum(sizes[index] for index in selected)
+    from app.context_budget import input_budget
+    remaining = input_budget() - sum(sizes[index] for index in selected)
     if remaining < 0:
         raise ValueError("모델 입력이 너무 깁니다. 내용을 짧게 나눠 주세요.")
     for index in reversed(range(len(messages))):
@@ -88,7 +89,11 @@ def bounded_messages(messages: list) -> list:
             break
         selected.add(index)
         remaining -= sizes[index]
-    return [message for index, message in enumerate(messages) if index in selected]
+    result = [message for index, message in enumerate(messages) if index in selected]
+    first_history = next((i for i, message in enumerate(result) if message.type != 'system'), None)
+    if first_history is not None and result[first_history].type == 'ai':
+        result.pop(first_history)
+    return result
 
 
 def format_memory(memory: list[dict], header: str) -> str:

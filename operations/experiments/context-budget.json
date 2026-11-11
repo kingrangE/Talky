@@ -1,0 +1,28 @@
+{
+  "model": "ax4-light:latest",
+  "note": "Two diagnostic cases; no population latency claim. First request may load model. Output cap 8 for this diagnostic only.",
+  "cases": [
+    {
+      "language": "ko",
+      "input_bytes": 8591,
+      "context": 16384,
+      "output_reserved": 4096,
+      "prompt_eval_count": 990,
+      "eval_count": 2,
+      "elapsed_seconds": 12.164,
+      "load_seconds": 4.453842792,
+      "done_reason": "stop"
+    },
+    {
+      "language": "en",
+      "input_bytes": 5831,
+      "context": 16384,
+      "output_reserved": 4096,
+      "prompt_eval_count": 1110,
+      "eval_count": 2,
+      "elapsed_seconds": 3.971,
+      "load_seconds": 0.067006125,
+      "done_reason": "stop"
+    }
+  ]
+}

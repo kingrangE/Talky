@@ -38,6 +38,7 @@ def get_chat_llm(temperature: float = 0.7, streaming: bool = True) -> BaseChatMo
         model=cfg.MODEL_NAME,
         temperature=temperature,
         num_predict=cfg.LLM_MAX_OUTPUT_TOKENS,
+        num_ctx=cfg.LLM_CONTEXT_TOKENS,
         client_kwargs={"timeout": cfg.LLM_TIMEOUT_SECONDS},
     )
 
@@ -65,6 +66,7 @@ def get_local_structured_llm(
         model=model_name,
         temperature=temperature,
         num_predict=get_settings().LLM_MAX_OUTPUT_TOKENS,
+        num_ctx=get_settings().LLM_CONTEXT_TOKENS,
         client_kwargs={"timeout": get_settings().LLM_TIMEOUT_SECONDS},
     )
     try:
