@@ -66,9 +66,30 @@ def migrate() -> int:
     return migrated
 
 
+def cache() -> int:
+    from app.db.models import PromptVersion, Conversation
+    from app.db.postgres import session_scope
+    from app.settings import get_settings
+    from app.llm.prompt_cache import save
+    cfg = get_settings()
+    versions = dict(cfg.LANGFUSE_PROMPT_VERSIONS)
+    if not set(('talky/system', 'talky/ko-coach', 'talky/en-reply', 'talky/better-expression')) <= versions.keys():
+        raise ValueError('Pin all four service prompts before caching a release')
+    references = set(versions.items())
+    with session_scope() as session:
+        references.update(session.execute(select(PromptVersion.langfuse_name, PromptVersion.langfuse_version)
+            .where(PromptVersion.langfuse_name.is_not(None))).all())
+        for refs in session.scalars(select(Conversation.common_prompt_refs).where(Conversation.common_prompt_refs.is_not(None))):
+            references.update((ref['name'], ref['version']) for ref in refs.values() if ref['source']=='langfuse')
+    for name, version in sorted(references):
+        prompt = remote_prompt(name, version=version, cache_ttl_seconds=0)
+        save(name, version, prompt.prompt)
+    return len(references)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("publish", "check", "migrate"))
+    parser.add_argument("command", choices=("publish", "check", "migrate", "cache"))
     parser.add_argument("--label", choices=("staging", "production"), default="staging")
     args = parser.parse_args()
     client = get_client()
@@ -76,6 +97,8 @@ def main() -> None:
         raise SystemExit("Langfuse 연결 설정을 확인하세요. 키는 .env에만 저장하세요.")
     if args.command == "publish":
         publish(args.label)
+    elif args.command == "cache":
+        print(f"Cached {cache()} exact managed prompt versions.")
     elif args.command == "migrate":
         print(f"Linked {migrate()} legacy prompt versions; legacy bodies were preserved.")
     else:

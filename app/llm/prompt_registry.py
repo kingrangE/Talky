@@ -63,6 +63,14 @@ def remote_prompt(name: str, *, version: int | None = None, label: str | None = 
             raise ValueError("Expected a nonempty managed text prompt")
         if version is not None and prompt.version != version:
             raise ValueError("Prompt version mismatch")
+        if get_settings().PROMPT_CACHE_ENABLED:
+            from app.llm import prompt_cache
+            try:
+                prompt_cache.save(name, prompt.version, prompt.prompt)
+            except ValueError:
+                raise
+            except Exception as exc:
+                log.warning('Prompt cache write unavailable (%s)', type(exc).__name__)
         return prompt
     except Exception as exc:
         raise PromptUnavailable(f"Langfuse 프롬프트 조회 실패: {name}. 연결·버전·라벨을 확인하세요.") from exc
@@ -77,13 +85,30 @@ def resolve_reference(name: str, *, version: int | None = None) -> dict:
         if version is not None:
             raise PromptUnavailable("숫자 버전 평가는 Langfuse 연결이 필요합니다.")
         return builtin_reference(name)
+    if version is not None and cfg.PROMPT_CACHE_ENABLED:
+        reference = {"source": "langfuse", "name": name, "version": version}
+        read_reference(reference)
+        return reference
     prompt = remote_prompt(name, version=version, label=None if version else cfg.LANGFUSE_PROMPT_LABEL)
     return {"source": "langfuse", "name": name, "version": prompt.version}
 
 
 def read_reference(reference: dict) -> str:
     if reference["source"] == "langfuse":
-        return remote_prompt(reference["name"], version=reference["version"]).prompt
+        try:
+            return remote_prompt(reference["name"], version=reference["version"]).prompt
+        except PromptUnavailable as exc:
+            from app.llm import prompt_cache
+            if not get_settings().PROMPT_CACHE_ENABLED or not prompt_cache.transient(exc.__cause__):
+                raise
+            try:
+                cached = prompt_cache.load(reference['name'], reference['version'])
+            except Exception:
+                raise exc
+            if cached is None:
+                raise
+            log.warning('Using verified managed prompt cache: %s v%s', reference['name'], reference['version'])
+            return cached
     if reference["source"] != "builtin" or reference != builtin_reference(reference["name"]):
         raise PromptUnavailable("고정된 로컬 프롬프트와 코드가 다릅니다. 기존 코드로 재개하거나 새 대화를 시작하세요.")
     return builtin_text(reference["name"])

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     MODEL_NAME: str = "skt/A.X-4.0-Light"
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
+    PROMPT_CACHE_ENABLED: bool = False
     LANGFUSE_ENABLED: bool = False
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""
