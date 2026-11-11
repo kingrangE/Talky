@@ -41,8 +41,20 @@ def test_snapshots_are_immutable_and_auth_or_missing_versions_cannot_fallback(pg
         status_code = 401
     def unauthorized(*_, **__):
         raise registry.PromptUnavailable('unauthorized') from Unauthorized()
+    from datetime import datetime, timedelta, timezone
+    with pg_db[1]() as session:
+        session.get(PromptSnapshot, ('talky/en-reply', 1)).created_at = datetime.now(timezone.utc)-timedelta(minutes=6)
     monkeypatch.setattr(registry, 'remote_prompt', unauthorized)
     with pytest.raises(registry.PromptUnavailable):
         registry.read_reference({'source':'langfuse','name':'talky/en-reply','version':1})
     assert not prompt_cache.transient(Unauthorized())
     assert not prompt_cache.transient(ValueError())
+
+
+def test_fresh_exact_snapshot_avoids_remote_call_and_repeated_write(pg_db, monkeypatch):
+    monkeypatch.setenv('PROMPT_CACHE_ENABLED', 'true')
+    get_settings.cache_clear()
+    prompt_cache.save('talky/en-reply', 3, 'verified')
+    monkeypatch.setattr(registry, 'remote_prompt', lambda *_a, **_kw: pytest.fail('fresh cache contacted remote'))
+    for _ in range(3):
+        assert registry.read_reference({'source':'langfuse','name':'talky/en-reply','version':3}) == 'verified'

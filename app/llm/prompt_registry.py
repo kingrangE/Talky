@@ -57,7 +57,7 @@ def remote_prompt(name: str, *, version: int | None = None, label: str | None = 
     try:
         prompt = client.get_prompt(
             name, version=version, label=label, type="text",
-            cache_ttl_seconds=cache_ttl_seconds, max_retries=0, fetch_timeout_seconds=5,
+            cache_ttl_seconds=0 if get_settings().PROMPT_CACHE_ENABLED else cache_ttl_seconds, max_retries=0, fetch_timeout_seconds=5,
         )
         if not isinstance(prompt.prompt, str) or not prompt.prompt.strip() or prompt.is_fallback:
             raise ValueError("Expected a nonempty managed text prompt")
@@ -95,14 +95,28 @@ def resolve_reference(name: str, *, version: int | None = None) -> dict:
 
 def read_reference(reference: dict) -> str:
     if reference["source"] == "langfuse":
+        from app.llm import prompt_cache
+        if get_settings().PROMPT_CACHE_ENABLED:
+            try:
+                cached = prompt_cache.load(reference['name'], reference['version'], max_age=300)
+            except ValueError as exc:
+                raise PromptUnavailable('프롬프트 캐시 검증 실패') from exc
+            except Exception as exc:
+                log.warning('Prompt cache read unavailable (%s)', type(exc).__name__)
+                cached = None
+            if cached is not None:
+                return cached
         try:
             return remote_prompt(reference["name"], version=reference["version"]).prompt
         except PromptUnavailable as exc:
             from app.llm import prompt_cache
-            if not get_settings().PROMPT_CACHE_ENABLED or not prompt_cache.transient(exc.__cause__):
+            if not get_settings().PROMPT_CACHE_ENABLED:
+                raise
+            if not prompt_cache.transient(exc.__cause__):
+                prompt_cache.invalidate(reference['name'], reference['version'])
                 raise
             try:
-                cached = prompt_cache.load(reference['name'], reference['version'])
+                cached = prompt_cache.load(reference['name'], reference['version'], max_age=86400)
             except Exception:
                 raise exc
             if cached is None:
@@ -155,7 +169,7 @@ def invoke_with_prompt(llm, messages: list, state: dict, name: str):
         client = get_client()
         if client is not None:
             reference = state.get("common_prompt_refs", {}).get(name)
-            prompt = remote_prompt(reference["name"], version=reference["version"]) if reference and reference["source"] == "langfuse" else None
+            prompt = remote_prompt(reference["name"], version=reference["version"]) if reference and reference["source"] == "langfuse" and not get_settings().PROMPT_CACHE_ENABLED else None
             cfg = get_settings()
             generation = client.start_observation(
                 name=name, as_type="generation", prompt=prompt,
