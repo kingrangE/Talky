@@ -57,9 +57,15 @@ def sign_recovery_token(session_id: str, *, ttl_seconds: int) -> str:
 
 def verify_recovery_token(token: str) -> str:
     try:
+        if not isinstance(token, str) or not token or len(token) > 2048:
+            raise InvalidRecoveryToken("malformed token")
         padded = token + "=" * (-len(token) % 4)
-        packed = base64.urlsafe_b64decode(padded.encode())
-        payload, signature = packed.rsplit(b".", 1)
+        packed = base64.b64decode(padded.encode(), altchars=b'-_', validate=True)
+        # SHA-256 signatures contain arbitrary bytes, including the payload separator.
+        size = hashlib.sha256().digest_size
+        if len(packed) <= size + 1 or packed[-size-1:-size] != b'.':
+            raise InvalidRecoveryToken("malformed token")
+        payload, signature = packed[:-size-1], packed[-size:]
         expected = hmac.new(_signing_secret(), payload, hashlib.sha256).digest()
         if not hmac.compare_digest(signature, expected):
             raise InvalidRecoveryToken("invalid signature")
