@@ -4,9 +4,7 @@ import sys
 import time
 from pathlib import Path
 from app.settings import get_settings
-from alembic.config import Config
-from alembic.migration import MigrationContext
-from alembic.script import ScriptDirectory
+from app.schema_contract import check_schema
 from app.db.postgres import get_engine
 
 
@@ -20,10 +18,7 @@ def main():
             raise RuntimeError('worker heartbeat expired')
         return
     with get_engine().connect() as connection:
-        actual = MigrationContext.configure(connection).get_current_revision()
-    expected = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
-    if actual != expected:
-        raise RuntimeError('database schema is not ready')
+        check_schema(connection)
     urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=3).close()
 
 
