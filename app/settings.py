@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     AUDIO_CACHE_DIR: str = "./.cache"
 
     # Speaking mock test
+    AUDIO_S3_BUCKET: str = ""
+    MOCK_EXAM_AUDIO_KEY: str = ""
     MOCK_EXAM_DATA_DIR: str = "./.data/mock-exam"
     MOCK_EXAM_SET_DIR: str = "./app/mock_exam/data/sets"
     MOCK_EXAM_AUDIO_TTL_HOURS: int = 72

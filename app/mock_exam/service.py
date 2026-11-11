@@ -36,9 +36,8 @@ def run_expiry_cleanup() -> int:
     referenced = referenced_audio_paths()
     # A crash between file creation and DB commit can leave an unreferenced upload.
     cutoff = time.time() - 3600
-    for path in store.root.glob("*/*"):
-        relative = str(path.relative_to(store.root))
-        if path.is_file() and path.stat().st_mtime < cutoff and relative not in referenced:
+    for relative in store.older_than(cutoff):
+        if relative not in referenced:
             store.delete(relative)
     return removed
 

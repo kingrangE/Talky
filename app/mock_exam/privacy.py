@@ -87,6 +87,9 @@ class EncryptedAudioStore:
         self._fernet = Fernet(self._load_or_create_key())
 
     def _load_or_create_key(self) -> bytes:
+        configured = get_settings().MOCK_EXAM_AUDIO_KEY
+        if configured:
+            return configured.encode()
         key_path = self.root.parent / ".audio-key"
         key_path.parent.mkdir(parents=True, exist_ok=True)
         if not key_path.exists():
@@ -137,6 +140,74 @@ class EncryptedAudioStore:
             pass
 
 
+    def older_than(self, cutoff: float):
+        for path in self.root.glob('*/*'):
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                yield str(path.relative_to(self.root))
+
+
+class S3EncryptedAudioStore:
+    def __init__(self):
+        import boto3
+        from botocore.config import Config
+        cfg = get_settings()
+        if not cfg.MOCK_EXAM_AUDIO_KEY or not cfg.MOCK_EXAM_SIGNING_SECRET:
+            raise ValueError('S3 storage requires shared audio and signing keys')
+        self.bucket = cfg.AUDIO_S3_BUCKET
+        self._fernet = Fernet(cfg.MOCK_EXAM_AUDIO_KEY.encode())
+        self.client = boto3.client('s3', config=Config(connect_timeout=3, read_timeout=10,
+                                                    retries={'max_attempts': 2, 'mode': 'standard'}))
+
+    @staticmethod
+    def _key(relative_path):
+        from pathlib import PurePosixPath
+        path = PurePosixPath(relative_path)
+        if path.is_absolute() or '..' in path.parts or len(path.parts) != 2 or not relative_path.endswith('.fernet'):
+            raise ValueError('invalid audio object key')
+        return 'audio/' + relative_path
+
+    def save(self, session_id, question_number, audio):
+        if not 1 <= question_number <= 11:
+            raise ValueError('invalid question number')
+        path = f'{session_id}/q{question_number:02d}-{uuid.uuid4().hex}.fernet'
+        key = self._key(path)
+        self._call('put_object', Bucket=self.bucket, Key=key, Body=self._fernet.encrypt(audio),
+                   ServerSideEncryption='AES256', ContentType='application/octet-stream')
+        return path
+
+    def load(self, relative_path):
+        response = self._call('get_object', Bucket=self.bucket, Key=self._key(relative_path))
+        try:
+            with response['Body'] as body:
+                return self._fernet.decrypt(body.read())
+        except InvalidToken as exc:
+            raise ValueError('encrypted audio could not be decrypted') from exc
+
+    def delete(self, relative_path):
+        if relative_path:
+            self._call('delete_object', Bucket=self.bucket, Key=self._key(relative_path))
+
+    def _call(self, operation, **kwargs):
+        from botocore.exceptions import BotoCoreError, ClientError
+        try:
+            return getattr(self.client, operation)(**kwargs)
+        except (BotoCoreError, ClientError) as exc:
+            raise OSError('audio object storage unavailable') from exc
+
+    def older_than(self, cutoff):
+        from botocore.exceptions import BotoCoreError, ClientError
+        try:
+            pages = self.client.get_paginator('list_objects_v2').paginate(Bucket=self.bucket, Prefix='audio/')
+            for page in pages:
+                for obj in page.get('Contents', []):
+                    path = obj['Key'][len('audio/'):]
+                    if obj['LastModified'].timestamp() < cutoff and path.endswith('.fernet'):
+                        self._key(path)
+                        yield path
+        except (BotoCoreError, ClientError) as exc:
+            raise OSError('audio object listing unavailable') from exc
+
+
 @lru_cache(maxsize=1)
-def audio_store() -> EncryptedAudioStore:
-    return EncryptedAudioStore()
+def audio_store():
+    return S3EncryptedAudioStore() if get_settings().AUDIO_S3_BUCKET else EncryptedAudioStore()

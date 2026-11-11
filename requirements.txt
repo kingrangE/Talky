@@ -29,3 +29,6 @@ neo4j==5.*
 # Phase G 이후 (사전 설치 권장):
 # pgvector==0.3.*
 # fastembed==0.4.*
+
+# AWS shared encrypted audio storage
+boto3>=1.35,<2
