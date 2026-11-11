@@ -21,3 +21,15 @@ def test_committed_but_lost_ack_reuses_identity_even_after_completion():
     with pytest.raises(OSError):
         submit_pending(state, submit, **intent)
     assert ids[-1] != ids[0]
+
+
+def test_restored_receipt_is_used_before_any_network_submission():
+    state={'resume_request_id':'durable-id'}
+    receipts=[]
+    def submit(**kw):
+        assert receipts == [('durable-id','c')]
+        assert kw['request_id']=='durable-id'
+        return {'id':'durable-id'}
+    submit_pending(state,submit,conversation_id='c',user_id='u',user_text='Hello',
+                   before_submit=lambda rid,cid:receipts.append((rid,cid)))
+    assert state['pending_turn_id']=='durable-id'

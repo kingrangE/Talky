@@ -79,6 +79,31 @@ if "voice_turn" not in st.session_state:
 if "show_report_for" not in st.session_state:
     st.session_state.show_report_for = None
 
+# URL receipts contain only opaque IDs; every restored record is checked against the login.
+if not st.session_state.get("receipt_checked"):
+    st.session_state.receipt_checked = True
+    rid = st.query_params.get("turn")
+    cid = st.query_params.get("conversation")
+    if rid and cid:
+        try:
+            rid, cid = str(uuid.UUID(rid)), str(uuid.UUID(cid))
+            restored_messages = load_messages(cid, USER_ID)
+            st.session_state.conversation_id = cid
+            st.session_state.messages = restored_messages
+            try:
+                restored = get_turn(rid, USER_ID)
+            except ValueError:
+                st.session_state.resume_request_id = rid
+                st.session_state.resume_request_scope = (cid, str(USER_ID))
+                st.info("접수 결과가 없습니다. 이전 입력을 다시 보내면 같은 요청 번호로 확인합니다.")
+            else:
+                if restored["conversation_id"] != cid:
+                    raise ValueError("receipt scope mismatch")
+                st.session_state.pending_turn_id = rid
+        except (ValueError, TypeError):
+            st.query_params.clear()
+
+
 with st.sidebar:
     st.markdown("### Settings")
     st.text(f"Model: {MODEL_LABEL}")
@@ -225,11 +250,15 @@ def _render_message(m: dict) -> None:
                 st.markdown(m["better_expression"])
 
 
+def _receipt(request_id, conversation_id):
+    st.query_params.update(turn=request_id, conversation=conversation_id)
+
+
 def _submit(**payload) -> None:
     cid = _ensure_conversation(payload.get("user_text") or "")
     from app.ui.submission import submit_pending
     submit_pending(st.session_state, submit_turn, conversation_id=cid,
-                   user_id=USER_ID, **payload)
+                   user_id=USER_ID, before_submit=_receipt, **payload)
     st.session_state.pending_audio = None
 
 
@@ -250,6 +279,7 @@ def _poll_turn() -> None:
         job = get_turn(rid, USER_ID)
     except ValueError:
         st.session_state.pending_turn_id = None
+        st.query_params.clear()
         st.rerun()
     if (job.get("result") and job["conversation_id"] == st.session_state.conversation_id
             and job["status"] in {"queued", "processing"}):
@@ -261,6 +291,7 @@ def _poll_turn() -> None:
         st.info("응답을 준비하고 있습니다. 다른 대화를 열어도 처리는 계속됩니다.")
         return
     st.session_state.pending_turn_id = None
+    st.query_params.clear()
     st.session_state.messages = load_messages(job["conversation_id"], USER_ID)
     if job["status"] == "completed":
         if job["output_audio_path"]:
@@ -285,11 +316,11 @@ else:
         if st.button("접수 다시 확인"):
             try:
                 from app.ui.submission import submit_pending
-                submit_pending(st.session_state, submit_turn, **uncertain["intent"])
+                submit_pending(st.session_state, submit_turn, before_submit=_receipt, **uncertain["intent"])
                 st.rerun()
             except Exception:
                 st.warning("접수를 확인하지 못했습니다. 잠시 후 다시 확인해주세요.")
-    audio_bytes = None if st.session_state.pending_turn_id else mic_input(key=f"voice_input_{st.session_state.voice_turn}")
+    audio_bytes = None if (st.session_state.pending_turn_id or st.session_state.get("uncertain_submission")) else mic_input(key=f"voice_input_{st.session_state.voice_turn}")
     if audio_bytes:
         h = hashlib.sha1(audio_bytes).hexdigest()
         if st.session_state.last_voice_hash != h:
@@ -301,7 +332,9 @@ else:
             except (ModelBusy, ValueError, PromptUnavailable) as exc:
                 st.warning(str(exc))
             except Exception:
-                st.warning("접수 여부를 확인하지 못했습니다. 접수 다시 확인을 이용해주세요.")
+                if st.session_state.get("uncertain_submission"):
+                    st.rerun()
+                st.warning("요청을 접수하지 못했습니다. 잠시 후 다시 시도해주세요.")
 
     for message in st.session_state.messages:
         _render_message(message)
@@ -310,10 +343,15 @@ else:
         st.audio(st.session_state.pending_audio, format="audio/wav", autoplay=True)
         st.session_state.pending_audio = None
 
-    text_prompt = st.chat_input("Type a message", max_chars=cfg.MAX_USER_TEXT_CHARS, disabled=bool(st.session_state.pending_turn_id))
+    text_prompt = st.chat_input("Type a message", max_chars=cfg.MAX_USER_TEXT_CHARS, disabled=bool(st.session_state.pending_turn_id or st.session_state.get("uncertain_submission")))
     if text_prompt:
         try:
             handle_user_message(text_prompt)
             st.rerun()
         except (ModelBusy, ValueError, PromptUnavailable) as exc:
             st.warning(str(exc))
+
+        except Exception:
+            if st.session_state.get("uncertain_submission"):
+                st.rerun()
+            st.warning("요청을 접수하지 못했습니다. 잠시 후 다시 시도해주세요.")

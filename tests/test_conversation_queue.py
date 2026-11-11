@@ -208,3 +208,48 @@ def test_permanent_failure_stops_and_transient_failure_waits(chat, pg_db):
     with pg_db[1]() as session:
         session.get(ConversationTurn, uuid.UUID(second['id'])).lease_until = datetime.now(timezone.utc)
     assert queue.claim_turn()['attempt'] == 2
+
+
+def test_browser_receipt_restores_completed_turn_without_resubmission(chat, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, '__main__', sys.modules['__main__'])
+    from streamlit.testing.v1 import AppTest
+    job=submit(chat)
+    claimed=queue.claim_turn()
+    repo.save_turn(chat[1],chat[0],'Hello','Recovered answer',request_id=job['id'],expected_attempt=claimed['attempt'])
+    queue.process_turn(claimed)
+    app=AppTest.from_file('main.py')
+    app.session_state.auth_user_id=chat[0]
+    app.query_params['turn']=job['id']
+    app.query_params['conversation']=chat[1]
+    app.run(timeout=15)
+    assert not app.exception
+    assert app.session_state.pending_turn_id is None
+    assert [m['content'] for m in app.session_state.messages]==['Hello','Recovered answer']
+
+
+def test_ui_lost_ack_exposes_explicit_retry_without_new_request(chat, monkeypatch):
+    import sys
+    from streamlit.testing.v1 import AppTest
+    monkeypatch.setitem(sys.modules,'__main__',sys.modules['__main__'])
+    real_submit=queue.submit_turn
+    calls=[]
+    def lost_ack(**kwargs):
+        calls.append(kwargs['request_id'])
+        job=real_submit(**kwargs)
+        if len(calls)==1:
+            raise OSError('ack lost')
+        return job
+    monkeypatch.setattr(queue,'submit_turn',lost_ack)
+    app=AppTest.from_file('main.py')
+    app.session_state.auth_user_id=chat[0]
+    app.session_state.conversation_id=chat[1]
+    app.run(timeout=15)
+    app.chat_input[0].set_value('Hello').run(timeout=15)
+    assert not app.exception
+    assert app.chat_input[0].disabled
+    retry=next(button for button in app.button if button.label=='접수 다시 확인')
+    retry.click().run(timeout=15)
+    assert not app.exception
+    assert len(calls)==2 and calls[0]==calls[1]
+    assert app.session_state.pending_turn_id==calls[0]
