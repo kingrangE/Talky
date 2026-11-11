@@ -68,7 +68,8 @@ def test_lease_recovery_fences_old_attempt_and_commits_only_once(chat, pg_db):
 def test_text_is_committed_before_tts_failure(chat, monkeypatch):
     from app.agents import conversation_graph as graph
     from app.agents.nodes import tts
-    graph.build_conversation_graph.cache_clear()
+    builder = graph.build_conversation_graph
+    builder.cache_clear()
     monkeypatch.setattr(graph, 'load_conversation_prompt_node', lambda _: {})
     monkeypatch.setattr(graph, 'stt_node', lambda _: {'language': 'en'})
     monkeypatch.setattr(graph, 'memory_recall_node', lambda _: {})
@@ -84,7 +85,7 @@ def test_text_is_committed_before_tts_failure(chat, monkeypatch):
         monkeypatch.setattr(graph, 'build_conversation_graph', lambda: pytest.fail('completed request reran model'))
         assert queue.process_turn({**job, 'attempt': 1})['ai_reply'] == 'Hello there.'
     finally:
-        graph.build_conversation_graph.cache_clear() if hasattr(graph.build_conversation_graph, 'cache_clear') else None
+        builder.cache_clear()
 
 
 def test_global_queue_limit_and_expiry(chat, pg_db, monkeypatch):

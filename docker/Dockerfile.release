@@ -1,5 +1,5 @@
-# Build the app image first; pass its immutable digest as APP_BASE_IMAGE.
-ARG APP_BASE_IMAGE
+# Production builds should pass the reviewed app image digest as APP_BASE_IMAGE.
+ARG APP_BASE_IMAGE=talky-app:build
 FROM ${APP_BASE_IMAGE}
 ENV AUDIO_CACHE_DIR=/opt/talky/audio
 RUN python -m app.warmup --audio-only

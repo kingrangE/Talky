@@ -18,3 +18,8 @@ model
 tests
 spec.md
 todo.md
+
+.DS_Store
+.aws
+**/.aws
+.streamlit/secrets.toml
