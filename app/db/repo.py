@@ -530,3 +530,27 @@ def load_messages(conversation_id: str, user_id: str | uuid.UUID, *, limit: int 
             }
             for m in reversed(rows)
         ]
+
+
+def save_correction(*, conversation_id, user_id, user_message_id, assistant_message_id,
+                    better_expression, request_id=None, expected_attempt=None):
+    """Enrich a committed answer without creating another conversation turn."""
+    cid,uid=_to_uuid(conversation_id),_to_uuid(user_id)
+    with session_scope() as session:
+        _owned_conversation(session,cid,uid,lock=True)
+        turn=session.get(ConversationTurn,_to_uuid(request_id),with_for_update=True) if request_id else None
+        if request_id and (not turn or turn.user_id!=uid or turn.conversation_id!=cid
+                or turn.status!='processing' or turn.attempts!=expected_attempt):
+            raise ValueError('Stale conversation correction attempt')
+        user=session.get(Message,_to_uuid(user_message_id))
+        assistant=session.get(Message,_to_uuid(assistant_message_id))
+        if (not user or not assistant or user.conversation_id!=cid or assistant.conversation_id!=cid
+                or user.role!='user' or assistant.role!='assistant'):
+            raise ValueError('Correction message ownership mismatch')
+        if assistant.better_expression==better_expression:
+            return
+        assistant.better_expression=better_expression
+        if turn:
+            turn.result={**turn.result,'better_expression':better_expression}
+        session.add(GraphSyncEvent(conversation_id=cid,user_id=uid,kind='upsert',payload={
+            'user_message_id':str(user.id),'assistant_message_id':str(assistant.id),'skip_topics':True}))

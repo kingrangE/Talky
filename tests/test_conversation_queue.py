@@ -282,3 +282,52 @@ def test_end_conversation_can_enter_generation_capacity(chat, monkeypatch):
     assert not app.exception
     assert calls==[chat[1]]
     st.cache_resource.clear()
+
+
+def test_reply_is_visible_while_optional_correction_is_still_running(chat,monkeypatch,pg_db):
+    import threading
+    from app.agents import conversation_graph as graph
+    entered,release=threading.Event(),threading.Event()
+    builder=graph.build_conversation_graph;builder.cache_clear()
+    monkeypatch.setattr(graph,'load_conversation_prompt_node',lambda _: {})
+    monkeypatch.setattr(graph,'stt_node',lambda _: {'language':'en'})
+    monkeypatch.setattr(graph,'memory_recall_node',lambda _: {})
+    monkeypatch.setattr(graph,'en_reply_node',lambda _: {'ai_reply':'Ready before correction.'})
+    def correction(_):
+        entered.set();assert release.wait(3)
+        return {'better_expression':'Improved expression','correction_status':'completed'}
+    monkeypatch.setattr(graph,'better_expr_node',correction)
+    monkeypatch.setattr(graph,'tts_node',lambda _: {})
+    job=submit(chat)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pending=pool.submit(queue.process_turn,queue.claim_turn())
+            try:
+                assert entered.wait(2)
+                visible=queue.get_turn(job['id'],chat[0])
+                assert visible['status']=='processing'
+                assert visible['result']['ai_reply']=='Ready before correction.'
+                assert visible['result']['better_expression'] is None
+            finally:
+                release.set()
+            pending.result()
+        final=queue.get_turn(job['id'],chat[0])
+        assert final['result']['better_expression']=='Improved expression'
+        assert len(repo.load_messages(chat[1],chat[0]))==2
+        with pg_db[1]() as session:
+            events=session.scalars(select(GraphSyncEvent)).all()
+            assert len(events)==2 and sum(bool(e.payload.get('skip_topics')) for e in events)==1
+    finally:
+        builder.cache_clear()
+
+
+def test_correction_rejects_stale_attempt_and_foreign_owner(chat):
+    job=submit(chat);claimed=queue.claim_turn()
+    user,assistant=repo.save_turn(chat[1],chat[0],'Hello','Hi',request_id=job['id'],expected_attempt=claimed['attempt'])
+    kwargs=dict(conversation_id=chat[1],user_id=chat[0],user_message_id=user,assistant_message_id=assistant,
+                better_expression='Not allowed',request_id=job['id'],expected_attempt=0)
+    with pytest.raises(ValueError,match='Stale'):
+        repo.save_correction(**kwargs)
+    with pytest.raises(ValueError):
+        repo.save_correction(**{**kwargs,'user_id':str(uuid.uuid4())})
+    assert queue.get_turn(job['id'],chat[0])['result']['better_expression'] is None

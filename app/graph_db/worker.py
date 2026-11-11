@@ -51,7 +51,7 @@ def process_one() -> bool:
                     english_expression=user.english_expression, better_expression=assistant.better_expression,
                     previous_message_id=payload.get('previous_message_id'),
                     user_created_at=user.created_at, assistant_created_at=assistant.created_at)
-                if ok and user.memory_topics:
+                if ok and user.memory_topics and not payload.get('skip_topics'):
                     ok = ingest_topics(conversation_id=str(event.conversation_id), topics=user.memory_topics, event_id=str(event.id))
             if not ok:
                 raise RuntimeError('Graph projection unavailable')

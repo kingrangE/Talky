@@ -1,6 +1,6 @@
 """Turn 단위 LangGraph.
 
-load_prompt → STT → memory_recall → router → (ko_coach | en_reply → better_expr) → persist → TTS
+load_prompt → STT → memory_recall → router → reply → persist → optional correction → TTS
 이후 Phase F 에서 ending_graph 가 별도로 추가됨.
 """
 
@@ -15,7 +15,7 @@ from app.agents.nodes.better_expr import better_expr_node
 from app.agents.nodes.en_reply import en_reply_node
 from app.agents.nodes.ko_coach import ko_coach_node
 from app.agents.nodes.memory import memory_recall_node
-from app.agents.nodes.persist import persist_node
+from app.agents.nodes.persist import persist_node, persist_correction_node
 from app.agents.nodes.router import route_by_lang
 from app.agents.nodes.stt import stt_node
 from app.agents.nodes.tts import tts_node
@@ -34,6 +34,7 @@ def build_conversation_graph():
     g.add_node("better_expr", timed_stage("better_expr", better_expr_node))
     g.add_node("tts", timed_stage("tts", tts_node))
     g.add_node("persist", timed_stage("persist", persist_node))
+    g.add_node("persist_correction", timed_stage("persist_correction", persist_correction_node))
 
     g.add_edge(START, "load_prompt")
     g.add_edge("load_prompt", "stt")
@@ -42,8 +43,10 @@ def build_conversation_graph():
         "memory_recall", route_by_lang, {"ko": "ko_coach", "en": "en_reply"}
     )
     g.add_edge("ko_coach", "persist")
-    g.add_edge("en_reply", "better_expr")
-    g.add_edge("better_expr", "persist")
-    g.add_edge("persist", "tts")
+    g.add_edge("en_reply", "persist")
+    g.add_conditional_edges("persist", lambda state: "better_expr" if state.get("language")=="en" else "tts",
+                            {"better_expr":"better_expr","tts":"tts"})
+    g.add_edge("better_expr", "persist_correction")
+    g.add_edge("persist_correction", "tts")
     g.add_edge("tts", END)
     return g.compile()

@@ -133,3 +133,15 @@ def test_slow_projection_does_not_lock_source_conversation(conversation, pg_db, 
         finally:
             release.set()
         assert pending.result()
+
+
+def test_late_correction_does_not_increment_topic_weights_again(conversation,monkeypatch):
+    uid,cid=conversation
+    user,assistant=repo.save_turn(cid,uid,'Hello','Reply',memory_topics=['books'])
+    repo.save_correction(conversation_id=cid,user_id=uid,user_message_id=user,
+        assistant_message_id=assistant,better_expression='A better phrase')
+    calls=[]
+    monkeypatch.setattr(worker,'ingest_turn',lambda **_:True)
+    monkeypatch.setattr(worker,'ingest_topics',lambda **kw:calls.append(kw) or True)
+    assert worker.process_one() and worker.process_one()
+    assert len(calls)==1

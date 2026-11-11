@@ -30,3 +30,14 @@ def persist_node(state: GraphState) -> dict:
         "user_message_id": user_msg_id,
         "assistant_message_id": assistant_msg_id,
     }
+
+
+def persist_correction_node(state: GraphState) -> dict:
+    from app.db.repo import save_correction
+    expression=state.get('better_expression')
+    if state.get('correction_status')=='failed':
+        expression='표현 교정을 완료하지 못했습니다. 대화 답변은 정상적으로 생성되었습니다.'
+    save_correction(conversation_id=state['conversation_id'],user_id=state['user_id'],
+        user_message_id=state['user_message_id'],assistant_message_id=state['assistant_message_id'],
+        better_expression=expression,request_id=state.get('request_id'),expected_attempt=state.get('turn_attempt'))
+    return {}

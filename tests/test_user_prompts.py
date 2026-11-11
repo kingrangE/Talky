@@ -146,7 +146,7 @@ def test_agent_loads_own_rdb_prompt_before_calling_llm(db, monkeypatch, user_tex
 
     monkeypatch.setattr(en_reply, "get_chat_llm", lambda: FakeLLM())
     monkeypatch.setattr(ko_coach, "get_structured_llm", lambda _schema: FakeLLM())
-    for name in ("memory_recall_node", "better_expr_node", "tts_node", "persist_node"):
+    for name in ("memory_recall_node", "better_expr_node", "tts_node", "persist_node", "persist_correction_node"):
         monkeypatch.setattr(conversation_graph, name, lambda _state: {})
     conversation_graph.build_conversation_graph.cache_clear()
     try:
