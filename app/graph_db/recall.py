@@ -40,6 +40,7 @@ def recall_related(
     current_conversation_id: str | None = None,
     raise_errors: bool = False,
     query_text: str = '',
+    use_graph: bool = True,
 ) -> list[dict]:
     terms = _query_terms(query_text, topic_candidates) if query_text else []
     if not topic_candidates and not terms:
@@ -52,27 +53,29 @@ def recall_related(
         return []
     try:
         with get_driver().session() as s:
-            result = s.run(
-                """
-                MATCH (u:User {id: $uid})-[:HAD]->(:Conversation)-[:ABOUT]->(t:Topic)
-                WHERE t.name IN $topics
-                WITH collect(DISTINCT t) AS seeds
-                UNWIND seeds AS t
-                MATCH path = (t)-[:RELATED_TO*0..3]-(t2:Topic)
-                MATCH (:User {id: $uid})-[:HAD]->(c:Conversation)-[:ABOUT]->(t2)
-                MATCH (c)-[:CONTAINS]->(m:Message)
-                WHERE m.role IN ['user', 'assistant']
-                  AND ($current_cid IS NULL OR c.id <> $current_cid)
-                WITH m, c, min(length(path)) AS hops, min(t2.name) AS topic
-                RETURN m.id AS message_id, c.id AS conversation_id, m.text AS text, m.lang AS lang, topic, m.ts AS ts, hops
-                ORDER BY hops ASC, ts DESC, message_id ASC LIMIT $limit
-                """,
-                uid=user_id,
-                topics=topic_candidates,
-                limit=min(max(limit * 5, 60), 200),
-                current_cid=current_conversation_id,
-            )
-            rows = [dict(r) for r in result]
+            rows = []
+            if use_graph:
+                result = s.run(
+                    """
+                    MATCH (u:User {id: $uid})-[:HAD]->(:Conversation)-[:ABOUT]->(t:Topic)
+                    WHERE t.name IN $topics
+                    WITH collect(DISTINCT t) AS seeds
+                    UNWIND seeds AS t
+                    MATCH path = (t)-[:RELATED_TO*0..3]-(t2:Topic)
+                    MATCH (:User {id: $uid})-[:HAD]->(c:Conversation)-[:ABOUT]->(t2)
+                    MATCH (c)-[:CONTAINS]->(m:Message)
+                    WHERE m.role IN ['user', 'assistant']
+                      AND ($current_cid IS NULL OR c.id <> $current_cid)
+                    WITH m, c, min(length(path)) AS hops, min(t2.name) AS topic
+                    RETURN m.id AS message_id, c.id AS conversation_id, m.text AS text, m.lang AS lang, topic, m.ts AS ts, hops
+                    ORDER BY hops ASC, ts DESC, message_id ASC LIMIT $limit
+                    """,
+                    uid=user_id,
+                    topics=topic_candidates,
+                    limit=min(max(limit * 5, 60), 200),
+                    current_cid=current_conversation_id,
+                )
+                rows = [dict(r) for r in result]
             if terms:
                 # shortcut: user-scoped text scans; add a full-text index when histories outgrow interactive latency.
                 result = s.run(

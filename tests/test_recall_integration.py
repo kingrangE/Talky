@@ -97,3 +97,9 @@ def test_delete_tombstone_fences_late_upsert(graph, monkeypatch):
         user_text='private', ai_text='reply', language='en')
     with recall.get_driver().session() as session:
         assert session.run('MATCH (c:Conversation {id:$cid}) RETURN count(c) AS n', cid=cid).single()['n'] == 0
+
+
+def test_graph_ablation_keeps_text_retrieval_and_owner_scope(graph):
+    rows=recall.recall_related(graph,[graph+'/books'],query_text='Where is Blue Bookshop?',use_graph=False,raise_errors=True)
+    assert rows and rows[0]['message_id']==graph+'-old'
+    assert graph+'-private' not in {r['message_id'] for r in rows}
