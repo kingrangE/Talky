@@ -7,6 +7,7 @@ Topic 노드는 ending graph (Phase F) 에서 추가.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from app.graph_db.neo4j_client import ensure_schema, get_driver
 
@@ -25,6 +26,9 @@ def _ingest_tx(
     ai_text: str,
     english_expression: str | None,
     better_expression: str | None,
+    previous_message_id: str | None = None,
+    user_created_at: datetime | None = None,
+    assistant_created_at: datetime | None = None,
 ) -> None:
     tx.run(
         """
@@ -37,7 +41,7 @@ def _ingest_tx(
         cid=conversation_id,
     )
 
-    last = tx.run(
+    last = None if user_created_at is not None else tx.run(
         """
         MATCH (c:Conversation {id: $cid})-[:CONTAINS]->(m:Message)
         WITH m ORDER BY m.ts DESC LIMIT 1
@@ -45,12 +49,15 @@ def _ingest_tx(
         """,
         cid=conversation_id,
     ).single()
-    last_id = last["id"] if last else None
+    last_id = previous_message_id if user_created_at is not None else last["id"] if last else None
+    if last_id in {user_msg_id, assistant_msg_id}:
+        last_id = None
 
     tx.run(
         """
         MERGE (m:Message {id: $mid})
-          SET m.role = 'user', m.lang = $lang, m.text = $text, m.ts = datetime()
+          ON CREATE SET m.ts = coalesce($source_ts, datetime())
+          SET m.role = 'user', m.lang = $lang, m.text = $text
         WITH m
         MATCH (c:Conversation {id: $cid})
         MERGE (c)-[:CONTAINS]->(m)
@@ -59,6 +66,7 @@ def _ingest_tx(
         cid=conversation_id,
         lang=language,
         text=user_text,
+        source_ts=user_created_at,
     )
 
     if last_id:
@@ -84,7 +92,8 @@ def _ingest_tx(
     tx.run(
         """
         MERGE (m:Message {id: $mid})
-          SET m.role = 'assistant', m.lang = $lang, m.text = $text, m.ts = datetime()
+          ON CREATE SET m.ts = coalesce($source_ts, datetime())
+          SET m.role = 'assistant', m.lang = $lang, m.text = $text
         WITH m
         MATCH (c:Conversation {id: $cid})
         MERGE (c)-[:CONTAINS]->(m)
@@ -93,6 +102,7 @@ def _ingest_tx(
         cid=conversation_id,
         lang=language,
         text=ai_text,
+        source_ts=assistant_created_at,
     )
 
     tx.run(
@@ -126,6 +136,9 @@ def ingest_turn(
     ai_text: str,
     english_expression: str | None = None,
     better_expression: str | None = None,
+    previous_message_id: str | None = None,
+    user_created_at: datetime | None = None,
+    assistant_created_at: datetime | None = None,
 ) -> bool:
     if not ensure_schema():
         return False
@@ -142,6 +155,9 @@ def ingest_turn(
                 ai_text=ai_text,
                 english_expression=english_expression,
                 better_expression=better_expression,
+                previous_message_id=previous_message_id,
+                user_created_at=user_created_at,
+                assistant_created_at=assistant_created_at,
             )
         return True
     except Exception as exc:
@@ -149,7 +165,12 @@ def ingest_turn(
         return False
 
 
-def _ingest_topics_tx(tx, conversation_id: str, topics: list[str]) -> None:
+def _ingest_topics_tx(tx, conversation_id: str, topics: list[str], event_id: str | None = None) -> None:
+    if event_id:
+        marker = tx.run('MERGE (e:GraphSyncMarker {id:$id}) ON CREATE SET e.complete=false, e.conversation_id=$cid RETURN e.complete AS complete',
+                        id=event_id, cid=conversation_id).single()
+        if marker['complete']:
+            return
     for name in topics:
         tx.run(
             """
@@ -173,15 +194,17 @@ def _ingest_topics_tx(tx, conversation_id: str, topics: list[str]) -> None:
                 a=a,
                 b=b,
             )
+    if event_id:
+        tx.run('MATCH (e:GraphSyncMarker {id:$id}) SET e.complete=true', id=event_id)
 
 
-def ingest_topics(*, conversation_id: str, topics: list[str]) -> bool:
+def ingest_topics(*, conversation_id: str, topics: list[str], event_id: str | None = None) -> bool:
     cleaned = [t.strip().lower() for t in topics if t and t.strip()]
     if not cleaned or not ensure_schema():
         return False
     try:
         with get_driver().session() as s:
-            s.execute_write(_ingest_topics_tx, conversation_id, cleaned)
+            s.execute_write(_ingest_topics_tx, conversation_id, cleaned, event_id)
         return True
     except Exception as exc:
         log.warning("ingest_topics skipped: %s", exc)
@@ -209,6 +232,7 @@ def _delete_conversation_tx(tx, conversation_id: str, user_id: str) -> None:
     )
     tx.run("MATCH (t:Topic) WHERE NOT (t)<-[:ABOUT]-() DETACH DELETE t")
     tx.run("MATCH (e:Expression) WHERE NOT ()-[:LEARNED]->(e) DETACH DELETE e")
+    tx.run('MATCH (e:GraphSyncMarker {conversation_id:$cid}) DETACH DELETE e', cid=conversation_id)
 
 
 def delete_conversation_memory(*, conversation_id: str, user_id: str) -> bool:

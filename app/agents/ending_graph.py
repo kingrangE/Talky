@@ -1,6 +1,6 @@
 """대화 종료 시 분석 보고서 + Topic 적재 그래프.
 
-START → load_history → summarize → persist_report → ingest_topics → END
+START → load_history → summarize → persist_report (with Graph outbox) → END
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from app.db.repo import load_messages, save_report
 from app.runtime import bounded_history, bounded_messages
-from app.graph_db.ingest import ingest_topics
 from app.llm.factory import get_structured_llm
 
 
@@ -87,15 +86,8 @@ def persist_report_node(state: EndingState) -> dict:
         weaknesses=report.get("weaknesses") or [],
         vocab_learned=report.get("vocab_learned") or [],
         ended=True,
+        memory_topics=report.get('topics') or [],
     )
-    return {}
-
-
-def ingest_topics_node(state: EndingState) -> dict:
-    cid = state["conversation_id"]
-    topics = (state.get("report") or {}).get("topics") or []
-    if topics:
-        ingest_topics(conversation_id=cid, topics=topics)
     return {}
 
 
@@ -105,11 +97,9 @@ def build_ending_graph():
     g.add_node("load_history", load_history_node)
     g.add_node("summarize", summarize_node)
     g.add_node("persist_report", persist_report_node)
-    g.add_node("ingest_topics", ingest_topics_node)
 
     g.add_edge(START, "load_history")
     g.add_edge("load_history", "summarize")
     g.add_edge("summarize", "persist_report")
-    g.add_edge("persist_report", "ingest_topics")
-    g.add_edge("ingest_topics", END)
+    g.add_edge("persist_report", END)
     return g.compile()

@@ -12,7 +12,7 @@ from typing import Any
 
 from sqlalchemy import func, select, update
 
-from app.db.models import Conversation, Message, PromptVersion, Rating, Report, User
+from app.db.models import Conversation, GraphSyncEvent, Message, PromptVersion, Rating, Report, User
 from app.db.postgres import session_scope
 from app.settings import get_settings
 from app.llm.prompt_registry import common_references, publish_user_prompt, read_reference
@@ -143,13 +143,8 @@ def delete_conversation(conversation_id: str, user_id: str | uuid.UUID) -> None:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
         conv = _owned_conversation(s, cid, user_id, lock=True)
+        s.add(GraphSyncEvent(conversation_id=cid, user_id=_to_uuid(user_id), kind='delete', payload={}))
         s.delete(conv)
-    if user_id:
-        # Postgres 삭제가 커밋된 뒤 Neo4j 사본도 정리한다. Neo4j 장애는 내부에서
-        # 기록하고 False를 반환하므로 사용자 대화 삭제 자체는 유지된다.
-        from app.graph_db.ingest import delete_conversation_memory
-
-        delete_conversation_memory(conversation_id=str(cid), user_id=str(user_id))
 
 
 def update_conversation_title(conversation_id: str, title: str, user_id: str | uuid.UUID) -> None:
@@ -168,19 +163,40 @@ def save_turn(
     language: str | None = None,
     english_expression: str | None = None,
     better_expression: str | None = None,
+    memory_topics: list[str] | None = None,
 ) -> tuple[str, str]:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
         conv = _owned_conversation(s, cid, user_id, lock=True)
         if conv.ended_at is not None:
             raise ValueError("Conversation has ended")
+        previous = s.scalar(select(Message.id).where(Message.conversation_id == cid)
+                            .order_by(Message.created_at.desc(), Message.id.desc()).limit(1))
         user_msg = Message(conversation_id=cid, role="user", content=user_text,
-                           language=language, english_expression=english_expression)
+                           language=language, english_expression=english_expression, memory_topics=memory_topics or [])
         ai_msg = Message(conversation_id=cid, role="assistant", content=ai_reply,
                          language=language, better_expression=better_expression)
         s.add_all([user_msg, ai_msg])
         s.flush()
+        s.add(GraphSyncEvent(conversation_id=cid, user_id=_to_uuid(user_id), kind='upsert', payload={
+            'user_message_id':str(user_msg.id), 'assistant_message_id':str(ai_msg.id),
+            'previous_message_id':str(previous) if previous else None, 'topics':memory_topics or [],
+        }))
         return str(user_msg.id), str(ai_msg.id)
+
+
+def active_conversation_ids(user_id: str, candidates: list[str]) -> set[str]:
+    ids = []
+    for candidate in candidates:
+        try:
+            ids.append(_to_uuid(candidate))
+        except (ValueError, TypeError, AttributeError):
+            continue
+    if not ids:
+        return set()
+    with session_scope() as s:
+        return {str(value) for value in s.scalars(select(Conversation.id).where(
+            Conversation.user_id == _to_uuid(user_id), Conversation.id.in_(ids)))}
 
 
 def save_report(
@@ -192,22 +208,27 @@ def save_report(
     weaknesses: list[str],
     vocab_learned: list[str],
     ended: bool = False,
+    memory_topics: list[str] | None = None,
 ) -> str:
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
         conv = _owned_conversation(s, cid, user_id, lock=True)
         if ended:
             conv.ended_at = datetime.now(timezone.utc)
+        if memory_topics:
+            s.add(GraphSyncEvent(conversation_id=cid, user_id=_to_uuid(user_id), kind='topics', payload={'topics':memory_topics}))
         existing = s.scalars(select(Report).where(Report.conversation_id == cid)).first()
         if existing is not None:
             existing.summary = summary
             existing.strengths = {"items": strengths}
             existing.weaknesses = {"items": weaknesses}
             existing.vocab_learned = {"items": vocab_learned}
+            existing.memory_topics = memory_topics or []
             s.flush()
             return str(existing.id)
         report = Report(
             conversation_id=cid,
+            memory_topics=memory_topics or [],
             summary=summary,
             strengths={"items": strengths},
             weaknesses={"items": weaknesses},

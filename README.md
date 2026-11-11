@@ -251,3 +251,10 @@ DB 이름은 반드시 `_test`로 끝나야 하며, 검사마다 별도 스키�
 ```bash
 TALKY_TEST_POSTGRES_DSN='postgresql+psycopg://USER:PASSWORD@localhost:5432/talky_test' python -m pytest -q
 ```
+
+## Graph 동기화와 장애 재처리
+
+- 대화·보고서의 원본과 토픽은 PostgreSQL에 저장하고, 같은 트랜잭션에서 Graph 동기화 작업을 기록합니다. `graph-worker`가 대화별 순서를 지켜 Neo4j에 반영합니다. 장애 시 작업을 버리지 않고 지수 backoff로 재시도하며, worker를 여러 개 실행해도 같은 대화의 작업은 순서대로 처리합니다.
+- 원본 대화가 삭제됐으면 늦게 도착한 저장 작업도 Graph 삭제로 처리합니다. 회상 노드에서도 PostgreSQL의 현재 소유권·존재 여부를 확인하므로 삭제된 대화를 동기화 대기 중에 다시 제공하지 않습니다.
+- 재전송해도 메시지 ID·원래 시간·대화 연결을 유지하고 토픽 작업은 Neo4j의 완료 표식으로 중복 집계를 막습니다. PostgreSQL 커밋 전에 프로세스가 종료돼도 미완료 작업은 남아 다시 처리됩니다. 이는 재시도와 멱등성을 조합한 방식이며 두 DB의 분산 트랜잭션은 아닙니다.
+- 기존 설치는 앱·worker를 중지한 뒤 `python -m alembic upgrade head`를 실행하고 `python -m app.graph_db.worker` 또는 Compose의 `graph-worker`를 함께 시작해야 합니다. 대기 작업이 남은 상태의 스키마 downgrade는 거부합니다. 동기화가 지연되면 장기 기억이 일시적으로 덜 검색될 수 있으므로 작업 지연을 관측해야 합니다.

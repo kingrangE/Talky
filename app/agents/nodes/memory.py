@@ -15,6 +15,7 @@ from app.agents.state import GraphState
 from app.graph_db.recall import recall_related
 from app.llm.factory import get_structured_llm
 from app.runtime import bounded_messages
+from app.db.repo import active_conversation_ids
 
 log = logging.getLogger(__name__)
 
@@ -58,4 +59,6 @@ def memory_recall_node(state: GraphState) -> dict:
         current_conversation_id=state.get("conversation_id"),
         query_text=user_text,
     )
+    active = active_conversation_ids(user_id, [m.get('conversation_id', '') for m in memory])
+    memory = [m for m in memory if m.get('conversation_id') in active]
     return {"retrieved_memory": memory, "memory_topics": topics}

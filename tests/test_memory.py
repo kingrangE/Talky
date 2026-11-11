@@ -46,9 +46,10 @@ def test_memory_node_keeps_topics_for_immediate_ingest(monkeypatch):
             current_conversation_id=current_conversation_id,
             query_text=query_text,
         )
-        return [{"text": "prior message", "topic": "office work"}]
+        return [{"text": "prior message", "topic": "office work", 'conversation_id':'previous'}]
 
     monkeypatch.setattr(memory, "recall_related", fake_recall)
+    monkeypatch.setattr(memory, 'active_conversation_ids', lambda *_: {'previous'})
     result = memory.memory_recall_node(
         {
             "user_id": "user-1",
@@ -63,15 +64,12 @@ def test_memory_node_keeps_topics_for_immediate_ingest(monkeypatch):
     assert captured['query_text'] == "Let's discuss office work"
 
 
-def test_persist_ingests_topics_before_conversation_end(monkeypatch):
+def test_persist_enqueues_topics_with_the_source_turn(monkeypatch):
     topic_calls = []
-    monkeypatch.setattr(persist, "save_turn", lambda *_args, **_kwargs: ("user-message", "assistant-message"))
-    monkeypatch.setattr(persist, "ingest_turn", lambda **_kwargs: True)
-    monkeypatch.setattr(
-        persist,
-        "ingest_topics",
-        lambda **kwargs: topic_calls.append(kwargs) or True,
-    )
+    def save(*args, **kwargs):
+        topic_calls.append(kwargs['memory_topics'])
+        return 'user-message', 'assistant-message'
+    monkeypatch.setattr(persist, 'save_turn', save)
 
     persist.persist_node(
         {
@@ -84,9 +82,7 @@ def test_persist_ingests_topics_before_conversation_end(monkeypatch):
         }
     )
 
-    assert topic_calls == [
-        {"conversation_id": "conversation-1", "topics": ["running"]}
-    ]
+    assert topic_calls == [['running']]
 
 
 def test_empty_topic_extraction_still_searches_the_users_text(monkeypatch):
@@ -94,8 +90,9 @@ def test_empty_topic_extraction_still_searches_the_users_text(monkeypatch):
     captured = {}
     def search(uid, topics, **kwargs):
         captured.update(uid=uid, topics=topics, **kwargs)
-        return [{'text':'Blue Bookshop is in Yeonnam-dong.'}]
+        return [{'text':'Blue Bookshop is in Yeonnam-dong.', 'conversation_id':'previous'}]
     monkeypatch.setattr(memory, 'recall_related', search)
+    monkeypatch.setattr(memory, 'active_conversation_ids', lambda *_: {'previous'})
     result = memory.memory_recall_node({'user_id':'alice','user_text':'Where is Blue Bookshop?'})
     assert result['retrieved_memory']
     assert captured['topics'] == []
@@ -111,6 +108,6 @@ def test_delete_memory_queries_are_user_scoped():
 
     ingest._delete_conversation_tx(FakeTx(), "conversation-1", "user-1")
 
-    assert len(calls) == 4
+    assert len(calls) == 5
     assert all("User {id: $uid}" in query for query, _params in calls[:2])
     assert calls[0][1] == {"uid": "user-1", "cid": "conversation-1"}

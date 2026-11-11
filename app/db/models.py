@@ -84,6 +84,7 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     english_expression: Mapped[str | None] = mapped_column(Text)
     better_expression: Mapped[str | None] = mapped_column(Text)
+    memory_topics: Mapped[list | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
@@ -138,6 +139,7 @@ class Report(Base):
     strengths: Mapped[dict | None] = mapped_column(JSONB)
     weaknesses: Mapped[dict | None] = mapped_column(JSONB)
     vocab_learned: Mapped[dict | None] = mapped_column(JSONB)
+    memory_topics: Mapped[list | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -305,3 +307,20 @@ class PendingAudioDeletion(Base):
 
     path: Mapped[str] = mapped_column(Text, primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class GraphSyncEvent(Base):
+    __tablename__ = 'graph_sync_events'
+    __table_args__ = (CheckConstraint("kind IN ('upsert','delete','topics')", name='graph_sync_kind'),
+                     Index('ix_graph_sync_ready', 'available_at', 'created_at'),
+                     Index('ix_graph_sync_conversation', 'conversation_id', 'created_at', 'id'))
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(String(128))
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)

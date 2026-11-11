@@ -56,6 +56,21 @@ services:
       app:
         condition: service_healthy
 
+  graph-worker:
+    image: talky-app:local
+    pull_policy: never
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "app.graph_db.worker"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: postgres
+      NEO4J_URI: bolt://neo4j:7687
+    depends_on:
+      app:
+        condition: service_healthy
+
   ollama:
     image: ollama/ollama:latest
     environment:

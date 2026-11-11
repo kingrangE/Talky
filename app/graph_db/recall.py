@@ -63,8 +63,8 @@ def recall_related(
                 MATCH (c)-[:CONTAINS]->(m:Message)
                 WHERE m.role IN ['user', 'assistant']
                   AND ($current_cid IS NULL OR c.id <> $current_cid)
-                WITH m, min(length(path)) AS hops, min(t2.name) AS topic
-                RETURN m.id AS message_id, m.text AS text, m.lang AS lang, topic, m.ts AS ts, hops
+                WITH m, c, min(length(path)) AS hops, min(t2.name) AS topic
+                RETURN m.id AS message_id, c.id AS conversation_id, m.text AS text, m.lang AS lang, topic, m.ts AS ts, hops
                 ORDER BY hops ASC, ts DESC, message_id ASC LIMIT $limit
                 """,
                 uid=user_id,
@@ -84,8 +84,8 @@ def recall_related(
                         score + CASE WHEN toLower(m.text) CONTAINS term.text THEN term.weight ELSE 0.0 END) AS score
                     WHERE score > 0
                     OPTIONAL MATCH (c)-[:ABOUT]->(t:Topic)
-                    WITH m, score, min(t.name) AS topic
-                    RETURN m.id AS message_id, m.text AS text, m.lang AS lang,
+                    WITH m, c, score, min(t.name) AS topic
+                    RETURN m.id AS message_id, c.id AS conversation_id, m.text AS text, m.lang AS lang,
                            coalesce(topic, 'text match') AS topic, m.ts AS ts, 4 AS hops
                     ORDER BY score DESC, ts DESC, message_id ASC LIMIT $limit
                     """,
