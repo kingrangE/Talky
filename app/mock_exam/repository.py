@@ -296,7 +296,7 @@ def save_calibration_sample(
 
 
 def claim_job() -> dict[str, Any] | None:
-    """Claim committed DB work; the dedicated worker holds the global worker lock."""
+    """Claim a committed job without blocking other workers."""
     now = _now()
     with session_scope() as s:
         for model, queued, processing, kind in (
@@ -313,6 +313,7 @@ def claim_job() -> dict[str, Any] | None:
                 continue
             row.status = processing
             row.attempts += 1
+            row.lease_until = now + timedelta(seconds=get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS + 30)
             row.updated_at = now
             return {
                 "id": str(row.id), "session_id": str(row.session_id), "kind": kind,
@@ -330,6 +331,7 @@ def _retry_or_fail(s, row, kind: str, error_code: str) -> None:
     if session is None:
         return
     row.updated_at = _now()
+    row.lease_until = None
     session.updated_at = _now()
     if kind == "response":
         row.error_code = error_code
@@ -353,16 +355,23 @@ def fail_job(job: dict[str, Any], error_code: str) -> None:
 
 
 def recover_jobs() -> int:
-    """Called only after acquiring the exclusive worker lock, including after a timeout."""
+    """Recover expired claims only; a bounded supervisor kills work before its lease expires."""
     recovered = 0
     with session_scope() as s:
         for model, processing, kind in (
             (MockExamResponse, "processing", "response"),
             (MockExamReport, "scoring", "report"),
         ):
-            for row in s.scalars(select(model).where(model.status == processing)).all():
-                _retry_or_fail(s, row, kind, "worker_interrupted")
-                recovered += 1
+            expired = select(model.id).where(model.session_id == MockExamSession.id,
+                model.status == processing, model.lease_until <= _now()).exists()
+            sessions = s.scalars(select(MockExamSession).where(expired)
+                .with_for_update(skip_locked=True).limit(32)).all()
+            for session in sessions:
+                for row in s.scalars(select(model).where(model.session_id == session.id,
+                        model.status == processing, model.lease_until <= _now())
+                        .with_for_update(skip_locked=True)).all():
+                    _retry_or_fail(s, row, kind, "worker_interrupted")
+                    recovered += 1
     return recovered
 
 

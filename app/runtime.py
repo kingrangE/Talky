@@ -1,4 +1,4 @@
-"""Bound model input and share one inference slot across app and worker processes."""
+"""Bound model input and share bounded inference slots across app and worker processes."""
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -19,11 +19,17 @@ class ModelBusy(RuntimeError):
 @contextmanager
 def inference_slot(*, for_exam: bool = False):
     with get_engine().connect() as connection:
-        acquired = connection.execute(
-            text("SELECT pg_try_advisory_lock(:key)"), {"key": INFERENCE_LOCK}
-        ).scalar()
-        connection.commit()
-        if not acquired:
+        acquired_key = None
+        for offset in range(get_settings().INFERENCE_CAPACITY):
+            key = INFERENCE_LOCK + offset * 100
+            acquired = connection.execute(
+                text("SELECT pg_try_advisory_lock(:key)"), {"key": key}
+            ).scalar()
+            connection.commit()
+            if acquired:
+                acquired_key = key
+                break
+        if acquired_key is None:
             raise ModelBusy("다른 음성/모델 작업을 처리 중입니다. 잠시 후 다시 시도하세요.")
         try:
             if not for_exam:
@@ -41,7 +47,7 @@ def inference_slot(*, for_exam: bool = False):
         finally:
             try:
                 connection.rollback()
-                connection.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": INFERENCE_LOCK})
+                connection.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": acquired_key})
                 connection.commit()
             except Exception:
                 connection.invalidate()

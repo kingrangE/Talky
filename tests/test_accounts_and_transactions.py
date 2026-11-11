@@ -215,3 +215,15 @@ def test_login_ui_keeps_browser_accounts_separate(pg_db, monkeypatch):
         assert not app.exception
         labels = [button.label for button in app.button]
         assert any("alice-private-conversation" in label for label in labels) is should_see_private
+
+
+def test_inference_capacity_is_bounded_and_releases_slots(pg_db, monkeypatch):
+    from app.settings import get_settings
+    monkeypatch.setenv('INFERENCE_CAPACITY', '2')
+    get_settings.cache_clear()
+    with inference_slot(), inference_slot():
+        with pytest.raises(ModelBusy):
+            with inference_slot():
+                pytest.fail('capacity exceeded')
+    with inference_slot(), inference_slot():
+        pass

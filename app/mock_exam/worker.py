@@ -1,4 +1,4 @@
-"""One durable DB worker, supervised so stuck model work can be killed and recovered."""
+"""Durable DB workers, supervised so stuck model work can be killed and recovered."""
 
 import logging
 import multiprocessing
@@ -6,9 +6,6 @@ import signal
 import threading
 import time
 
-from sqlalchemy import text
-
-from app.db.postgres import get_engine
 from app.mock_exam.repository import claim_job, fail_job, recover_jobs
 from app.mock_exam.service import _finalize_report, _process_response, run_expiry_cleanup
 from app.runtime import ModelBusy, inference_slot
@@ -16,57 +13,45 @@ from app.settings import get_settings
 from app.conversation import claim_turn, fail_turn, process_turn
 
 log = logging.getLogger(__name__)
-WORKER_LOCK = 74201933
 
 
 def _run_worker(channel) -> None:
-    # The session lock makes recovery safe even if several worker containers start.
-    with get_engine().connect() as connection:
-        while True:
-            acquired = connection.execute(
-                text("SELECT pg_try_advisory_lock(:key)"), {"key": WORKER_LOCK}
-            ).scalar()
-            connection.commit()
-            if acquired:
-                break
-            time.sleep(1)
+    cleanup_at = 0.0
+    prefer_chat = False
+    while True:
         recover_jobs()
-        cleanup_at = 0.0
-        while True:
-            connection.execute(text("SELECT 1"))
-            connection.commit()
-            if time.monotonic() >= cleanup_at:
-                try:
-                    run_expiry_cleanup()
-                except Exception:
-                    log.exception("exam cleanup failed; will retry")
-                cleanup_at = time.monotonic() + get_settings().MOCK_EXAM_CLEANUP_INTERVAL_SECONDS
-            job = None
+        if time.monotonic() >= cleanup_at:
             try:
-                with inference_slot(for_exam=True):
-                    job = claim_job() or claim_turn()
-                    if job:
-                        channel.send("started")
-                        try:
-                            if job['kind'] == 'conversation':
-                                process_turn(job)
-                            elif job["kind"] == "response":
-                                _process_response(
-                                    job["id"], job["session_id"], job["question_number"],
-                                    job["encrypted_audio_path"], job["client_metrics"],
-                                    job["attempt"],
-                                )
-                            else:
-                                _finalize_report(job["session_id"], job["attempt"])
-                        except Exception as exc:
-                            log.warning("exam job failed: %s", type(exc).__name__)
-                            (fail_turn if job['kind']=='conversation' else fail_job)(job, type(exc).__name__)
-                        finally:
-                            channel.send("idle")
-            except ModelBusy:
-                pass
-            if job is None:
-                time.sleep(0.5)
+                run_expiry_cleanup()
+            except Exception as exc:
+                log.warning("audio cleanup deferred: %s", type(exc).__name__)
+            cleanup_at = time.monotonic() + get_settings().MOCK_EXAM_CLEANUP_INTERVAL_SECONDS
+        job = None
+        try:
+            with inference_slot(for_exam=True):
+                job = (claim_turn() or claim_job()) if prefer_chat else (claim_job() or claim_turn())
+                if job:
+                    prefer_chat = not prefer_chat
+                    channel.send("started")
+                    try:
+                        if job['kind'] == 'conversation':
+                            process_turn(job)
+                        elif job["kind"] == "response":
+                            _process_response(
+                                job["id"], job["session_id"], job["question_number"],
+                                job["encrypted_audio_path"], job["client_metrics"], job["attempt"],
+                            )
+                        else:
+                            _finalize_report(job["session_id"], job["attempt"])
+                    except Exception as exc:
+                        log.warning("job failed: %s", type(exc).__name__)
+                        (fail_turn if job['kind']=='conversation' else fail_job)(job, type(exc).__name__)
+                    finally:
+                        channel.send("idle")
+        except ModelBusy:
+            pass
+        if job is None:
+            time.sleep(0.5)
 
 
 def _stop_process(process) -> None:

@@ -31,6 +31,13 @@ def exam(pg_db, tmp_path, monkeypatch):
     return created["id"], store
 
 
+def _expire_claims(pg_db):
+    with pg_db[1]() as session:
+        for model in (MockExamResponse, MockExamReport):
+            for row in session.scalars(select(model).where(model.status.in_(['processing', 'scoring']))):
+                row.lease_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+
+
 def _submit(sid, number=1, audio=b"a" * 128):
     return service.submit_response(session_id=sid, question_number=number,
                                    audio_bytes=audio, client_metrics={"signal_detected": True})
@@ -62,7 +69,7 @@ def test_concurrent_duplicate_upload_preserves_accepted_audio(exam, pg_db, monke
     assert len(list(store.root.glob("*/*.fernet"))) == 1
 
 
-def test_committed_job_recovers_after_worker_restart_and_stops_retrying(exam, monkeypatch):
+def test_committed_job_recovers_after_worker_restart_and_stops_retrying(exam, pg_db, monkeypatch):
     sid, _ = exam
     monkeypatch.setattr(service, "validate_audio", lambda *_args, **_kwargs: None)
     rid = _submit(sid)
@@ -70,16 +77,19 @@ def test_committed_job_recovers_after_worker_restart_and_stops_retrying(exam, mo
         job = repo.claim_job()
         assert job["id"] == rid
         assert repo.claim_job() is None
+        assert repo.recover_jobs() == 0
+        _expire_claims(pg_db)
         assert repo.recover_jobs() == 1
     assert repo.claim_job() is None
     assert repo.get_session(sid)["status"] == "failed"
 
 
-def test_old_worker_cannot_finish_or_fail_a_new_attempt(exam, monkeypatch):
+def test_old_worker_cannot_finish_or_fail_a_new_attempt(exam, pg_db, monkeypatch):
     sid, _ = exam
     monkeypatch.setattr(service, "validate_audio", lambda *_args, **_kwargs: None)
     rid = _submit(sid)
     stale = repo.claim_job()
+    _expire_claims(pg_db)
     repo.recover_jobs()
     current = repo.claim_job()
     with pytest.raises(ValueError, match="stale"):
@@ -211,6 +221,7 @@ def test_interim_report_does_not_cancel_job_or_overwrite_final_result(exam, pg_d
     repo.save_report(sid, status="partial", payload={"partial_reason": "waiting", "score_low": 50}, final=False)
     assert repo.get_report(sid)["status"] == "partial"
     assert repo.get_report(sid)["score_low"] == 50
+    _expire_claims(pg_db)
     assert repo.recover_jobs() == 1
     assert repo.claim_job()["id"] == job["id"]
     repo.save_report(sid, status="completed", payload={"score_low": 100, "score_high": 140})
@@ -263,6 +274,7 @@ def test_real_worker_process_recovers_killed_stt_and_advances_checkpoint(exam, p
             if hang:
                 assert worker._monitor(process, receiver, 0.1, threading.Event())
                 assert repo.list_responses(sid)[0]["status"] == "processing"
+                _expire_claims(pg_db)
             else:
                 assert receiver.poll(15) and receiver.recv() == "started"
                 assert receiver.poll(15) and receiver.recv() == "idle"
