@@ -19,7 +19,7 @@ from app.settings import get_settings
 def get_chat_llm(temperature: float = 0.7, streaming: bool = True) -> BaseChatModel:
     cfg = get_settings()
     if cfg.use_openai:
-        from langchain_openai import ChatOpenAI
+        from app.llm.capacity import SlotChatOpenAI as ChatOpenAI
 
         return ChatOpenAI(
             api_key=cfg.OPENAI_API_KEY,
@@ -31,7 +31,7 @@ def get_chat_llm(temperature: float = 0.7, streaming: bool = True) -> BaseChatMo
             max_tokens=cfg.LLM_MAX_OUTPUT_TOKENS,
         )
 
-    from langchain_ollama import ChatOllama
+    from app.llm.capacity import SlotChatOllama as ChatOllama
 
     return ChatOllama(
         base_url=cfg.OLLAMA_BASE_URL,
@@ -59,7 +59,7 @@ def get_local_structured_llm(
     schema: Any, *, model_name: str, temperature: float = 0.1
 ) -> Any:
     """Use a named local Ollama model for independent offline review agents."""
-    from langchain_ollama import ChatOllama
+    from app.llm.capacity import SlotChatOllama as ChatOllama
 
     base = ChatOllama(
         base_url=get_settings().OLLAMA_BASE_URL,

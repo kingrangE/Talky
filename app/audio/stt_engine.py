@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.runtime import audio_capacity
+
 import io
 from functools import lru_cache
 from typing import Any, Tuple
@@ -23,6 +25,7 @@ def _model():
     )
 
 
+@audio_capacity
 def transcribe(audio_bytes: bytes) -> Tuple[str, str]:
     """음성 바이트 → (텍스트, 언어). 언어는 ko/en 으로 정규화."""
     validate_audio(audio_bytes)
@@ -39,6 +42,7 @@ def transcribe(audio_bytes: bytes) -> Tuple[str, str]:
     return text, lang
 
 
+@audio_capacity
 def transcribe_detailed(audio_bytes: bytes) -> dict[str, Any]:
     """Transcribe one exam response and expose timing-based fluency evidence.
 

@@ -66,7 +66,7 @@ def render_report(conversation_id: str, user_id: str) -> None:
                 )
                 prompt_update = None
                 try:
-                    with st.spinner("프롬프트 진화 점검 중..."), inference_slot():
+                    with st.spinner("프롬프트 진화 점검 중..."):
                         prompt_update = run_evolve_if_needed(user_id)
                 except ModelBusy:
                     st.info("별점을 저장했습니다. 모델 작업이 끝난 뒤 개선을 다시 확인할 수 있습니다.")

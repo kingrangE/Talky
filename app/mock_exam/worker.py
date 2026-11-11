@@ -28,26 +28,25 @@ def _run_worker(channel) -> None:
         channel.send("heartbeat")
         job = None
         try:
-            with inference_slot(for_exam=True):
-                job = (claim_turn() or claim_job()) if prefer_chat else (claim_job() or claim_turn())
-                if job:
-                    prefer_chat = not prefer_chat
-                    channel.send("started")
-                    started = time.monotonic()
-                    wait_ms = max(0, (datetime.now(timezone.utc) - datetime.fromisoformat(job["created_at"])).total_seconds()*1000)
-                    outcome = "ok"
-                    try:
-                        with job_budget(get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS):
-                            _process_job(job)
-                    except Exception as exc:
-                        outcome = "error"
-                        log.warning("job failed: %s", type(exc).__name__)
-                        (fail_turn if job["kind"] == "conversation" else fail_job)(job, exc)
-                    finally:
-                        log.info(json.dumps({"event": "job", "kind": job["kind"], "outcome": outcome,
-                            "attempt": job["attempt"], "queue_wait_ms": round(wait_ms, 2),
-                            "duration_ms": round((time.monotonic()-started)*1000, 2)}))
-                        channel.send("idle")
+            job = (claim_turn() or claim_job()) if prefer_chat else (claim_job() or claim_turn())
+            if job:
+                prefer_chat = not prefer_chat
+                channel.send("started")
+                started = time.monotonic()
+                wait_ms = max(0, (datetime.now(timezone.utc) - datetime.fromisoformat(job["created_at"])).total_seconds()*1000)
+                outcome = "ok"
+                try:
+                    with job_budget(get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS):
+                        _process_job(job)
+                except Exception as exc:
+                    outcome = "error"
+                    log.warning("job failed: %s", type(exc).__name__)
+                    (fail_turn if job["kind"] == "conversation" else fail_job)(job, exc)
+                finally:
+                    log.info(json.dumps({"event": "job", "kind": job["kind"], "outcome": outcome,
+                        "attempt": job["attempt"], "queue_wait_ms": round(wait_ms, 2),
+                        "duration_ms": round((time.monotonic()-started)*1000, 2)}))
+                    channel.send("idle")
         except ModelBusy:
             pass
         if job is None:

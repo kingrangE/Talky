@@ -8,6 +8,8 @@ Piper 의 공식 voices 저장소(`rhasspy/piper-voices`) 에는 한국어 voice
 
 from __future__ import annotations
 
+from app.runtime import audio_capacity
+
 import io
 import logging
 import urllib.request
@@ -71,6 +73,7 @@ def _voice(lang: str):
         return None
 
 
+@audio_capacity
 def synthesize(text: str, lang: str) -> bytes | None:
     """텍스트 → wav 바이트. voice 가 없으면 None."""
     voice = _voice(lang)

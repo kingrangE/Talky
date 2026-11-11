@@ -1,0 +1,17 @@
+{
+  "model": "ax4-light:latest",
+  "context": 16384,
+  "results": [
+    {
+      "mode": "whole_job",
+      "competing_text_seconds": 39.313,
+      "injected_cpu_seconds": 2
+    },
+    {
+      "mode": "generation_only",
+      "competing_text_seconds": 20.152,
+      "injected_cpu_seconds": 2
+    }
+  ],
+  "limits": "One diagnostic pair, warm model, injected CPU delay, output cap 8; not throughput or p95 estimate."
+}

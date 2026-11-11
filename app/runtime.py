@@ -132,3 +132,50 @@ def require_budget(seconds=1):
     deadline = _job_deadline.get()
     if deadline is not None and deadline - time.monotonic() < seconds:
         raise TimeoutError('insufficient remaining job budget')
+
+
+@contextmanager
+def resource_slot(kind):
+    """Wait only around resource use; the job supervisor bounds the full wait."""
+    import json
+    import logging
+    started = time.monotonic()
+    base = INFERENCE_LOCK if kind == 'inference' else 74202932
+    capacity = get_settings().INFERENCE_CAPACITY if kind == 'inference' else get_settings().AUDIO_CAPACITY
+    while True:
+        require_budget()
+        with get_engine().connect() as connection:
+            key = None
+            for offset in range(capacity):
+                candidate = base + offset * 100
+                if connection.scalar(text('SELECT pg_try_advisory_lock(:key)'), {'key':candidate}):
+                    key = candidate
+                    break
+            connection.commit()
+            if key is not None:
+                logging.getLogger('talky.metrics').info(json.dumps({'event':'resource_wait','resource':kind,
+                    'duration_ms':round((time.monotonic()-started)*1000,2)}))
+                try:
+                    yield
+                finally:
+                    try:
+                        connection.rollback()
+                        connection.execute(text('SELECT pg_advisory_unlock(:key)'), {'key':key})
+                        connection.commit()
+                    except Exception:
+                        connection.invalidate()
+                        raise
+                return
+        if time.monotonic()-started > get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS:
+            raise TimeoutError('resource capacity wait expired')
+        time.sleep(.05)
+
+
+def audio_capacity(function):
+    from functools import wraps
+    @wraps(function)
+    def run(*args, **kwargs):
+        kind = 'inference' if function.__module__.endswith('stt_engine') and get_settings().WHISPER_DEVICE == 'cuda' else 'audio'
+        with resource_slot(kind):
+            return function(*args, **kwargs)
+    return run

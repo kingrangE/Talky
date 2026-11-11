@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     MAX_AUDIO_BYTES: Annotated[int, Field(ge=1024, le=20000000)] = 5000000
     MAX_AUDIO_SECONDS: Annotated[int, Field(ge=1, le=120)] = 90
     WORKER_WARMUP: bool = False
+    AUDIO_CAPACITY: Annotated[int, Field(ge=1, le=16)] = 1
     INFERENCE_CAPACITY: Annotated[int, Field(ge=1, le=16)] = 1
     CONVERSATION_USER_QUEUE_LIMIT: Annotated[int, Field(ge=1, le=10000)] = 4
     CONVERSATION_QUEUE_LIMIT: Annotated[int, Field(ge=1, le=10000)] = 32
