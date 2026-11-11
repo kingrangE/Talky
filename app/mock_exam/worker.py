@@ -1,5 +1,6 @@
 """Durable DB workers, supervised so stuck model work can be killed and recovered."""
 
+from pathlib import Path
 import logging
 import json
 from datetime import datetime, timezone
@@ -18,10 +19,14 @@ log = logging.getLogger(__name__)
 
 
 def _run_worker(channel) -> None:
+    if get_settings().WORKER_WARMUP:
+        from app.warmup import warmup
+        warmup()
     cleanup_at = 0.0
     prefer_chat = False
     while True:
         recover_jobs()
+        channel.send("heartbeat")
         if time.monotonic() >= cleanup_at:
             try:
                 run_expiry_cleanup()
@@ -83,7 +88,11 @@ def _monitor(process, channel, timeout: float, stop: threading.Event) -> bool:
                     event = channel.recv()
                 except EOFError:
                     break
-                deadline = time.monotonic() + timeout if event == "started" else None
+                Path('/tmp/talky-worker-heartbeat').touch()
+                if event == 'started':
+                    deadline = time.monotonic() + timeout
+                elif event == 'idle':
+                    deadline = None
             if deadline is not None and time.monotonic() >= deadline:
                 return True
         return False

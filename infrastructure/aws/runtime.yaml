@@ -1,0 +1,898 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Talky AWS runtime; bootstrap services at zero until migration succeeds. Existing multi-AZ VPC, HA Ollama and managed Neo4j required.
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Two public subnets in distinct AZs
+  PrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Two private subnets in distinct AZs, with NAT or required VPC endpoints
+  CertificateArn:
+    Type: String
+  ImageUri:
+    Type: String
+    AllowedPattern: .+@sha256:[a-f0-9]{64}
+    Description: Immutable image digest, containing preloaded audio assets
+  AppSecretArn:
+    Type: String
+    Description: 'Existing Secrets Manager JSON: audio_key, signing_secret, cookie_secret, fingerprint_salt, neo4j_user, neo4j_password, langfuse_public_key, langfuse_secret_key'
+  OllamaUrl:
+    Type: String
+    AllowedPattern: https?://.+
+    Description: Private HA model endpoint; provision separately
+  Neo4jUri:
+    Type: String
+    AllowedPattern: neo4j\+s://.+
+    Description: Managed Neo4j cluster routing endpoint
+  ModelName:
+    Type: String
+    Default: ax4-light
+  PromptVersions:
+    Type: String
+    Description: JSON immutable Langfuse prompt version map; include system and three conversation prompts
+  LangfuseUrl:
+    Type: String
+    Default: https://cloud.langfuse.com
+  DeployServices:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+    - 'false'
+    - 'true'
+  AlarmTopicArn:
+    Type: String
+    Description: Existing SNS topic for operational alerts
+Conditions:
+  RunServices:
+    Fn::Equals:
+    - Ref: DeployServices
+    - 'true'
+Resources:
+  Logs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 30
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+  Audio:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+        - Id: audio-retention
+          Status: Enabled
+          Prefix: audio/
+          ExpirationInDays: 4
+          NoncurrentVersionExpiration:
+            NoncurrentDays: 1
+          AbortIncompleteMultipartUpload:
+            DaysAfterInitiation: 1
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+  AudioPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: Audio
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Deny
+          Principal: '*'
+          Action: s3:*
+          Resource:
+          - Fn::GetAtt:
+            - Audio
+            - Arn
+          - Fn::Sub: ${Audio.Arn}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+  AlbSecurity:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTPS ingress
+      VpcId:
+        Ref: VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+  AppSecurity:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB to Streamlit only
+      VpcId:
+        Ref: VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 8501
+        ToPort: 8501
+        SourceSecurityGroupId:
+          Ref: AlbSecurity
+  DbSecurity:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Application tasks to PostgreSQL only
+      VpcId:
+        Ref: VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        SourceSecurityGroupId:
+          Ref: AppSecurity
+  DbSubnets:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private database subnets
+      SubnetIds:
+        Ref: PrivateSubnets
+  RuntimeSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"talky_runtime"}'
+        GenerateStringKey: password
+        PasswordLength: 40
+        ExcludePunctuation: true
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      EngineVersion: '16.15'
+      DBInstanceClass: db.t4g.medium
+      AllocatedStorage: '30'
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: talky
+      MasterUsername: talky_owner
+      ManageMasterUserPassword: true
+      MultiAZ: true
+      PubliclyAccessible: false
+      DBSubnetGroupName:
+        Ref: DbSubnets
+      VPCSecurityGroups:
+      - Ref: DbSecurity
+      BackupRetentionPeriod: 14
+      DeletionProtection: true
+      AutoMinorVersionUpgrade: true
+      EnableCloudwatchLogsExports:
+      - postgresql
+      - upgrade
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+      - PolicyName: read-required-secrets
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource:
+            - Ref: AppSecretArn
+            - Ref: RuntimeSecret
+  MigrationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+      - PolicyName: read-required-secrets
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource:
+            - Fn::GetAtt:
+              - Database
+              - MasterUserSecret.SecretArn
+            - Ref: RuntimeSecret
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: audio-prefix-only
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            Resource:
+              Fn::Sub: ${Audio.Arn}/audio/*
+          - Effect: Allow
+            Action: s3:ListBucket
+            Resource:
+              Fn::GetAtt:
+              - Audio
+              - Arn
+            Condition:
+              StringLike:
+                s3:prefix:
+                - audio/
+                - audio/*
+  MigrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterSettings:
+      - Name: containerInsights
+        Value: enabled
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        Ref: PublicSubnets
+      SecurityGroups:
+      - Ref: AlbSecurity
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: '300'
+      - Key: deletion_protection.enabled
+        Value: 'true'
+  Target:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId:
+        Ref: VpcId
+      Port: 8501
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckPath: /_stcore/health
+      TargetGroupAttributes:
+      - Key: stickiness.enabled
+        Value: 'true'
+      - Key: stickiness.type
+        Value: lb_cookie
+      - Key: stickiness.lb_cookie.duration_seconds
+        Value: '86400'
+      - Key: deregistration_delay.timeout_seconds
+        Value: '30'
+  Https:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn:
+        Ref: Alb
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+      - CertificateArn:
+          Ref: CertificateArn
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: Target
+  WebTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '1024'
+      Memory: '2048'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+      - FARGATE
+      ExecutionRoleArn:
+        Fn::GetAtt:
+        - ExecutionRole
+        - Arn
+      TaskRoleArn:
+        Fn::GetAtt:
+        - TaskRole
+        - Arn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+      - Name: talky
+        Image:
+          Ref: ImageUri
+        Essential: true
+        EntryPoint:
+        - bash
+        - docker/app-entrypoint.sh
+        Environment:
+        - Name: POSTGRES_HOST
+          Value:
+            Fn::GetAtt:
+            - Database
+            - Endpoint.Address
+        - Name: POSTGRES_USER
+          Value: talky_runtime
+        - Name: POSTGRES_DB
+          Value: talky
+        - Name: POSTGRES_SSLMODE
+          Value: require
+        - Name: AUDIO_S3_BUCKET
+          Value:
+            Ref: Audio
+        - Name: OLLAMA_BASE_URL
+          Value:
+            Ref: OllamaUrl
+        - Name: MODEL_NAME
+          Value:
+            Ref: ModelName
+        - Name: NEO4J_URI
+          Value:
+            Ref: Neo4jUri
+        - Name: LANGFUSE_ENABLED
+          Value: 'true'
+        - Name: LANGFUSE_BASE_URL
+          Value:
+            Ref: LangfuseUrl
+        - Name: LANGFUSE_PROMPT_VERSIONS
+          Value:
+            Ref: PromptVersions
+        - Name: LLM_MAX_OUTPUT_TOKENS
+          Value: '768'
+        - Name: LLM_TIMEOUT_SECONDS
+          Value: '60'
+        - Name: INFERENCE_CAPACITY
+          Value: '1'
+        - Name: AUDIO_CACHE_DIR
+          Value: /opt/talky/audio
+        - Name: HF_HUB_OFFLINE
+          Value: '1'
+        - Name: WORKER_WARMUP
+          Value: 'true'
+        Secrets:
+        - Name: MOCK_EXAM_AUDIO_KEY
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:audio_key::'
+        - Name: MOCK_EXAM_SIGNING_SECRET
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:signing_secret::'
+        - Name: STREAMLIT_SERVER_COOKIE_SECRET
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:cookie_secret::'
+        - Name: MOCK_EXAM_FINGERPRINT_SALT
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:fingerprint_salt::'
+        - Name: NEO4J_USER
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:neo4j_user::'
+        - Name: NEO4J_PASSWORD
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:neo4j_password::'
+        - Name: LANGFUSE_PUBLIC_KEY
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:langfuse_public_key::'
+        - Name: LANGFUSE_SECRET_KEY
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:langfuse_secret_key::'
+        - Name: POSTGRES_PASSWORD
+          ValueFrom:
+            Fn::Sub: '${RuntimeSecret}:password::'
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: Logs
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: web
+        StopTimeout: 120
+        PortMappings:
+        - ContainerPort: 8501
+        HealthCheck:
+          Command:
+          - CMD
+          - python
+          - -m
+          - app.health
+          Interval: 30
+          Timeout: 10
+          Retries: 3
+          StartPeriod: 60
+  WorkerTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '2048'
+      Memory: '8192'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+      - FARGATE
+      ExecutionRoleArn:
+        Fn::GetAtt:
+        - ExecutionRole
+        - Arn
+      TaskRoleArn:
+        Fn::GetAtt:
+        - TaskRole
+        - Arn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+      - Name: talky
+        Image:
+          Ref: ImageUri
+        Essential: true
+        EntryPoint:
+        - python
+        - -m
+        - app.mock_exam.worker
+        Environment:
+        - Name: POSTGRES_HOST
+          Value:
+            Fn::GetAtt:
+            - Database
+            - Endpoint.Address
+        - Name: POSTGRES_USER
+          Value: talky_runtime
+        - Name: POSTGRES_DB
+          Value: talky
+        - Name: POSTGRES_SSLMODE
+          Value: require
+        - Name: AUDIO_S3_BUCKET
+          Value:
+            Ref: Audio
+        - Name: OLLAMA_BASE_URL
+          Value:
+            Ref: OllamaUrl
+        - Name: MODEL_NAME
+          Value:
+            Ref: ModelName
+        - Name: NEO4J_URI
+          Value:
+            Ref: Neo4jUri
+        - Name: LANGFUSE_ENABLED
+          Value: 'true'
+        - Name: LANGFUSE_BASE_URL
+          Value:
+            Ref: LangfuseUrl
+        - Name: LANGFUSE_PROMPT_VERSIONS
+          Value:
+            Ref: PromptVersions
+        - Name: LLM_MAX_OUTPUT_TOKENS
+          Value: '768'
+        - Name: LLM_TIMEOUT_SECONDS
+          Value: '60'
+        - Name: INFERENCE_CAPACITY
+          Value: '1'
+        - Name: AUDIO_CACHE_DIR
+          Value: /opt/talky/audio
+        - Name: HF_HUB_OFFLINE
+          Value: '1'
+        - Name: WORKER_WARMUP
+          Value: 'true'
+        Secrets:
+        - Name: MOCK_EXAM_AUDIO_KEY
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:audio_key::'
+        - Name: MOCK_EXAM_SIGNING_SECRET
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:signing_secret::'
+        - Name: STREAMLIT_SERVER_COOKIE_SECRET
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:cookie_secret::'
+        - Name: MOCK_EXAM_FINGERPRINT_SALT
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:fingerprint_salt::'
+        - Name: NEO4J_USER
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:neo4j_user::'
+        - Name: NEO4J_PASSWORD
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:neo4j_password::'
+        - Name: LANGFUSE_PUBLIC_KEY
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:langfuse_public_key::'
+        - Name: LANGFUSE_SECRET_KEY
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:langfuse_secret_key::'
+        - Name: POSTGRES_PASSWORD
+          ValueFrom:
+            Fn::Sub: '${RuntimeSecret}:password::'
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: Logs
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: worker
+        StopTimeout: 120
+        HealthCheck:
+          Command:
+          - CMD
+          - python
+          - -m
+          - app.health
+          - worker
+          Interval: 30
+          Timeout: 10
+          Retries: 3
+          StartPeriod: 180
+  GraphTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+      - FARGATE
+      ExecutionRoleArn:
+        Fn::GetAtt:
+        - ExecutionRole
+        - Arn
+      TaskRoleArn:
+        Fn::GetAtt:
+        - TaskRole
+        - Arn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+      - Name: talky
+        Image:
+          Ref: ImageUri
+        Essential: true
+        EntryPoint:
+        - python
+        - -m
+        - app.graph_db.worker
+        Environment:
+        - Name: POSTGRES_HOST
+          Value:
+            Fn::GetAtt:
+            - Database
+            - Endpoint.Address
+        - Name: POSTGRES_USER
+          Value: talky_runtime
+        - Name: POSTGRES_DB
+          Value: talky
+        - Name: POSTGRES_SSLMODE
+          Value: require
+        - Name: NEO4J_URI
+          Value:
+            Ref: Neo4jUri
+        Secrets:
+        - Name: NEO4J_USER
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:neo4j_user::'
+        - Name: NEO4J_PASSWORD
+          ValueFrom:
+            Fn::Sub: '${AppSecretArn}:neo4j_password::'
+        - Name: POSTGRES_PASSWORD
+          ValueFrom:
+            Fn::Sub: '${RuntimeSecret}:password::'
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: Logs
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: graph
+        StopTimeout: 120
+        HealthCheck:
+          Command:
+          - CMD
+          - python
+          - -m
+          - app.health
+          - graph
+          Interval: 30
+          Timeout: 10
+          Retries: 3
+          StartPeriod: 180
+  MigrationTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '1024'
+      Memory: '2048'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+      - FARGATE
+      ExecutionRoleArn:
+        Fn::GetAtt:
+        - MigrationExecutionRole
+        - Arn
+      TaskRoleArn:
+        Fn::GetAtt:
+        - MigrationRole
+        - Arn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+      - Name: talky
+        Image:
+          Ref: ImageUri
+        Essential: true
+        EntryPoint:
+        - python
+        - -m
+        - app.db.deploy
+        Environment:
+        - Name: POSTGRES_HOST
+          Value:
+            Fn::GetAtt:
+            - Database
+            - Endpoint.Address
+        - Name: POSTGRES_USER
+          Value: talky_owner
+        - Name: POSTGRES_DB
+          Value: talky
+        - Name: POSTGRES_SSLMODE
+          Value: require
+        - Name: RUNTIME_DB_USER
+          Value: talky_runtime
+        Secrets:
+        - Name: POSTGRES_PASSWORD
+          ValueFrom:
+            Fn::Join:
+            - ''
+            - - Fn::GetAtt:
+                - Database
+                - MasterUserSecret.SecretArn
+              - ':password::'
+        - Name: RUNTIME_DB_PASSWORD
+          ValueFrom:
+            Fn::Sub: '${RuntimeSecret}:password::'
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: Logs
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: migration
+        StopTimeout: 120
+  WebService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Ref: Cluster
+      TaskDefinition:
+        Ref: WebTask
+      LaunchType: FARGATE
+      PlatformVersion: 1.4.0
+      DesiredCount:
+        Fn::If:
+        - RunServices
+        - 2
+        - 0
+      AvailabilityZoneRebalancing: ENABLED
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            Ref: PrivateSubnets
+          SecurityGroups:
+          - Ref: AppSecurity
+      LoadBalancers:
+      - ContainerName: talky
+        ContainerPort: 8501
+        TargetGroupArn:
+          Ref: Target
+      HealthCheckGracePeriodSeconds: 90
+    DependsOn:
+    - Https
+  WorkerService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Ref: Cluster
+      TaskDefinition:
+        Ref: WorkerTask
+      LaunchType: FARGATE
+      PlatformVersion: 1.4.0
+      DesiredCount:
+        Fn::If:
+        - RunServices
+        - 2
+        - 0
+      AvailabilityZoneRebalancing: ENABLED
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            Ref: PrivateSubnets
+          SecurityGroups:
+          - Ref: AppSecurity
+    DependsOn:
+    - Https
+  GraphService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Ref: Cluster
+      TaskDefinition:
+        Ref: GraphTask
+      LaunchType: FARGATE
+      PlatformVersion: 1.4.0
+      DesiredCount:
+        Fn::If:
+        - RunServices
+        - 2
+        - 0
+      AvailabilityZoneRebalancing: ENABLED
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            Ref: PrivateSubnets
+          SecurityGroups:
+          - Ref: AppSecurity
+    DependsOn:
+    - Https
+  WebUnhealthy:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: AWS/ApplicationELB
+      MetricName: UnHealthyHostCount
+      Dimensions:
+      - Name: LoadBalancer
+        Value:
+          Fn::GetAtt:
+          - Alb
+          - LoadBalancerFullName
+      - Name: TargetGroup
+        Value:
+          Fn::GetAtt:
+          - Target
+          - TargetGroupFullName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: missing
+      AlarmActions:
+      - Ref: AlarmTopicArn
+  DatabaseConnections:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Ref: Database
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 100
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: missing
+      AlarmActions:
+      - Ref: AlarmTopicArn
+  DatabaseStorage:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Ref: Database
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 5368709120
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: missing
+      AlarmActions:
+      - Ref: AlarmTopicArn
+Outputs:
+  Cluster:
+    Value:
+      Ref: Cluster
+  MigrationTask:
+    Value:
+      Ref: MigrationTask
+  WebService:
+    Value:
+      Fn::GetAtt:
+      - WebService
+      - Name
+  WorkerService:
+    Value:
+      Fn::GetAtt:
+      - WorkerService
+      - Name
+  GraphService:
+    Value:
+      Fn::GetAtt:
+      - GraphService
+      - Name
+  TaskSecurityGroup:
+    Value:
+      Ref: AppSecurity
+  PrivateSubnets:
+    Value:
+      Fn::Join:
+      - ','
+      - Ref: PrivateSubnets
+  AudioBucket:
+    Value:
+      Ref: Audio
+  Database:
+    Value:
+      Ref: Database
+  DatabaseHost:
+    Value:
+      Fn::GetAtt:
+      - Database
+      - Endpoint.Address
+  LoadBalancerHost:
+    Value:
+      Fn::GetAtt:
+      - Alb
+      - DNSName

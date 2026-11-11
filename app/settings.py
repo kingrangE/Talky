@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     MAX_HISTORY_BYTES: Annotated[int, Field(ge=1024, le=32000)] = 12000
     MAX_AUDIO_BYTES: Annotated[int, Field(ge=1024, le=20000000)] = 5000000
     MAX_AUDIO_SECONDS: Annotated[int, Field(ge=1, le=120)] = 90
+    WORKER_WARMUP: bool = False
     INFERENCE_CAPACITY: Annotated[int, Field(ge=1, le=16)] = 1
     CONVERSATION_QUEUE_LIMIT: Annotated[int, Field(ge=1, le=10000)] = 32
     CONVERSATION_QUEUE_WAIT_SECONDS: Annotated[int, Field(ge=1, le=3600)] = 300
@@ -60,6 +61,7 @@ class Settings(BaseSettings):
     MOCK_EXAM_ADVANCED_MODEL: str = "facebook/wav2vec2-xlsr-53-espeak-cv-ft"
     MOCK_EXAM_REVIEW_MODEL: str = "qwen2.5:7b"
 
+    POSTGRES_SSLMODE: Literal["disable", "prefer", "require", "verify-full"] = "prefer"
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "talky"
@@ -77,10 +79,12 @@ class Settings(BaseSettings):
 
     @property
     def postgres_dsn(self) -> str:
-        return (
-            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
+        from sqlalchemy.engine import URL
+        return URL.create('postgresql+psycopg', username=self.POSTGRES_USER,
+                          password=self.POSTGRES_PASSWORD, host=self.POSTGRES_HOST,
+                          port=self.POSTGRES_PORT, database=self.POSTGRES_DB,
+                          query={"sslmode": self.POSTGRES_SSLMODE}).render_as_string(hide_password=False)
+
 
     @property
     def use_openai(self) -> bool:

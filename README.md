@@ -276,3 +276,5 @@ TALKY_TEST_POSTGRES_DSN='postgresql+psycopg://USER:PASSWORD@localhost:5432/talky
 `AUDIO_S3_BUCKET`을 지정하면 웹과 작업자가 S3의 `audio/` 경로를 공유합니다. 별도 URL을 공개하지 않고 인증된 애플리케이션이 암호화 객체를 읽습니다. `MOCK_EXAM_AUDIO_KEY`에는 모든 인스턴스가 공유하는 Fernet 키를, `MOCK_EXAM_SIGNING_SECRET`에는 복구 토큰 서명 비밀을 주입해야 합니다. S3 모드에서는 로컬 키를 자동 생성하지 않습니다. AWS에서는 Secrets Manager와 ECS 작업 역할을 사용하고 접근 키를 이미지나 `.env`에 넣지 않습니다.
 
 기존 로컬 저장소가 있는 서비스는 `.audio-key`를 먼저 안전하게 백업한 뒤 같은 키로 기존 암호화 파일을 S3의 `audio/` 아래 상대 경로 그대로 옮겨야 합니다. 모든 인스턴스를 같은 저장소·키로 전환하기 전에는 쓰기를 중지합니다. 키를 새로 생성해 교체하면 기존 음성을 읽지 못합니다. 기존 `.signing-key`도 유지해야 발급된 복구 토큰을 검증할 수 있습니다. S3 서비스 오류는 삭제 완료로 처리하지 않으며 기존 삭제 Outbox가 재시도합니다.
+
+AWS 운영 구성과 단계별 배포·복구 검증 기준은 [AWS 운영 안내](infrastructure/aws/README.md)에 정리했습니다. 템플릿은 리소스를 자동 생성하지 않으며 실제 적용에는 별도 승인이 필요합니다. 기존 Compose 배포도 마이그레이션을 일회성 `migrate` 서비스로 분리했으므로 새 설정을 함께 적용해야 합니다.

@@ -21,8 +21,8 @@ services:
       - tts-cache:/cache/tts
       - mock-exam-data:/app/.data/mock-exam
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       neo4j:
         condition: service_healthy
       ollama:
@@ -33,6 +33,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+
+  migrate:
+    image: talky-app:local
+    pull_policy: never
+    entrypoint: ["alembic", "upgrade", "head"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   worker:
     image: talky-app:local

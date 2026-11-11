@@ -1,4 +1,5 @@
 """Retry ordered Graph projections from the PostgreSQL transaction outbox."""
+from pathlib import Path
 import logging
 import signal
 import threading
@@ -72,6 +73,7 @@ def main():
     while not stop.is_set():
         try:
             worked = process_one()
+            Path("/tmp/talky-graph-heartbeat").touch()
         except Exception:
             log.exception('Graph worker retrying after database failure')
             worked = False

@@ -276,7 +276,12 @@ def test_real_worker_process_recovers_killed_stt_and_advances_checkpoint(exam, p
                 assert repo.list_responses(sid)[0]["status"] == "processing"
                 _expire_claims(pg_db)
             else:
-                assert receiver.poll(15) and receiver.recv() == "started"
+                assert receiver.poll(15)
+                received = receiver.recv()
+                while received == "heartbeat":
+                    assert receiver.poll(15)
+                    received = receiver.recv()
+                assert received == "started"
                 assert receiver.poll(15) and receiver.recv() == "idle"
                 assert repo.list_responses(sid)[0]["transcript"] == "recognized after restart"
                 assert repo.get_session(sid)["current_question"] == 2

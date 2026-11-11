@@ -16,8 +16,5 @@ print("postgres not reachable", file=sys.stderr)
 sys.exit(1)
 PY
 
-echo "[talky] running migrations..."
-alembic upgrade head
-
 echo "[talky] starting Streamlit..."
 exec streamlit run main.py --server.address=0.0.0.0 --server.port=8501 --server.maxMessageSize=10 --server.maxUploadSize=5
