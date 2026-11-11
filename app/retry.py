@@ -13,6 +13,12 @@ def retry_delay(error, attempt):
         retryable = error in {'worker_interrupted', 'TimeoutError', 'ConnectionError', 'OSError', 'RuntimeError'}
     else:
         import httpx
+        from sqlalchemy.exc import DBAPIError
+        import psycopg
+        if isinstance(error, DBAPIError) and (error.connection_invalidated or getattr(error.orig, 'sqlstate', None) in {'40001', '40P01'}):
+            return timedelta(seconds=min(30, 2 ** min(attempt, 5)) + random.uniform(0, 1))
+        if isinstance(error, (psycopg.OperationalError, psycopg.InterfaceError)):
+            return timedelta(seconds=min(30, 2 ** min(attempt, 5)) + random.uniform(0, 1))
         status = getattr(error, 'status_code', None)
         retryable = (isinstance(error, (TimeoutError, ConnectionError, OSError, httpx.TransportError))
                      or status in {408, 429} or isinstance(status, int) and status >= 500)

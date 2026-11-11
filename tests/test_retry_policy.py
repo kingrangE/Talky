@@ -19,3 +19,8 @@ def test_job_budget_rejects_stage_and_is_reset():
         with pytest.raises(TimeoutError):
             require_budget(60)
     require_budget(60)
+
+
+def test_database_connection_loss_is_retryable():
+    import psycopg
+    assert retry_delay(psycopg.OperationalError('connection lost'), 1) is not None
