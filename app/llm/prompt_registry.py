@@ -113,7 +113,8 @@ def read_reference(reference: dict) -> str:
             if not get_settings().PROMPT_CACHE_ENABLED:
                 raise
             if not prompt_cache.transient(exc.__cause__):
-                prompt_cache.invalidate(reference['name'], reference['version'])
+                if getattr(exc.__cause__, 'status_code', None) in {401, 403, 404}:
+                    prompt_cache.invalidate(reference['name'], reference['version'])
                 raise
             try:
                 cached = prompt_cache.load(reference['name'], reference['version'], max_age=86400)

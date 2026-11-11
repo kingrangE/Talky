@@ -58,3 +58,18 @@ def test_fresh_exact_snapshot_avoids_remote_call_and_repeated_write(pg_db, monke
     monkeypatch.setattr(registry, 'remote_prompt', lambda *_a, **_kw: pytest.fail('fresh cache contacted remote'))
     for _ in range(3):
         assert registry.read_reference({'source':'langfuse','name':'talky/en-reply','version':3}) == 'verified'
+
+
+def test_remote_content_change_does_not_erase_immutable_snapshot(pg_db, monkeypatch):
+    from datetime import datetime,timedelta,timezone
+    monkeypatch.setenv('PROMPT_CACHE_ENABLED','true')
+    get_settings.cache_clear()
+    prompt_cache.save('talky/en-reply',9,'original')
+    with pg_db[1]() as session:
+        session.get(PromptSnapshot,('talky/en-reply',9)).created_at=datetime.now(timezone.utc)-timedelta(minutes=6)
+    def changed(*_a,**_kw):
+        raise registry.PromptUnavailable('changed') from ValueError('managed prompt version changed content')
+    monkeypatch.setattr(registry,'remote_prompt',changed)
+    with pytest.raises(registry.PromptUnavailable):
+        registry.read_reference({'source':'langfuse','name':'talky/en-reply','version':9})
+    assert prompt_cache.load('talky/en-reply',9)=='original'
