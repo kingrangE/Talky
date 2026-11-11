@@ -140,7 +140,7 @@ def resource_slot(kind):
     import json
     import logging
     started = time.monotonic()
-    base = INFERENCE_LOCK if kind == 'inference' else 74202932
+    base = INFERENCE_LOCK if kind == 'inference' else 74211932
     capacity = get_settings().INFERENCE_CAPACITY if kind == 'inference' else get_settings().AUDIO_CAPACITY
     while True:
         require_budget()
