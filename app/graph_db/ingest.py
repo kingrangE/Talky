@@ -14,6 +14,15 @@ from app.graph_db.neo4j_client import ensure_schema, get_driver
 log = logging.getLogger(__name__)
 
 
+def _writable(tx, conversation_id: str) -> bool:
+    # The write acquires a Neo4j lock shared with deletion, including absent conversations.
+    row = tx.run("MERGE (f:GraphConversationFence {id:$cid}) "
+                 "ON CREATE SET f.deleted=false "
+                 "SET f.lock=coalesce(f.lock,0)+1 RETURN f.deleted AS deleted",
+                 cid=conversation_id).single()
+    return not row['deleted']
+
+
 def _ingest_tx(
     tx,
     *,
@@ -30,6 +39,8 @@ def _ingest_tx(
     user_created_at: datetime | None = None,
     assistant_created_at: datetime | None = None,
 ) -> None:
+    if not _writable(tx, conversation_id):
+        return
     tx.run(
         """
         MERGE (u:User {id: $uid})
@@ -166,6 +177,8 @@ def ingest_turn(
 
 
 def _ingest_topics_tx(tx, conversation_id: str, topics: list[str], event_id: str | None = None) -> None:
+    if not _writable(tx, conversation_id):
+        return
     if event_id:
         marker = tx.run('MERGE (e:GraphSyncMarker {id:$id}) ON CREATE SET e.complete=false, e.conversation_id=$cid RETURN e.complete AS complete',
                         id=event_id, cid=conversation_id).single()
@@ -212,6 +225,7 @@ def ingest_topics(*, conversation_id: str, topics: list[str], event_id: str | No
 
 
 def _delete_conversation_tx(tx, conversation_id: str, user_id: str) -> None:
+    tx.run("MERGE (f:GraphConversationFence {id:$cid}) SET f.deleted=true", cid=conversation_id).consume()
     # 소유 사용자를 함께 match해 다른 사용자의 그래프를 잘못 삭제하지 않는다.
     tx.run(
         """

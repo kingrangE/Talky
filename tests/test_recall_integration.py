@@ -85,3 +85,15 @@ def test_replayed_projection_preserves_timestamps_timeline_and_topic_weights(gra
         ts=session.run('MATCH (m:Message {id:$id}) RETURN m.ts AS ts',id=f'{cid}-u1').single()['ts']
         assert ts.to_native()==start+timedelta(seconds=2)
         assert session.run('MATCH (:Topic {name:$a})-[r:RELATED_TO]-(:Topic {name:$b}) RETURN r.weight AS weight',a=graph+'/new-a',b=graph+'/new-b').single()['weight']==1
+
+
+def test_delete_tombstone_fences_late_upsert(graph, monkeypatch):
+    monkeypatch.setattr(ingest, 'get_driver', recall.get_driver)
+    monkeypatch.setattr(ingest, 'ensure_schema', lambda: True)
+    cid = graph + '-deleted'
+    assert ingest.delete_conversation_memory(conversation_id=cid, user_id=graph)
+    assert ingest.ingest_turn(conversation_id=cid, user_id=graph,
+        user_msg_id=cid+'-u', assistant_msg_id=cid+'-a',
+        user_text='private', ai_text='reply', language='en')
+    with recall.get_driver().session() as session:
+        assert session.run('MATCH (c:Conversation {id:$cid}) RETURN count(c) AS n', cid=cid).single()['n'] == 0

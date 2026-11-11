@@ -110,3 +110,26 @@ def test_rebuild_restores_old_history_before_pending_newer_events(conversation, 
     assert [p['user_msg_id'] for p in projected] == [first[0], second[0]]
     assert projected[0]['previous_message_id'] is None
     assert projected[1]['previous_message_id'] == first[1]
+
+
+def test_slow_projection_does_not_lock_source_conversation(conversation, pg_db, monkeypatch):
+    import threading
+    uid, cid = conversation
+    repo.save_turn(cid, uid, 'first', 'reply')
+    entered, release = threading.Event(), threading.Event()
+    def slow(**_):
+        entered.set()
+        assert release.wait(4)
+        return True
+    monkeypatch.setattr(worker, 'ingest_turn', slow)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending = pool.submit(worker.process_one)
+        try:
+            assert entered.wait(2)
+            start = time.monotonic()
+            repo.save_turn(cid, uid, 'second', 'reply')
+            assert time.monotonic() - start < 1
+            repo.delete_conversation(cid, uid)
+        finally:
+            release.set()
+        assert pending.result()

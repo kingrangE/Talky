@@ -31,10 +31,10 @@ def process_one() -> bool:
         if event is None:
             return False
         try:
-            # Serialize with source deletion; a delayed upsert must never resurrect deleted data.
+            # Neo4j tombstones fence deletion; source writes need no network-duration row lock.
             conversation = session.scalars(select(Conversation).where(
                 Conversation.id == event.conversation_id, Conversation.user_id == event.user_id,
-            ).with_for_update()).first()
+            )).first()
             if conversation is None or event.kind == 'delete':
                 ok = delete_conversation_memory(conversation_id=str(event.conversation_id), user_id=str(event.user_id))
             elif event.kind == 'topics':
