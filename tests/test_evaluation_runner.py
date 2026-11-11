@@ -148,3 +148,37 @@ def test_replay_preserves_candidate_and_provenance_without_model_or_graph(tmp_pa
     missing = next(i for i in items_for('expression') if i['metadata']['case_id']=='ko-02')
     with pytest.raises(ValueError,match='missing generated outputs'):
         benchmark.run('expression',[missing])
+
+
+@pytest.mark.parametrize('search',[False,True])
+def test_quality_retrieval_uses_production_gate_and_recent_context(monkeypatch,search):
+    import app.evaluate as evaluation
+    benchmark=Benchmark.__new__(Benchmark)
+    benchmark.namespace='fixture'
+    history=[{'role':'assistant','content':'Shall we practice?'}]
+    calls=[]
+    monkeypatch.setattr(evaluation,'recall_decision',lambda text,chat:(calls.append((text,chat)) or search,'model_search' if search else 'model_skip'))
+    monkeypatch.setattr(evaluation,'_extract_topics',lambda text,**_: ['books'] if search else pytest.fail('skip extracted topics'))
+    monkeypatch.setattr(evaluation,'recall_related',lambda *_a,**_kw: [] if search else pytest.fail('skip searched graph'))
+    memory,topics,gate=benchmark.retrieve('s1','Yes','case',history)
+    assert calls==[('Yes',history)]
+    assert memory==[] and topics==(['books'] if search else [])
+    assert gate['search'] is search
+
+
+def test_generation_only_does_not_invoke_judge(tmp_path):
+    from types import SimpleNamespace
+    benchmark=Benchmark.__new__(Benchmark)
+    captured={}
+    class Client:
+        def run_experiment(self,**kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(experiment_url='test',experiment_id='test',item_results=[])
+        def flush(self): pass
+    benchmark.client=Client();benchmark.replay_outputs={}
+    benchmark.run_id='test';benchmark.judge_model='unused'
+    benchmark.metadata={'model':'unused','code_commit':'test'}
+    benchmark.report_dir=tmp_path
+    report=benchmark.run('expression',[],generate_only=True)
+    assert captured['evaluators']==[]
+    assert report['generate_only'] and report['judged']==0

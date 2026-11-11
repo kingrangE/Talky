@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, StrictInt, create_model
 
 from app.agents.nodes import better_expr, en_reply, ko_coach
 from app.agents.nodes.memory import TOPIC_PROMPT, _extract_topics
+from app.agents.nodes.memory_gate import PROMPT as GATE_PROMPT, recall_decision
 from app.graph_db.ingest import ingest_topics, ingest_turn
 from app.graph_db.neo4j_client import get_driver
 from app.graph_db.recall import recall_related
@@ -242,6 +243,7 @@ class Benchmark:
         metadata['code_commit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
         metadata['code_dirty'] = subprocess.run(['git', 'diff', '--quiet'], cwd=ROOT).returncode != 0
         metadata['runner_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+        metadata['memory_gate'] = {'enabled':self.config.MEMORY_GATE_ENABLED,'model':self.config.MEMORY_GATE_MODEL or self.config.MODEL_NAME,'http_timeout_seconds':self.config.MEMORY_GATE_TIMEOUT_SECONDS,'prompt_sha256':hashlib.sha256(GATE_PROMPT.encode()).hexdigest()}
         metadata['judge_options'] = {'temperature':0, 'num_ctx':16384, 'num_predict':768, 'timeout_seconds':180}
         (self.report_dir / 'run.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + '\n')
         self.metadata = metadata
@@ -295,7 +297,11 @@ class Benchmark:
         (self.report_dir / 'run.json').write_text(json.dumps(self.metadata, ensure_ascii=False, indent=2) + '\n')
         print(f'Neo4j fixture ready: {self.namespace}', flush=True)
 
-    def retrieve(self, set_id, question, case_id):
+    def retrieve(self, set_id, question, case_id, history=None):
+        search,reason = recall_decision(question, history or [])
+        gate = {'search':search,'reason':reason}
+        if not search:
+            return [], [], gate
         topics = _extract_topics(question, raise_errors=True)
         memory = recall_related(f'{self.namespace}:{set_id}', [f'{self.namespace}/{topic}' for topic in topics], current_conversation_id=f'{self.namespace}:trial:{case_id}', raise_errors=True, query_text=question)
         for item in memory:
@@ -303,7 +309,7 @@ class Benchmark:
             item['topic'] = item['topic'].rsplit('/', 1)[-1]
             if item.get('ts') is not None:
                 item['ts'] = str(item['ts'])
-        return memory, topics
+        return memory, topics, gate
 
     def generate(self, task, user_text, history=None, memory=None):
         state = {'user_text': user_text, 'history': bounded_history(history or []), 'retrieved_memory': memory or [], 'system_prompt': self.prompts['talky/system'].prompt, 'common_prompt_texts': {name: p.prompt for name, p in self.prompts.items()}, 'common_prompt_refs': self.refs, 'system_prompt_ref': self.refs['talky/system'], 'trace_id': self.client.get_current_trace_id()}
@@ -346,10 +352,10 @@ class Benchmark:
                     history, turns = [], []
                     user_turns = inputs['turns'] if suite == 'dialogue' else [{'id': cid, 'user_text': inputs['question'], 'language': inputs['language']}]
                     for turn in user_turns:
-                        memory, topics = self.retrieve(inputs['set_id'], turn['user_text'], cid)
+                        memory, topics, gate = self.retrieve(inputs['set_id'], turn['user_text'], cid, history)
                         candidate, visible = self.generate(turn['language'], turn['user_text'], history, memory)
                         reply = candidate['reply']
-                        turns.append({'turn_id': turn['id'], 'user_text': turn['user_text'], 'reply': reply, 'retrieved_messages': memory, 'topics': topics, 'model_visible_input': visible})
+                        turns.append({'turn_id': turn['id'], 'user_text': turn['user_text'], 'reply': reply, 'retrieved_messages': memory, 'topics': topics, 'memory_gate':gate, 'model_visible_input': visible})
                         history.extend([{'role': 'user', 'content': turn['user_text']}, {'role': 'assistant', 'content': reply}])
                         print(f'[{suite}] {cid}: generated {len(turns)}/{len(user_turns)}', flush=True)
                     output = {'turns': turns}
@@ -434,16 +440,16 @@ class Benchmark:
             print(f'[{suite}] {cid}: judge_error ({type(exc).__name__})', flush=True)
             return [Evaluation(name='generation_success',value=1), Evaluation(name='judge_success',value=0,comment=type(exc).__name__)]
 
-    def run(self, suite, items):
+    def run(self, suite, items, *, generate_only=False):
         if self.replay_outputs:
             missing = [item['metadata']['case_id'] for item in items if (suite,item['metadata']['case_id']) not in self.replay_outputs]
             if missing:
                 raise ValueError(f'Replay is missing generated outputs: {missing}')
         if suite not in ('expression', 'calibration') and not self.replay_outputs:
             self.prepare_graph()
-        result = self.client.run_experiment(name=f'talky-{suite}-v2', run_name=f'{self.run_id}-{suite}', data=items, task=self.task, evaluators=[self.evaluate], max_concurrency=1, metadata={'run_id':self.run_id,'dataset_version':'2.0','model':self.metadata['model'],'judge_model':self.judge_model,'code_commit':self.metadata['code_commit']})
+        result = self.client.run_experiment(name=f'talky-{suite}-v2', run_name=f'{self.run_id}-{suite}', data=items, task=self.task, evaluators=[] if generate_only else [self.evaluate], max_concurrency=1, metadata={'run_id':self.run_id,'dataset_version':'2.0','model':self.metadata['model'],'judge_model':self.judge_model,'code_commit':self.metadata['code_commit'],'memory_gate':self.metadata.get('memory_gate'),'generate_only':generate_only})
         self.client.flush()
-        summary = {'suite':suite,'planned':len(items),'experiment_url':result.experiment_url,'experiment_id':result.experiment_id,'items':[]}
+        summary = {'generate_only':generate_only, 'suite':suite,'planned':len(items),'experiment_url':result.experiment_url,'experiment_id':result.experiment_id,'items':[]}
         for item in result.item_results:
             summary['items'].append({'case_id':item.item['metadata']['case_id'],'trace_id':item.trace_id,'trace_url':self.client.get_trace_url(trace_id=item.trace_id),'scores':{e.name:e.value for e in item.evaluations}})
         values = defaultdict(list)
@@ -492,6 +498,7 @@ def main():
     parser.add_argument('--limit',type=int)
     parser.add_argument('--cases',help='Comma-separated case IDs within one suite')
     parser.add_argument('--judge-model',required=True)
+    parser.add_argument('--generate-only',action='store_true',help='Save real outputs before a separate judge replay, avoiding model swapping')
     parser.add_argument('--replay-dir',type=Path,help='Rejudge saved outputs without generation or retrieval')
     args = parser.parse_args()
     if args.limit is not None and args.limit < 1:
@@ -500,6 +507,8 @@ def main():
         parser.error('--cases needs a single suite')
     if args.replay_dir and args.suite == 'calibration':
         parser.error('Calibration already uses fixed candidates; it does not need --replay-dir')
+    if args.generate_only and args.replay_dir:
+        parser.error('--generate-only cannot be combined with --replay-dir')
     benchmark = Benchmark(args.judge_model, ROOT/'.data/evaluations')
     suites = ['expression','memory','dialogue'] if args.suite == 'all' else [args.suite]
     if args.replay_dir:
@@ -507,7 +516,7 @@ def main():
     try:
         for suite in suites:
             data = benchmark.calibration_items() if suite == 'calibration' else items_for(suite)
-            benchmark.run(suite,select_items(data,args.limit,args.cases))
+            benchmark.run(suite,select_items(data,args.limit,args.cases),generate_only=args.generate_only)
     finally:
         benchmark.client.flush()
 

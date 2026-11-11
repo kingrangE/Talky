@@ -23,13 +23,13 @@ import threading
 import time
 import uuid
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from app import conversation
 from app.db import postgres, repo
-from app.db.models import Base, ConversationTurn, User
+from app.db.models import Base, ConversationTurn, GraphSyncEvent, User
 from app.settings import get_settings
 
 PROMPTS = [
@@ -39,6 +39,47 @@ PROMPTS = [
     'I enjoy walking in the park after work. What do you do to unwind?',
     '오늘 회의가 많아서 피곤했어요. 저녁에는 산책하고 싶어요.',
 ]
+
+MEMORY_PROMPTS = [
+    'Which city do I live in?',
+    '내 고양이 이름이 뭐였지?',
+    'What did I say I do on weekends?',
+    '다음 여행은 어디로 가기로 했었지?',
+    'What English skill did I want to practice?',
+]
+SEED_TURNS = [
+    ('I live in Seoul and my cat is named Milo.', ['seoul', 'cat']),
+    ('I go hiking on Saturdays, and my next trip is to Kyoto.', ['hiking', 'kyoto']),
+    ('I want to practice explaining technical problems in English.', ['english practice']),
+]
+
+
+def _graph_worker(dsn, schema, stop, ready, logfile):
+    postgres._engine = create_engine(dsn, connect_args={'options':f'-c search_path={schema} -c statement_timeout=30000 -c lock_timeout=5000'})
+    postgres._SessionLocal = sessionmaker(bind=postgres._engine, autoflush=False)
+    logging.basicConfig(filename=logfile, level=logging.INFO, format='%(asctime)s %(process)d %(name)s %(message)s')
+    from app.graph_db.worker import process_one
+    from app.graph_db.neo4j_client import get_driver
+    from app.runtime import job_budget
+    get_driver().verify_connectivity()
+    ready.set()
+    while not stop.is_set():
+        with job_budget(get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS):
+            worked = process_one()
+        if not worked:
+            stop.wait(.2)
+
+
+def _cleanup_graph(rows):
+    # Scope cleanup to this disposable run; keep fences against late projections.
+    from app.graph_db.neo4j_client import get_driver
+    cids = [cid for row in rows for cid in [row['conversation_id'], row.get('source_conversation_id')] if cid]
+    with get_driver().session() as graph:
+        graph.run('UNWIND $ids AS id MERGE (f:GraphConversationFence {id:id}) SET f.deleted=true', ids=cids).consume()
+        graph.run('MATCH (u:User)-[:HAD]->(c:Conversation)-[:CONTAINS]->(m:Message) WHERE u.id IN $uids AND c.id IN $cids DETACH DELETE m', uids=[r['user_id'] for r in rows], cids=cids).consume()
+        graph.run('MATCH (u:User)-[:HAD]->(c:Conversation) WHERE u.id IN $uids AND c.id IN $cids DETACH DELETE c', uids=[r['user_id'] for r in rows], cids=cids).consume()
+        graph.run('MATCH (u:User) WHERE u.id IN $ids AND NOT (u)-[:HAD]->() DETACH DELETE u', ids=[r['user_id'] for r in rows]).consume()
+        graph.run('MATCH (e:GraphSyncMarker) WHERE e.conversation_id IN $ids DETACH DELETE e', ids=cids).consume()
 
 
 def percentile(values, q):
@@ -130,8 +171,9 @@ def _worker(dsn,schema,channel,mode,logfile,ready):
             time.sleep(.05)
 
 
-def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=False):
+def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=False, graph_worker=False, profile="generic"):
     rows=[];processes=[];monitors=[];stop=threading.Event();pool=None
+    graph_process=None;graph_stop=None
     from app.mock_exam.worker import _monitor
     with isolated_database(dsn) as (schema,engine):
         for index in range(users):
@@ -142,6 +184,25 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
             rows.append({'index':index,'user_id':uid,'conversation_id':cid,'request_id':str(uuid.uuid4()),'outcome':'pending'})
         context=multiprocessing.get_context('spawn')
         try:
+            if profile == 'mixed-memory':
+                from app.graph_db.worker import process_one
+                for row in rows:
+                    source=repo.create_conversation(user_id=row['user_id'])
+                    row['source_conversation_id']=source
+                    for text,topics in SEED_TURNS:
+                        repo.save_turn(source,row['user_id'],text,'Thanks for telling me.',memory_topics=topics)
+                    repo.save_turn(row['conversation_id'],row['user_id'],
+                                   'I would like to practice English today.','Sure, what would you like to talk about?')
+                while process_one():
+                    with postgres.session_scope() as session:
+                        if session.scalar(select(func.count()).select_from(GraphSyncEvent).where(GraphSyncEvent.attempts > 0)):
+                            raise RuntimeError('fixture graph projection failed')
+            if graph_worker:
+                graph_stop=context.Event();graph_ready=context.Event()
+                graph_process=context.Process(target=_graph_worker,args=(dsn,schema,graph_stop,graph_ready,str(report_dir/'graph-worker.log')))
+                graph_process.start()
+                if not graph_ready.wait(30):
+                    raise RuntimeError('graph worker did not become ready')
             ready_events=[]
             for index in range(workers):
                 ready=context.Event() if warm_workers else None
@@ -161,8 +222,9 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
             def submit(row):
                 barrier.wait(timeout=30)
                 row['_started']=time.monotonic()
+                row['user_text']=(PROMPTS+MEMORY_PROMPTS if profile=='mixed-memory' else PROMPTS)[row['index']%(10 if profile=='mixed-memory' else len(PROMPTS))]
                 try:
-                    conversation.submit_turn(request_id=row['request_id'],conversation_id=row['conversation_id'],user_id=row['user_id'],user_text=PROMPTS[row['index']%len(PROMPTS)])
+                    conversation.submit_turn(request_id=row['request_id'],conversation_id=row['conversation_id'],user_id=row['user_id'],user_text=row['user_text'])
                     row['accepted']=True
                 except Exception as exc:
                     row['accepted']=False;row['outcome']='rejected';row['error_type']=type(exc).__name__
@@ -172,10 +234,14 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
             peaks={'queued':0,'processing':0};samples=[];resource_samples=[]
             while time.monotonic()-started < horizon:
                 with postgres.session_scope() as session:
+                    backlog=session.scalar(select(func.count()).select_from(GraphSyncEvent)) if graph_worker else None
+                    graph_errors=session.scalar(select(func.count()).select_from(GraphSyncEvent).where(GraphSyncEvent.attempts>0)) if graph_worker else None
                     snapshots={str(job.id):conversation._record(job) for job in session.scalars(select(ConversationTurn)).all()}
                 counts={state:sum(job['status']==state for job in snapshots.values()) for state in peaks}
                 for state,value in counts.items(): peaks[state]=max(peaks[state],value)
-                samples.append({'elapsed':round(time.monotonic()-started,3),**counts})
+                samples.append({'elapsed':round(time.monotonic()-started,3),**counts,'graph_backlog':backlog,'graph_events_with_retries':graph_errors})
+                if graph_process is not None and not graph_process.is_alive():
+                    raise RuntimeError('graph worker exited during load')
                 resource_samples.append({'elapsed':round(time.monotonic()-started,3),'workers':sample_workers(processes)})
                 for row in rows:
                     if not row.get('accepted') or row['outcome'] in {'completed','failed'}:
@@ -183,6 +249,8 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
                     job=snapshots.get(row['request_id'])
                     if job is None: continue
                     elapsed=time.monotonic()-row['_started']
+                    if job['result']:
+                        row['result']=job['result']
                     if job['result'] and 'text_seconds' not in row:
                         row['text_seconds']=elapsed
                     if job['status'] in {'completed','failed'}:
@@ -199,6 +267,8 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
                 if row['outcome']=='pending': row['outcome']='harness_timeout'
                 row.pop('_started',None)
             return {'users':users,'workers':workers,'mode':mode,'horizon_seconds':horizon,'elapsed_seconds':time.monotonic()-started,
+                    'graph_worker':graph_worker,'profile':profile,'graph_backlog_at_stop':backlog,
+                    'graph_events_with_retries_at_stop':graph_errors,
                     'summary':summary(rows,mode=mode),'queue_peaks':peaks,'queue_samples':samples,'resource_samples':resource_samples,'rows':rows}
         finally:
             if pool is not None:
@@ -208,6 +278,12 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
             for process,receiver in processes:
                 if process.is_alive(): process.kill();process.join(5)
                 receiver.close();process.close()
+            if graph_process is not None:
+                graph_stop.set();graph_process.join(5)
+                if graph_process.is_alive(): graph_process.kill();graph_process.join(5)
+                graph_process.close()
+            if graph_worker or profile=='mixed-memory':
+                _cleanup_graph(rows)
 
 
 def sample_workers(processes):
@@ -228,6 +304,8 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--levels',default='1,5,10,25,50')
     parser.add_argument('--workers',type=int,default=4)
+    parser.add_argument('--graph-worker',action='store_true')
+    parser.add_argument('--profile',choices=['generic','mixed-memory'],default='generic')
     parser.add_argument('--warm-workers',action='store_true')
     parser.add_argument('--rounds',type=int,default=1)
     parser.add_argument('--horizon',type=int,default=90)
@@ -237,6 +315,8 @@ def main():
     levels=[int(value) for value in args.levels.split(',')]
     if not levels or min(levels)<1 or max(levels)>100 or not 1<=args.workers<=16 or args.rounds<1 or args.horizon<10:
         parser.error('invalid levels/workers/rounds/horizon')
+    if args.profile=='mixed-memory' and (not args.graph_worker or args.mode!='real'):
+        parser.error('mixed-memory needs --graph-worker and --mode real')
     dsn=os.environ['TALKY_TEST_POSTGRES_DSN']
     if not (make_url(dsn).database or '').endswith('_test'): parser.error('dedicated *_test DB required')
     # Always local inference and synthetic identities, no paid provider or Cloud prompt writes.
@@ -253,8 +333,11 @@ def main():
         get_settings.cache_clear();cfg=get_settings()
         metadata={'started_at':datetime.now(timezone.utc).isoformat(),'model':cfg.MODEL_NAME,'context':cfg.LLM_CONTEXT_TOKENS,
                   'max_output_tokens':cfg.LLM_MAX_OUTPUT_TOKENS,'inference_capacity':cfg.INFERENCE_CAPACITY,'audio_capacity':cfg.AUDIO_CAPACITY,
+                  'memory_gate_enabled':cfg.MEMORY_GATE_ENABLED,'memory_gate_model':cfg.MEMORY_GATE_MODEL or cfg.MODEL_NAME,
+                  'memory_gate_timeout_seconds':cfg.MEMORY_GATE_TIMEOUT_SECONDS,'graph_worker':args.graph_worker,
+                  'profile_name':args.profile,'load_prompts':PROMPTS+MEMORY_PROMPTS if args.profile=='mixed-memory' else PROMPTS,'seed_turns':SEED_TURNS if args.profile=='mixed-memory' else [],
                   'queue_limit':cfg.CONVERSATION_QUEUE_LIMIT,'python':platform.python_version(),'platform':platform.platform(),
-                  'profile':'one simultaneous text request per distinct account; short history; 80% English, 20% Korean; real correction and Piper output',
+                  'profile':'one simultaneous text request per distinct account; real correction and Piper output; mixed-memory has 50% memory questions, one prior current turn and three source turns; generic is 80% English, 20% Korean',
                   'measurement':'DB result observed with 1s polls; excludes HTTP, browser rendering, voice input/STT and AWS',
                   'targets':{'concurrent_users':50,'text_p95_seconds':8,'text_p99_seconds':10,'error_rate_strictly_below':.05},
                   'commit':revision,'tracked_tree_dirty':dirty,
@@ -268,7 +351,7 @@ def main():
             for round_index in range(args.rounds):
                 directory=args.output/f'users-{users}-round-{round_index+1}';directory.mkdir()
                 print(f'Starting {users} users / round {round_index+1}',flush=True)
-                result=run_level(dsn,users=users,workers=args.workers,horizon=args.horizon,mode=args.mode,report_dir=directory,warm_workers=args.warm_workers)
+                result=run_level(dsn,users=users,workers=args.workers,horizon=args.horizon,mode=args.mode,report_dir=directory,warm_workers=args.warm_workers,graph_worker=args.graph_worker,profile=args.profile)
                 (directory/'result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False)+'\n')
                 reports.append(result)
                 print(json.dumps({'users':users,**result['summary']},ensure_ascii=False),flush=True)
