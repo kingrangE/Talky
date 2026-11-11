@@ -19,16 +19,16 @@ def test_concurrent_queue_load_has_no_lost_or_duplicate_turns(pg_db, monkeypatch
     monkeypatch.setenv('INFERENCE_CAPACITY', '2')
     get_settings.cache_clear()
     with pg_db[1]() as session:
-        user = User(display_name='operational-load')
-        session.add(user)
+        users = [User(display_name=f'operational-load-{i}') for i in range(8)]
+        session.add_all(users)
         session.flush()
-        uid = str(user.id)
-        conversations = [Conversation(user_id=user.id) for _ in range(32)]
+        conversations = [Conversation(user_id=user.id) for user in users for _ in range(4)]
         session.add_all(conversations)
         session.flush()
-        ids = [str(c.id) for c in conversations]
+        ids = [(str(c.id), str(c.user_id)) for c in conversations]
     submit_ms, queue_ms, work_ms = [], [], []
-    def submit(cid):
+    def submit(identity):
+        cid, uid = identity
         started = time.monotonic()
         result = queue.submit_turn(request_id=str(uuid.uuid4()), conversation_id=cid, user_id=uid,
                                    user_text='Synthetic operational test')
@@ -47,7 +47,7 @@ def test_concurrent_queue_load_has_no_lost_or_duplicate_turns(pg_db, monkeypatch
                     from datetime import datetime, timezone
                     queue_ms.append((datetime.now(timezone.utc)-datetime.fromisoformat(job['created_at'])).total_seconds()*1000)
                     t = time.monotonic()
-                    repo.save_turn(job['conversation_id'], uid, 'Synthetic operational test', 'Deterministic reply',
+                    repo.save_turn(job['conversation_id'], job['user_id'], 'Synthetic operational test', 'Deterministic reply',
                                    request_id=job['id'], expected_attempt=job['attempt'])
                     queue.process_turn(job)
                     work_ms.append((time.monotonic()-t)*1000)
@@ -56,7 +56,7 @@ def test_concurrent_queue_load_has_no_lost_or_duplicate_turns(pg_db, monkeypatch
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(drain, range(4)))
     elapsed = time.monotonic()-started
-    assert all(queue.get_turn(j['id'], uid)['status']=='completed' for j in jobs)
+    assert all(queue.get_turn(j['id'], j['user_id'])['status']=='completed' for j in jobs)
     with pg_db[1]() as session:
         assert session.scalar(select(func.count()).select_from(Message)) == 64
         assert session.scalar(select(func.count()).select_from(ConversationTurn).where(ConversationTurn.attempts==1)) == 32
