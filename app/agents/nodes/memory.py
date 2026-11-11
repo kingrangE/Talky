@@ -1,7 +1,7 @@
 """메모리 회상 노드.
 
-명확한 사회적 인사만 로컬 규칙으로 생략한다. 그 외에는 기존 토픽 추출과
-사용자 범위 검색을 유지한다.
+로컬 A.X가 최근 대화와 발화를 0·1로 판정한다. 불확실하거나 실패하면
+기존 사용자 범위 검색을 유지한다.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from app.agents.state import GraphState
+from app.agents.nodes.memory_gate import recall_decision
 from app.graph_db.recall import recall_related
 from app.llm.factory import get_structured_llm
 from app.runtime import bounded_messages, require_budget
@@ -49,29 +50,6 @@ def _extract_topics(text: str, raise_errors: bool = False) -> list[str]:
         return []
 
 
-# Whole-utterance matches only: a greeting followed by a question must still search.
-_SOCIAL_ONLY = frozenset({
-    'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
-    'thanks', 'thank you', 'thanks a lot', 'thank you very much',
-    'bye', 'goodbye', 'see you', 'see you later',
-    '안녕', '안녕하세요', '안녕하세요 반가워요', '반가워요',
-    '고마워', '고마워요', '감사합니다', '잘 가', '잘 가요', '다음에 봐요',
-})
-_CONTEXT_CUES = ('remember', 'recall', 'previous', 'earlier', 'last time',
-                 'mentioned', 'favorite', 'favourite', '기억', '지난', '전에', '말했', '좋아하')
-
-
-def recall_decision(user_text: str, history: list[dict]) -> tuple[bool, str]:
-    text = ' '.join(user_text.casefold().split()).strip(' .!?,~…。！？')
-    if not text:
-        return True, 'uncertain'
-    if text not in _SOCIAL_ONLY:
-        return True, 'possible_memory'
-    recent = ' '.join(str(item.get('content') or '') for item in history[-2:]).casefold()
-    if any(cue in recent for cue in _CONTEXT_CUES):
-        return True, 'context_dependency'
-    return False, 'social_only'
-
 
 def memory_recall_node(state: GraphState) -> dict:
     user_text = (state.get("user_text") or "").strip()
@@ -81,7 +59,7 @@ def memory_recall_node(state: GraphState) -> dict:
     search, reason = recall_decision(user_text, state.get('history') or [])
     log.info(json.dumps({'event': 'memory_gate', 'decision': 'search' if search else 'skip', 'reason': reason}))
     if not search:
-        return {'retrieved_memory': [], 'memory_topics': [], 'memory_recall_decision': reason}
+        return {'retrieved_memory': [], 'memory_topics': [], 'memory_recall_decision': reason, 'memory_topics_pending': True}
     require_budget(get_settings().LLM_TIMEOUT_SECONDS)
     topics = _extract_topics(user_text)
     memory = recall_related(
@@ -92,4 +70,4 @@ def memory_recall_node(state: GraphState) -> dict:
     )
     active = active_conversation_ids(user_id, [m.get('conversation_id', '') for m in memory])
     memory = [m for m in memory if m.get('conversation_id') in active]
-    return {"retrieved_memory": memory, "memory_topics": topics, "memory_recall_decision": reason}
+    return {"retrieved_memory": memory, "memory_topics": topics, "memory_recall_decision": reason, "memory_topics_pending": False}

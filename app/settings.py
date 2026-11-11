@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     LLM_CONTEXT_TOKENS: Annotated[int, Field(ge=4096, le=131072)] = 16384
     LLM_MAX_OUTPUT_TOKENS: Annotated[int, Field(ge=128, le=8192)] = 4096
     LLM_MAX_INPUT_BYTES: Annotated[int, Field(ge=1024, le=128000)] = 24000
+    MEMORY_GATE_ENABLED: bool = False
+    MEMORY_GATE_MODEL: str = ""
+    MEMORY_GATE_TIMEOUT_SECONDS: Annotated[float, Field(gt=0, le=30)] = 3.0
     MAX_USER_TEXT_CHARS: Annotated[int, Field(ge=1, le=10000)] = 4000
     MAX_HISTORY_BYTES: Annotated[int, Field(ge=1024, le=32000)] = 12000
     MAX_AUDIO_BYTES: Annotated[int, Field(ge=1024, le=20000000)] = 5000000

@@ -45,6 +45,10 @@ def process_one() -> bool:
                 assistant = session.get(Message, payload['assistant_message_id'])
                 if not user or not assistant or user.conversation_id != event.conversation_id or assistant.conversation_id != event.conversation_id:
                     raise ValueError('Outbox message ownership mismatch')
+                if payload.get('defer_topics'):
+                    from app.agents.nodes.memory import _extract_topics
+                    user.memory_topics = _extract_topics(user.content, raise_errors=True)
+                    event.payload = payload = {**payload, 'defer_topics':False, 'topics':user.memory_topics}
                 ok = ingest_turn(conversation_id=str(event.conversation_id), user_id=str(event.user_id),
                     user_msg_id=str(user.id), user_text=user.content, language=user.language,
                     assistant_msg_id=str(assistant.id), ai_text=assistant.content,

@@ -37,6 +37,7 @@ def test_memory_recall_is_scoped_and_excludes_current_conversation(monkeypatch):
 
 def test_memory_node_keeps_topics_for_immediate_ingest(monkeypatch):
     captured = {}
+    monkeypatch.setattr(memory, "recall_decision", lambda *_: (True, "model_search"))
     monkeypatch.setattr(memory, "_extract_topics", lambda _text: ["office work"])
 
     def fake_recall(user_id, topics, *, current_conversation_id, query_text):
@@ -86,6 +87,7 @@ def test_persist_enqueues_topics_with_the_source_turn(monkeypatch):
 
 
 def test_empty_topic_extraction_still_searches_the_users_text(monkeypatch):
+    monkeypatch.setattr(memory, 'recall_decision', lambda *_: (True, 'model_search'))
     monkeypatch.setattr(memory, '_extract_topics', lambda _text: [])
     captured = {}
     def search(uid, topics, **kwargs):

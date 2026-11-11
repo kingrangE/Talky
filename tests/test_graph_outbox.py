@@ -145,3 +145,45 @@ def test_late_correction_does_not_increment_topic_weights_again(conversation,mon
     monkeypatch.setattr(worker,'ingest_topics',lambda **kw:calls.append(kw) or True)
     assert worker.process_one() and worker.process_one()
     assert len(calls)==1
+
+
+@pytest.mark.parametrize('fail_extraction',[False,True])
+def test_deferred_topics_survive_failures_without_losing_source(conversation,pg_db,monkeypatch,fail_extraction):
+    from app.agents.nodes import memory
+    uid,cid=conversation
+    user,_=repo.save_turn(cid,uid,'I moved to Busan.','How is it?',defer_topics=True)
+    calls=[]
+    def extract(text,raise_errors):
+        assert raise_errors
+        calls.append(text)
+        if fail_extraction and len(calls)==1:
+            raise TimeoutError()
+        return ['relocation']
+    monkeypatch.setattr(memory,'_extract_topics',extract)
+    monkeypatch.setattr(worker,'ingest_turn',lambda **_:False)
+    assert worker.process_one()
+    with pg_db[1]() as session:
+        job=session.scalars(select(GraphSyncEvent)).one()
+        assert job.attempts==1
+        assert job.payload['defer_topics'] is fail_extraction
+        assert session.get(Message,user).content=='I moved to Busan.'
+        job.available_at=datetime.now(timezone.utc)
+    monkeypatch.setattr(worker,'ingest_turn',lambda **_:True)
+    topics=[]
+    monkeypatch.setattr(worker,'ingest_topics',lambda **kw:topics.append(kw) or True)
+    assert worker.process_one()
+    assert len(calls)==(2 if fail_extraction else 1)
+    assert topics[0]['topics']==['relocation']
+    with pg_db[1]() as session:
+        assert session.get(Message,user).memory_topics==['relocation']
+        assert session.scalar(select(func.count()).select_from(GraphSyncEvent))==0
+
+
+def test_deleted_deferred_turn_never_calls_topic_model(conversation,monkeypatch):
+    from app.agents.nodes import memory
+    uid,cid=conversation
+    repo.save_turn(cid,uid,'private','reply',defer_topics=True)
+    repo.delete_conversation(cid,uid)
+    monkeypatch.setattr(memory,'_extract_topics',lambda *_a,**_kw:pytest.fail('deleted text indexed'))
+    monkeypatch.setattr(worker,'delete_conversation_memory',lambda **_:True)
+    assert worker.process_one()

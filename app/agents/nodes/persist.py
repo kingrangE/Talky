@@ -23,6 +23,7 @@ def persist_node(state: GraphState) -> dict:
         cid, state["user_id"], user_text, ai_reply, language=language,
         english_expression=eng_expr, better_expression=bet_expr,
         memory_topics=state.get('memory_topics') or [],
+        defer_topics=state.get('memory_topics_pending',False),
         request_id=state.get('request_id'), expected_attempt=state.get('turn_attempt'),
     )
 

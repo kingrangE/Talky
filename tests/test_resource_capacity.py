@@ -59,3 +59,24 @@ def test_factory_model_generation_enters_capacity_boundary(monkeypatch):
     model=capacity.SlotChatOllama(model='unused')
     assert model.bind(temperature=0).invoke('Hi').content == 'OK'
     assert calls == ['inference']
+
+
+def test_router_can_abandon_capacity_wait_without_entering_model(pg_db):
+    import pytest
+    entered,release=threading.Event(),threading.Event()
+    def occupy():
+        with resource_slot('inference'):
+            entered.set()
+            assert release.wait(3)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        task=pool.submit(occupy)
+        try:
+            assert entered.wait(1)
+            start=time.monotonic()
+            with pytest.raises(TimeoutError,match='capacity wait'):
+                with resource_slot('inference',max_wait_seconds=.1):
+                    pytest.fail('capacity exceeded')
+            assert time.monotonic()-start < 1
+        finally:
+            release.set()
+        task.result()

@@ -340,7 +340,10 @@ def test_skipping_memory_read_still_persists_and_projects_the_turn(chat,monkeypa
     builder=graph.build_conversation_graph;builder.cache_clear()
     def forbidden(*_a,**_kw):
         pytest.fail('pure greeting searched memory')
-    monkeypatch.setattr(memory,'_extract_topics',forbidden)
+    monkeypatch.setattr(memory,'recall_decision',lambda *_:(False,'model_skip'))
+    extracted=[]
+    monkeypatch.setattr(memory,'_extract_topics',lambda text,**_:extracted.append(text) or ['relocation'])
+    monkeypatch.setattr(worker,'ingest_topics',lambda **_:True)
     monkeypatch.setattr(memory,'recall_related',forbidden)
     monkeypatch.setattr(graph,'load_conversation_prompt_node',lambda _: {})
     monkeypatch.setattr(graph,'en_reply_node',lambda _: {'ai_reply':'Hello there!'})
@@ -349,12 +352,14 @@ def test_skipping_memory_read_still_persists_and_projects_the_turn(chat,monkeypa
     projected=[]
     monkeypatch.setattr(worker,'ingest_turn',lambda **kw:projected.append(kw) or True)
     try:
-        submit(chat,text='Hello!')
+        submit(chat,text='I moved to Busan.')
         queue.process_turn(queue.claim_turn())
         messages=repo.load_messages(chat[1],chat[0])
-        assert [m['content'] for m in messages]==['Hello!','Hello there!']
+        assert [m['content'] for m in messages]==['I moved to Busan.','Hello there!']
+        assert not extracted
         assert worker.process_one()
-        assert projected[0]['user_text']=='Hello!'
+        assert extracted == ['I moved to Busan.']
+        assert projected[0]['user_text']=='I moved to Busan.'
         assert projected[0]['ai_text']=='Hello there!'
     finally:
         builder.cache_clear()

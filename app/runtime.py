@@ -135,7 +135,7 @@ def require_budget(seconds=1):
 
 
 @contextmanager
-def resource_slot(kind):
+def resource_slot(kind, *, max_wait_seconds=None):
     """Wait only around resource use; the job supervisor bounds the full wait."""
     import json
     import logging
@@ -166,7 +166,8 @@ def resource_slot(kind):
                         connection.invalidate()
                         raise
                 return
-        if time.monotonic()-started > get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS:
+        limit = get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS if max_wait_seconds is None else max_wait_seconds
+        if time.monotonic()-started >= limit:
             raise TimeoutError('resource capacity wait expired')
         time.sleep(.05)
 

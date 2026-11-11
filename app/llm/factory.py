@@ -73,3 +73,20 @@ def get_local_structured_llm(
         return base.with_structured_output(schema, method="json_schema")
     except (TypeError, ValueError):
         return base.with_structured_output(schema, method="json_mode")
+
+
+@lru_cache(maxsize=1)
+def get_memory_gate_llm() -> BaseChatModel:
+    """Local-only binary model; the caller owns the short inference-slot wait."""
+    from langchain_ollama import ChatOllama
+
+    cfg = get_settings()
+    return ChatOllama(
+        base_url=cfg.OLLAMA_BASE_URL,
+        model=cfg.MEMORY_GATE_MODEL or cfg.MODEL_NAME,
+        temperature=0,
+        num_predict=4,
+        num_ctx=cfg.LLM_CONTEXT_TOKENS,
+        format={'type': 'integer', 'enum': [0, 1]},
+        client_kwargs={'timeout': cfg.MEMORY_GATE_TIMEOUT_SECONDS},
+    )

@@ -35,6 +35,7 @@ class GraphState(TypedDict, total=False):
     retrieved_memory: list[dict[str, Any]]
     memory_topics: list[str]
     memory_recall_decision: str
+    memory_topics_pending: bool
 
     # 출력
     ai_reply: str

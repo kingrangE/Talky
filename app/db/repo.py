@@ -168,6 +168,7 @@ def save_turn(
     english_expression: str | None = None,
     better_expression: str | None = None,
     memory_topics: list[str] | None = None,
+    defer_topics: bool = False,
     request_id: str | None = None,
     expected_attempt: int | None = None,
 ) -> tuple[str, str]:
@@ -197,6 +198,7 @@ def save_turn(
         s.add(GraphSyncEvent(conversation_id=cid, user_id=_to_uuid(user_id), kind='upsert', payload={
             'user_message_id':str(user_msg.id), 'assistant_message_id':str(ai_msg.id),
             'previous_message_id':str(previous) if previous else None, 'topics':memory_topics or [],
+            'defer_topics':defer_topics,
         }))
         if turn:
             turn.updated_at = datetime.now(timezone.utc)
