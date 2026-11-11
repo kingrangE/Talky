@@ -24,7 +24,7 @@ from app.settings import get_settings  # noqa: E402
 from app.ui.audio_widget import mic_input  # noqa: E402
 from app.ui.report_view import render_report  # noqa: E402
 from app.ui.login import require_user  # noqa: E402
-from app.runtime import ModelBusy, inference_slot  # noqa: E402
+from app.runtime import ModelBusy  # noqa: E402
 from app.llm.prompt_registry import PromptUnavailable  # noqa: E402
 
 load_dotenv()
@@ -136,7 +136,7 @@ with st.sidebar:
             key="end_conv",
         ):
             try:
-                with st.spinner("보고서 생성 중..."), inference_slot():
+                with st.spinner("보고서 생성 중..."):
                     ENDING_GRAPH.invoke({
                         "conversation_id": st.session_state.conversation_id,
                         "user_id": str(USER_ID),

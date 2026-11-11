@@ -6,7 +6,7 @@ import streamlit as st
 
 from app.agents.evolve_graph import run_evolve_if_needed
 from app.db.repo import get_conversation_prompt, get_rating, get_report, save_rating
-from app.runtime import ModelBusy, inference_slot
+from app.runtime import ModelBusy
 
 
 def render_report(conversation_id: str, user_id: str) -> None:

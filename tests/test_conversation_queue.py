@@ -253,3 +253,32 @@ def test_ui_lost_ack_exposes_explicit_retry_without_new_request(chat, monkeypatc
     assert not app.exception
     assert len(calls)==2 and calls[0]==calls[1]
     assert app.session_state.pending_turn_id==calls[0]
+
+
+def test_end_conversation_can_enter_generation_capacity(chat, monkeypatch):
+    import sys
+    from streamlit.testing.v1 import AppTest
+    from app.agents import ending_graph
+    from app.runtime import job_budget, resource_slot
+    monkeypatch.setitem(sys.modules,'__main__',sys.modules['__main__'])
+    calls=[]
+    chat=(chat[0],repo.create_conversation(user_id=chat[0]))
+    class Ending:
+        def invoke(self,state):
+            with job_budget(2),resource_slot('inference'):
+                calls.append(state['conversation_id'])
+            repo.save_report(conversation_id=chat[1],user_id=chat[0],summary='Summary',strengths=[],weaknesses=[],vocab_learned=[])
+    monkeypatch.setattr(ending_graph,'build_ending_graph',lambda:Ending())
+    # AppTest's cached bootstrap can otherwise retain another test's graph object.
+    import streamlit as st
+    st.cache_resource.clear()
+    repo.save_turn(chat[1],chat[0],'Hello','Hi')
+    app=AppTest.from_file('main.py')
+    app.session_state.auth_user_id=chat[0]
+    app.session_state.conversation_id=chat[1]
+    app.session_state.messages=repo.load_messages(chat[1],chat[0])
+    app.run(timeout=15)
+    app.button(key='end_conv').click().run(timeout=15)
+    assert not app.exception
+    assert calls==[chat[1]]
+    st.cache_resource.clear()

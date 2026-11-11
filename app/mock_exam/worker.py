@@ -10,8 +10,8 @@ import threading
 import time
 
 from app.mock_exam.repository import claim_job, fail_job, recover_jobs
-from app.mock_exam.service import _finalize_report, _process_response, run_expiry_cleanup
-from app.runtime import ModelBusy, inference_slot, job_budget
+from app.mock_exam.service import _finalize_report, _process_response
+from app.runtime import ModelBusy, job_budget
 from app.settings import get_settings
 from app.conversation import claim_turn, fail_turn, process_turn
 
