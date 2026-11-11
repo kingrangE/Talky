@@ -91,3 +91,22 @@ def test_parallel_workers_do_not_reorder_a_conversations_events(conversation, pg
     assert [p['user_msg_id'] for p in projected]==[first[0],second[0]]
     assert projected[1]['previous_message_id']==first[1]
     assert repo.active_conversation_ids(str(uuid.uuid4()),[cid])==set()
+
+
+def test_rebuild_restores_old_history_before_pending_newer_events(conversation, pg_db, monkeypatch):
+    from app.graph_db.rebuild import enqueue
+    uid, cid = conversation
+    first = repo.save_turn(cid, uid, 'older source', 'older reply', memory_topics=['books'])
+    with pg_db[1]() as session:
+        old = session.scalars(select(GraphSyncEvent)).one()
+        session.delete(old)
+    second = repo.save_turn(cid, uid, 'newer source', 'newer reply')
+    assert enqueue(uuid.UUID(cid)) == 1
+    assert enqueue(uuid.UUID(cid)) == 0
+    projected = []
+    monkeypatch.setattr(worker, 'ingest_turn', lambda **kw: projected.append(kw) or True)
+    monkeypatch.setattr(worker, 'ingest_topics', lambda **_: True)
+    assert worker.process_one() and worker.process_one()
+    assert [p['user_msg_id'] for p in projected] == [first[0], second[0]]
+    assert projected[0]['previous_message_id'] is None
+    assert projected[1]['previous_message_id'] == first[1]
