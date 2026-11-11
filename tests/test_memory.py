@@ -105,9 +105,12 @@ def test_delete_memory_queries_are_user_scoped():
     class FakeTx:
         def run(self, query, **params):
             calls.append((query, params))
+            from types import SimpleNamespace
+            return SimpleNamespace(consume=lambda: None)
 
     ingest._delete_conversation_tx(FakeTx(), "conversation-1", "user-1")
 
-    assert len(calls) == 5
-    assert all("User {id: $uid}" in query for query, _params in calls[:2])
-    assert calls[0][1] == {"uid": "user-1", "cid": "conversation-1"}
+    assert len(calls) == 6
+    assert "GraphConversationFence" in calls[0][0]
+    assert all("User {id: $uid}" in query for query, _params in calls[1:3])
+    assert calls[1][1] == {"uid": "user-1", "cid": "conversation-1"}
