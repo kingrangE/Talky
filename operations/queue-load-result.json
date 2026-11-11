@@ -1,0 +1,22 @@
+{
+  "kind": "synthetic_model_real_postgres",
+  "requests": 32,
+  "clients": 8,
+  "workers": 4,
+  "inference_slots": 2,
+  "completed": 32,
+  "messages": 64,
+  "elapsed_seconds": 2.185,
+  "submit": {
+    "p50_ms": 52.81,
+    "p95_ms": 104.41
+  },
+  "queue_wait": {
+    "p50_ms": 1783.07,
+    "p95_ms": 1865.22
+  },
+  "processing": {
+    "p50_ms": 15.75,
+    "p95_ms": 20.35
+  }
+}

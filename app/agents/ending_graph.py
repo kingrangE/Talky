@@ -5,6 +5,7 @@ START → load_history → summarize → persist_report (with Graph outbox) → 
 
 from __future__ import annotations
 
+from app.telemetry import timed_stage
 from functools import lru_cache
 from typing import Any, TypedDict
 
@@ -94,9 +95,9 @@ def persist_report_node(state: EndingState) -> dict:
 @lru_cache(maxsize=1)
 def build_ending_graph():
     g = StateGraph(EndingState)
-    g.add_node("load_history", load_history_node)
-    g.add_node("summarize", summarize_node)
-    g.add_node("persist_report", persist_report_node)
+    g.add_node("load_history", timed_stage("load_history", load_history_node))
+    g.add_node("summarize", timed_stage("summarize", summarize_node))
+    g.add_node("persist_report", timed_stage("persist_report", persist_report_node))
 
     g.add_edge(START, "load_history")
     g.add_edge("load_history", "summarize")

@@ -1,6 +1,8 @@
 """Durable DB workers, supervised so stuck model work can be killed and recovered."""
 
 import logging
+import json
+from datetime import datetime, timezone
 import multiprocessing
 import signal
 import threading
@@ -33,6 +35,9 @@ def _run_worker(channel) -> None:
                 if job:
                     prefer_chat = not prefer_chat
                     channel.send("started")
+                    started = time.monotonic()
+                    wait_ms = max(0, (datetime.now(timezone.utc) - datetime.fromisoformat(job["created_at"])).total_seconds()*1000)
+                    outcome = "ok"
                     try:
                         if job['kind'] == 'conversation':
                             process_turn(job)
@@ -44,9 +49,13 @@ def _run_worker(channel) -> None:
                         else:
                             _finalize_report(job["session_id"], job["attempt"])
                     except Exception as exc:
+                        outcome = "error"
                         log.warning("job failed: %s", type(exc).__name__)
                         (fail_turn if job['kind']=='conversation' else fail_job)(job, type(exc).__name__)
                     finally:
+                        log.info(json.dumps({'event': 'job', 'kind': job['kind'], 'outcome': outcome,
+                            'attempt': job['attempt'], 'queue_wait_ms': round(wait_ms, 2),
+                            'duration_ms': round((time.monotonic()-started)*1000, 2)}))
                         channel.send("idle")
         except ModelBusy:
             pass

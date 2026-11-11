@@ -6,6 +6,7 @@ load_prompt → STT → memory_recall → router → (ko_coach | en_reply → be
 
 from __future__ import annotations
 
+from app.telemetry import timed_stage
 from functools import lru_cache
 
 from langgraph.graph import END, START, StateGraph
@@ -25,14 +26,14 @@ from app.llm.prompts import load_conversation_prompt_node
 @lru_cache(maxsize=1)
 def build_conversation_graph():
     g = StateGraph(GraphState)
-    g.add_node("load_prompt", load_conversation_prompt_node)
-    g.add_node("stt", stt_node)
-    g.add_node("memory_recall", memory_recall_node)
-    g.add_node("ko_coach", ko_coach_node)
-    g.add_node("en_reply", en_reply_node)
-    g.add_node("better_expr", better_expr_node)
-    g.add_node("tts", tts_node)
-    g.add_node("persist", persist_node)
+    g.add_node("load_prompt", timed_stage("load_prompt", load_conversation_prompt_node))
+    g.add_node("stt", timed_stage("stt", stt_node))
+    g.add_node("memory_recall", timed_stage("memory_recall", memory_recall_node))
+    g.add_node("ko_coach", timed_stage("ko_coach", ko_coach_node))
+    g.add_node("en_reply", timed_stage("en_reply", en_reply_node))
+    g.add_node("better_expr", timed_stage("better_expr", better_expr_node))
+    g.add_node("tts", timed_stage("tts", tts_node))
+    g.add_node("persist", timed_stage("persist", persist_node))
 
     g.add_edge(START, "load_prompt")
     g.add_edge("load_prompt", "stt")

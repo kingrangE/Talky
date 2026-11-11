@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from app.telemetry import timed_stage
 from functools import lru_cache
 from typing import Any, TypedDict
 
@@ -229,10 +230,10 @@ def aggregate_node(state: ScoringState) -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def build_scoring_graph():
     graph = StateGraph(ScoringState)
-    graph.add_node("language_agent", language_agent_node)
-    graph.add_node("task_agent", task_agent_node)
-    graph.add_node("evidence_agent", evidence_agent_node)
-    graph.add_node("aggregate", aggregate_node)
+    graph.add_node("language_agent", timed_stage("language_agent", language_agent_node))
+    graph.add_node("task_agent", timed_stage("task_agent", task_agent_node))
+    graph.add_node("evidence_agent", timed_stage("evidence_agent", evidence_agent_node))
+    graph.add_node("aggregate", timed_stage("aggregate", aggregate_node))
     graph.add_edge(START, "language_agent")
     graph.add_edge("language_agent", "task_agent")
     graph.add_conditional_edges(

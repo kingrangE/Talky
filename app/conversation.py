@@ -1,5 +1,7 @@
 """Durable conversation requests; the UI submits and workers own inference."""
 import hashlib
+import logging
+import json
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select, text, update
@@ -11,12 +13,14 @@ from app.db.repo import _owned_conversation, _to_uuid, load_messages
 from app.mock_exam.privacy import audio_store
 from app.settings import get_settings
 
+log = logging.getLogger('talky.metrics')
+
 QUEUE_GATE = 74201935
 
 
 def _record(row):
     return {'id':str(row.id),'conversation_id':str(row.conversation_id),'user_id':str(row.user_id),
-            'status':row.status,'attempt':row.attempts,'input_text':row.input_text,
+            'created_at':row.created_at.isoformat(),'status':row.status,'attempt':row.attempts,'input_text':row.input_text,
             'input_audio_path':row.input_audio_path,'output_audio_path':row.output_audio_path,
             'result':row.result or {},'error_code':row.error_code}
 
@@ -73,6 +77,7 @@ def submit_turn(*, request_id, conversation_id, user_id, user_text=None, audio_b
             session.flush()
             result=_record(row)
         accepted=True
+        log.info(json.dumps({'event': 'accepted', 'kind': 'conversation'}))
         return result
     finally:
         if not accepted:

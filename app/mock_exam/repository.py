@@ -317,7 +317,7 @@ def claim_job() -> dict[str, Any] | None:
             row.updated_at = now
             return {
                 "id": str(row.id), "session_id": str(row.session_id), "kind": kind,
-                "attempt": row.attempts,
+                "attempt": row.attempts, "created_at": row.created_at.isoformat(),
                 **({"question_number": row.question_number,
                     "encrypted_audio_path": row.encrypted_audio_path,
                     "client_metrics": (row.audio_metrics or {}).get("browser", {})}
