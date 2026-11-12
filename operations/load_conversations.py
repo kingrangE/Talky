@@ -173,7 +173,7 @@ def _worker(dsn,schema,channel,mode,logfile,ready):
 
 def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=False, graph_worker=False, profile="generic"):
     rows=[];processes=[];monitors=[];stop=threading.Event();pool=None
-    graph_process=None;graph_stop=None
+    graph_process=None;graph_stop=None;restarts=[]
     from app.mock_exam.worker import _monitor
     with isolated_database(dsn) as (schema,engine):
         for index in range(users):
@@ -203,15 +203,19 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
                 graph_process.start()
                 if not graph_ready.wait(30):
                     raise RuntimeError('graph worker did not become ready')
+            def spawn_worker(index, ready=None):
+                receiver,sender=context.Pipe(duplex=False)
+                process=context.Process(target=_worker,args=(dsn,schema,sender,mode,str(report_dir/f'worker-{index}.log'),ready))
+                process.start();sender.close()
+                monitor=threading.Thread(target=_monitor,args=(process,receiver,get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS,stop),daemon=True)
+                monitor.start()
+                return process,receiver,monitor
             ready_events=[]
             for index in range(workers):
                 ready=context.Event() if warm_workers else None
                 ready_events.append(ready)
-                receiver,sender=context.Pipe(duplex=False)
-                process=context.Process(target=_worker,args=(dsn,schema,sender,mode,str(report_dir/f'worker-{index}.log'),ready))
-                process.start();sender.close();processes.append((process,receiver))
-                monitor=threading.Thread(target=_monitor,args=(process,receiver,get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS,stop),daemon=True)
-                monitor.start();monitors.append(monitor)
+                process,receiver,monitor=spawn_worker(index,ready)
+                processes.append((process,receiver));monitors.append(monitor)
             if warm_workers:
                 deadline=time.monotonic()+120
                 for ready in ready_events:
@@ -233,6 +237,15 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
             submissions=[pool.submit(submit,row) for row in rows]
             peaks={'queued':0,'processing':0};samples=[];resource_samples=[]
             while time.monotonic()-started < horizon:
+                for index,(process,receiver) in enumerate(processes):
+                    if not process.is_alive():
+                        monitors[index].join(12)
+                        if monitors[index].is_alive():
+                            raise RuntimeError('worker supervisor did not stop')
+                        restarts.append({'worker':index,'exitcode':process.exitcode,'elapsed':round(time.monotonic()-started,3)})
+                        receiver.close();process.close()
+                        process,receiver,monitor=spawn_worker(index)
+                        processes[index]=(process,receiver);monitors[index]=monitor
                 with postgres.session_scope() as session:
                     backlog=session.scalar(select(func.count()).select_from(GraphSyncEvent)) if graph_worker else None
                     graph_errors=session.scalar(select(func.count()).select_from(GraphSyncEvent).where(GraphSyncEvent.attempts>0)) if graph_worker else None
@@ -267,7 +280,7 @@ def run_level(dsn, *, users, workers, horizon, mode, report_dir, warm_workers=Fa
                 if row['outcome']=='pending': row['outcome']='harness_timeout'
                 row.pop('_started',None)
             return {'users':users,'workers':workers,'mode':mode,'horizon_seconds':horizon,'elapsed_seconds':time.monotonic()-started,
-                    'graph_worker':graph_worker,'profile':profile,'graph_backlog_at_stop':backlog,
+                    'worker_restarts':restarts,'graph_worker':graph_worker,'profile':profile,'graph_backlog_at_stop':backlog,
                     'graph_events_with_retries_at_stop':graph_errors,
                     'summary':summary(rows,mode=mode),'queue_peaks':peaks,'queue_samples':samples,'resource_samples':resource_samples,'rows':rows}
         finally:

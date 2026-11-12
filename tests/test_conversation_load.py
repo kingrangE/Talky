@@ -59,3 +59,27 @@ def test_mixed_load_runs_graph_worker_and_cleans_its_source(pg_db,tmp_path,monke
     with get_driver().session() as graph:
         assert graph.run('MATCH (u:User) WHERE u.id IN $ids RETURN count(u) AS n',ids=[r['user_id'] for r in result['rows']]).single()['n']==0
     get_driver().close();get_driver.cache_clear()
+
+
+
+def test_runner_replaces_a_dead_worker_and_finishes_queued_requests(pg_db,tmp_path,monkeypatch):
+    import operations.load_conversations as load
+    context=load.multiprocessing.get_context('spawn')
+    killed=[]
+    class Process:
+        def __init__(self,process): self.process=process
+        def __getattr__(self,name): return getattr(self.process,name)
+        def start(self):
+            self.process.start()
+            # Kill before submission, so no request lease needs to expire in this test.
+            if not killed:
+                killed.append(self.process.pid)
+                self.process.kill();self.process.join()
+    class Context:
+        def __getattr__(self,name): return getattr(context,name)
+        def Process(self,**kwargs): return Process(context.Process(**kwargs))
+    monkeypatch.setattr(load.multiprocessing,'get_context',lambda _:Context())
+    result=run_level(pg_db[0].url.render_as_string(hide_password=False),users=3,workers=1,horizon=15,mode='synthetic',report_dir=tmp_path)
+    assert result['summary']['completed']==3
+    assert len(result['worker_restarts'])==1
+    assert result['worker_restarts'][0]['exitcode'] != 0
