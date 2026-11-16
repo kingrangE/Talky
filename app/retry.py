@@ -4,6 +4,9 @@ from datetime import timedelta
 
 
 def retry_delay(error, attempt):
+    from app.errors import UserFacingError
+    if isinstance(error, UserFacingError):
+        return None
     if error == 'worker_interrupted':
         return timedelta(0)
     if isinstance(error, (PermissionError, FileNotFoundError)):
@@ -31,4 +34,5 @@ def retry_delay(error, attempt):
 
 
 def error_name(error):
-    return error[:128] if isinstance(error, str) else type(error).__name__[:128]
+    from app.errors import error_code
+    return error_code(error)

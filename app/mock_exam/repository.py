@@ -337,6 +337,8 @@ def _retry_or_fail(s, row, kind: str, error_code: str) -> None:
     from app.retry import retry_delay, error_name
     if kind == "response":
         row.error_code = error_name(error_code)
+    else:
+        row.payload = {**(row.payload or {}), 'error_code': error_name(error_code)}
     delay = retry_delay(error_code, row.attempts)
     if (delay is not None and row.attempts < get_settings().MOCK_EXAM_MAX_ATTEMPTS
             and _now() + delay < row.expires_at):

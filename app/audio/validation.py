@@ -5,6 +5,7 @@ import base64
 import binascii
 
 from app.settings import get_settings
+from app.errors import UserFacingError
 
 
 def decode_audio_upload(encoded: str) -> bytes:
@@ -22,8 +23,12 @@ def decode_audio_upload(encoded: str) -> bytes:
 
 def validate_audio(audio: bytes, *, max_seconds: float | None = None) -> float:
     cfg = get_settings()
-    if not 128 <= len(audio) <= cfg.MAX_AUDIO_BYTES:
-        raise ValueError("음성 파일 크기가 허용 범위를 벗어났습니다.")
+    if not audio:
+        raise UserFacingError('audio_empty')
+    if len(audio) > cfg.MAX_AUDIO_BYTES:
+        raise UserFacingError('audio_too_large')
+    if len(audio) < 128:
+        raise UserFacingError('audio_unreadable')
     import av
 
     limit = min(max_seconds or cfg.MAX_AUDIO_SECONDS, cfg.MAX_AUDIO_SECONDS)
@@ -33,11 +38,11 @@ def validate_audio(audio: bytes, *, max_seconds: float | None = None) -> float:
             for frame in container.decode(audio=0):
                 duration += frame.samples / frame.sample_rate
                 if duration > limit:
-                    raise ValueError("음성이 허용된 녹음 시간보다 깁니다.")
-    except ValueError:
+                    raise UserFacingError('audio_too_long')
+    except UserFacingError:
         raise
     except Exception as exc:
-        raise ValueError("음성 파일을 읽을 수 없습니다.") from exc
+        raise UserFacingError('audio_unreadable') from exc
     if duration <= 0:
-        raise ValueError("녹음된 음성이 없습니다.")
+        raise UserFacingError('audio_empty')
     return duration
