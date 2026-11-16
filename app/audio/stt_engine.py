@@ -10,6 +10,7 @@ from typing import Any, Tuple
 
 from app.settings import get_settings
 from app.audio.validation import validate_audio
+from app.errors import UserFacingError
 
 
 @lru_cache(maxsize=1)
@@ -30,12 +31,21 @@ def transcribe(audio_bytes: bytes) -> Tuple[str, str]:
     """음성 바이트 → (텍스트, 언어). 언어는 ko/en 으로 정규화."""
     validate_audio(audio_bytes)
     model = _model()
-    segments, info = model.transcribe(
-        io.BytesIO(audio_bytes),
-        beam_size=1,
-        vad_filter=True,
-        language=None,
-    )
+    try:
+        segments, info = model.transcribe(
+            io.BytesIO(audio_bytes),
+            beam_size=1,
+            vad_filter=True,
+            language=None,
+        )
+    except ValueError as exc:
+        # faster-whisper 1.0 can fail language detection after VAD removes all speech.
+        if str(exc) == 'max() arg is an empty sequence':
+            from faster_whisper.audio import decode_audio
+            from faster_whisper.vad import get_speech_timestamps
+            if not get_speech_timestamps(decode_audio(io.BytesIO(audio_bytes))):
+                raise UserFacingError('speech_not_detected') from exc
+        raise
     text = "".join(seg.text for seg in segments).strip()
     lang_raw = (info.language or "en").lower()
     lang = "ko" if lang_raw.startswith("ko") else "en"
