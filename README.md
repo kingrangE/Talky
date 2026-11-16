@@ -6,14 +6,32 @@ LangGraph 기반 한·영 음성 회화 학습 AI 에이전트.
 - **이중 언어**: 한국어 입력 → 영어 표현 안내 + 영어 응답 / 영어 입력 → 영어 응답 + "참고하세요!" 교정 토글
 - **그래프 메모리**: Neo4j 에 대화/주제/표현을 노드-엣지로 적재, 다음 대화에서 토픽 관계를 최대 3-hop 으로 참조
 - **자기 진화 프롬프트**: 종료 시 별점에 따라 메타-LLM 이 system prompt 새 버전 생성
-- **오픈소스 Docker 배포**: 기본 로컬 모드는 외부 클라우드 의존 없이 `docker compose up`으로 기동
+- **모델 제공자 선택**: NVIDIA Nemotron API, OpenAI API 또는 로컬 Ollama를 설정으로 선택
 - **Speaking Mock Test**: 오리지널 11문항, 브라우저 자동 타이머 녹음, 로컬 STT와 제한된 루브릭 에이전트 평가
 
-## 빠른 시작 (Docker)
+## 빠른 시작 (NVIDIA Nemotron API)
 
 ```bash
 cp .env.example .env
-# 비밀번호/모델 등은 필요 시 .env 에서 수정
+# .env의 NVIDIA_API_KEY를 채우세요. 키는 채팅·Git에 올리지 마세요.
+docker compose -f docker-compose.yml -f docker-compose.api.yml up --build -d
+```
+
+새 환경 예시는 `LLM_PROVIDER=nvidia`, `NVIDIA_MODEL=nvidia/nemotron-3-ultra-550b-a55b`를 사용합니다. 기존 `.env`는 이 두 항목과 `NVIDIA_API_KEY`를 설정하세요. API 구성은 Docker Compose 2.24.4 이상이 필요하며 Ollama를 시작하거나 모델 파일을 다운로드하지 않습니다. PostgreSQL·Neo4j·웹·회화/시험 작업자·그래프 작업자는 유지하고 STT/TTS는 기존 로컬 엔진을 사용합니다. 기존 구성에서 전환한다면 이전 Ollama 컨테이너는 `docker compose stop ollama`로 별도 중지할 수 있습니다.
+
+NVIDIA 엔드포인트는 OpenAI 호환 클라이언트로 호출하되, 서버 주소와 API 키를 제공자별로 분리합니다. 키가 없거나 API가 실패하면 오류로 처리하며 OpenAI로 자동 전환하지 않습니다. Nemotron은 대화 지연을 줄이기 위해 thinking을 끄고, 코칭·채점·보고서는 함수 호출과 Pydantic 검증으로 구조화합니다. 한국어 지원 모델이지만 실제 교육 품질과 지연은 별도 평가가 필요합니다. [공식 API 예시](https://build.nvidia.com/nvidia/nemotron-3-ultra-550b-a55b)를 참고하세요.
+
+NVIDIA 무료 API는 개발·평가용으로 사용하고, 외부 사용자에게 서비스를 제공하기 전 적용 약관과 호출 한도를 확인하세요. 비상업적 공개도 운영 사용에 해당할 수 있습니다. [NVIDIA API Trial 약관](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf)을 참고하세요.
+
+추후 유료 서비스에서 OpenAI로 전환할 때는 `LLM_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_MODEL`을 설정하고 같은 API Compose 명령으로 웹·작업자를 재생성하세요. OpenAI 요청에는 NVIDIA 전용 인자를 보내지 않습니다. 결제·구독·이용 권한 확인·사용량 과금은 아직 구현하지 않았으며, 모델 제공자 변경이 결제 완료나 유료 이용 권한 부여를 의미하지 않습니다. 결제 도입 시 서버에서 검증한 결제 상태를 기준으로 이용 권한과 한도를 적용해야 합니다.
+
+실험용 `MEMORY_GATE_ENABLED=false`를 유지하면 일반 회화와 시험은 Ollama 없이 실행할 수 있습니다. 독립 로컬 모델을 사용하는 콘텐츠 제작 검토, 평가 judge, `operations`의 로컬 추론 진단은 별도의 Ollama가 필요합니다. 제공자 전환 후 기존 프로세스의 모델 캐시가 남지 않도록 웹·작업자를 모두 재시작하세요.
+
+## 로컬 Ollama 실행 (Docker)
+
+```bash
+cp .env.example .env
+# .env에서 LLM_PROVIDER=ollama로 변경하고 비밀번호/모델을 설정
 
 # Modelfile 의 base 모델(GGUF) 을 ./model/ 에 두기
 # 예: ./model/a.x-4.0-light-q4_k_m.gguf
@@ -108,7 +126,9 @@ python -m app.auth my_login --existing-user-id EXISTING_USER_UUID
 
 `.env.example` 참고. 핵심:
 
-- `LLM_PROVIDER` — `ollama` 기본. `openai` 로 두고 `OPENAI_API_KEY` 가 있으면 OpenAI 사용
+- `LLM_PROVIDER` — `nvidia`, `openai`, `ollama` 중 명시적으로 선택. `.env.example`은 NVIDIA, 설정 파일이 없는 코드 기본값은 Ollama
+- `NVIDIA_API_KEY`, `NVIDIA_MODEL` — NVIDIA 전용 인증 키와 모델명. 선택한 제공자의 키가 없으면 다른 제공자로 대체하지 않음
+- `OPENAI_API_KEY`, `OPENAI_MODEL` — 추후 OpenAI 전환 시 사용할 별도 키와 모델명
 - `MODEL_NAME` — Ollama 모델명 (Modelfile 의 tag 와 일치해야 함)
 - `WHISPER_MODEL`, `WHISPER_DEVICE` — STT 모델/장치
 - `TTS_VOICE_KO`, `TTS_VOICE_EN` — Piper voice 이름 (HuggingFace `rhasspy/piper-voices` 의 디렉토리 규칙)

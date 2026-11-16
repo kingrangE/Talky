@@ -175,7 +175,7 @@ def invoke_with_prompt(llm, messages: list, state: dict, name: str):
             generation = client.start_observation(
                 name=name, as_type="generation", prompt=prompt,
                 trace_context={"trace_id": state["trace_id"]} if state.get("trace_id") else None,
-                model=cfg.OPENAI_MODEL if cfg.use_openai else cfg.MODEL_NAME,
+                model=cfg.llm_model,
                 model_parameters={"temperature": 0.7, "max_output_tokens": cfg.LLM_MAX_OUTPUT_TOKENS},
                 input=[{"role": {"human": "user", "ai": "assistant"}.get(m.type, m.type), "content": m.content} for m in messages],
                 metadata={

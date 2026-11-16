@@ -234,12 +234,12 @@ class Benchmark:
         self.run_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:6]
         self.report_dir = report_dir / self.run_id
         self.report_dir.mkdir(parents=True)
-        index_spec = {'sources': self.sources, 'topic_prompt': TOPIC_PROMPT, 'model': self.config.MODEL_NAME, 'max_tokens': self.config.LLM_MAX_OUTPUT_TOKENS}
+        index_spec = {'sources': self.sources, 'topic_prompt': TOPIC_PROMPT, 'model': self.config.llm_model, 'provider': self.config.LLM_PROVIDER, 'max_tokens': self.config.LLM_MAX_OUTPUT_TOKENS}
         self.namespace = 'eval-' + hashlib.sha256(json.dumps(index_spec, sort_keys=True).encode()).hexdigest()[:16]
         self.graph_ready = False
         self.judges = {}
         self.replay_outputs = {}
-        metadata = {'run_id': self.run_id, 'dataset_version': self.manifest['version'], 'model': self.config.OPENAI_MODEL if self.config.use_openai else self.config.MODEL_NAME, 'judge_model': judge_model, 'prompt_refs': self.refs, 'scope': 'text_components; memory_and_dialogue_use_actual_neo4j_retrieval', 'reference_status': self.manifest['reference_status']}
+        metadata = {'run_id': self.run_id, 'dataset_version': self.manifest['version'], 'model': self.config.llm_model, 'provider': self.config.LLM_PROVIDER, 'judge_model': judge_model, 'prompt_refs': self.refs, 'scope': 'text_components; memory_and_dialogue_use_actual_neo4j_retrieval', 'reference_status': self.manifest['reference_status']}
         metadata['code_commit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
         metadata['code_dirty'] = subprocess.run(['git', 'diff', '--quiet'], cwd=ROOT).returncode != 0
         metadata['runner_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()

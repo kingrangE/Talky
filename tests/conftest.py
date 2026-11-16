@@ -16,6 +16,7 @@ def offline_prompt_defaults(monkeypatch):
     # Tests must never contact the user's Cloud project from a local .env file.
     monkeypatch.setenv("LANGFUSE_ENABLED", "false")
     monkeypatch.setenv("LANGFUSE_PROMPT_VERSIONS", "{}")
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

@@ -10,11 +10,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    LLM_PROVIDER: Literal["ollama", "openai"] = "ollama"
+    LLM_PROVIDER: Literal["ollama", "openai", "nvidia"] = "ollama"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     MODEL_NAME: str = "skt/A.X-4.0-Light"
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
+    NVIDIA_API_KEY: str = ""
+    NVIDIA_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b"
     PROMPT_CACHE_ENABLED: bool = False
     LANGFUSE_ENABLED: bool = False
     LANGFUSE_PUBLIC_KEY: str = ""
@@ -95,7 +97,12 @@ class Settings(BaseSettings):
 
     @property
     def use_openai(self) -> bool:
-        return self.LLM_PROVIDER == "openai" and bool(self.OPENAI_API_KEY)
+        return self.LLM_PROVIDER == "openai"
+
+    @property
+    def llm_model(self) -> str:
+        return {"ollama": self.MODEL_NAME, "openai": self.OPENAI_MODEL,
+                "nvidia": self.NVIDIA_MODEL}[self.LLM_PROVIDER]
 
     @property
     def mock_exam_data_path(self) -> Path:

@@ -30,7 +30,7 @@ def test_smoke_records_output_and_flushes_on_failure(monkeypatch, reply):
     monkeypatch.setattr(smoke, "get_client", lambda: client)
     monkeypatch.setattr(smoke, "remote_prompt", lambda name, version: SimpleNamespace(name=name, version=version, prompt="Reply in English."))
     monkeypatch.setattr(smoke, "get_chat_llm", lambda **kwargs: llm)
-    monkeypatch.setattr(smoke, "get_settings", lambda: SimpleNamespace(use_openai=False, MODEL_NAME="test-model"))
+    monkeypatch.setattr(smoke, "get_settings", lambda: SimpleNamespace(llm_model="test-model"))
     if isinstance(reply, Exception):
         with pytest.raises(TimeoutError):
             smoke.main()

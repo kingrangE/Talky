@@ -25,7 +25,7 @@ def main():
             name="english-reply-check",
             as_type="generation",
             prompt=prompt,
-            model=settings.OPENAI_MODEL if settings.use_openai else settings.MODEL_NAME,
+            model=settings.llm_model,
             input=messages,
         ) as generation:
             response = get_chat_llm(streaming=False).invoke(messages)

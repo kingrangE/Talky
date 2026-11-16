@@ -56,8 +56,8 @@ boot = _bootstrap()
 ENDING_GRAPH = boot["ending_graph"]
 
 
-MODEL_LABEL = cfg.OPENAI_MODEL if cfg.use_openai else cfg.MODEL_NAME
-SERVER_LABEL = "OpenAI" if cfg.use_openai else cfg.OLLAMA_BASE_URL
+MODEL_LABEL = cfg.llm_model
+SERVER_LABEL = {"openai": "OpenAI", "nvidia": "NVIDIA", "ollama": cfg.OLLAMA_BASE_URL}[cfg.LLM_PROVIDER]
 
 
 st.title("Talky - English Conversation AI Agent")

@@ -12,7 +12,7 @@ def warmup(*, audio_only=False):
     if _voice('en') is None:
         raise RuntimeError('English TTS assets are not ready')
     cfg = get_settings()
-    if not audio_only and not cfg.use_openai:
+    if not audio_only and cfg.LLM_PROVIDER == "ollama":
         request = urllib.request.Request(cfg.OLLAMA_BASE_URL.rstrip('/')+'/api/generate',
             data=json.dumps({'model':cfg.MODEL_NAME, 'prompt':'', 'stream':False,
                              'keep_alive':'10m'}).encode(), headers={'Content-Type':'application/json'})

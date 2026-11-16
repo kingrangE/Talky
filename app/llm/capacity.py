@@ -16,3 +16,12 @@ class SlotChatOllama(GenerationCapacity, ChatOllama):
 
 class SlotChatOpenAI(GenerationCapacity, ChatOpenAI):
     pass
+
+
+class SlotChatNVIDIA(SlotChatOpenAI):
+    def _get_request_payload(self, *args, **kwargs):
+        payload = super()._get_request_payload(*args, **kwargs)
+        # NVIDIA expects max_tokens; ChatOpenAI renames it for OpenAI.
+        if "max_completion_tokens" in payload:
+            payload["max_tokens"] = payload.pop("max_completion_tokens")
+        return payload

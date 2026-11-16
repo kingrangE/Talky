@@ -1,0 +1,18 @@
+# Docker Compose >= 2.24.4. Use with -f docker-compose.yml -f docker-compose.api.yml.
+services:
+  app:
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+    depends_on: !override
+      migrate:
+        condition: service_completed_successfully
+      neo4j:
+        condition: service_healthy
+  worker:
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+  graph-worker:
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+  ollama:
+    profiles: [local-model]

@@ -50,7 +50,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
-    if get_settings().use_openai:
+    if get_settings().LLM_PROVIDER != 'ollama':
         raise ValueError('Diagnostic requires LLM_PROVIDER=ollama; no paid API calls.')
     if not get_settings().MEMORY_GATE_ENABLED:
         raise ValueError('Set MEMORY_GATE_ENABLED=true for actual model evaluation.')
