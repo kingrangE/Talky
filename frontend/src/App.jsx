@@ -23,6 +23,7 @@ export function AudioReply({ turn, autoPlay, onPlayed }) {
       if (!alive.current || attempt !== run.current) { cancel(); return; }
       stop.current = cancel;
       setPlaying(true);
+      onPlayed(turn.id);
     } catch (err) { if (alive.current) setError(playbackMessage(err)); }
     finally { if (alive.current && attempt === run.current) setLoading(false); }
   }
@@ -31,7 +32,7 @@ export function AudioReply({ turn, autoPlay, onPlayed }) {
     return () => { alive.current = false; run.current++; stop.current?.(); };
   }, []);
   useEffect(() => {
-    if (turn.has_output_audio && autoPlay) { onPlayed(turn.id); void play(); }
+    if (turn.has_output_audio && autoPlay) void play();
   }, [turn.has_output_audio, autoPlay]);
   return <div className="reply-audio">
     <button className="audio-button" aria-label={playing ? '답변 음성 일시정지' : '답변 음성 재생'} disabled={!turn.has_output_audio || loading}

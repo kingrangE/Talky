@@ -148,6 +148,44 @@ test('translation and assistant captions are collapsed and autoplay starts only 
   assert.equal(disclosures[1].querySelector('summary').textContent, '자막 보기');
 });
 
+test('autoplay is acknowledged only after playback starts and a failed attempt can be retried', async () => {
+  let played = 0, accept;
+  globalThis.fetch = () => new Promise(resolve => { accept = resolve; });
+  const turn = { id: 'delayed-audio', status: 'completed', has_output_audio: true };
+  await React.act(async () => { root.render(React.createElement(AudioReply, { turn, autoPlay: true, onPlayed() { played++; } })); await tick(); });
+  assert.equal(played, 0);
+  await React.act(async () => { accept(new Response(null, { status: 503 })); await tick(); });
+  assert.equal(played, 0);
+  assert.match(document.querySelector('.audio-error').textContent, /음성을 불러올 수 없/);
+  globalThis.fetch = async () => new Response(new ArrayBuffer(16));
+  await React.act(async () => { document.querySelector('[aria-label="답변 음성 재생"]').click(); await tick(); });
+  assert.equal(played, 1);
+  assert.ok(document.querySelector('[aria-label="답변 음성 일시정지"]'));
+});
+
+test('a newly generated conversation reply plays without clicking the play button', async () => {
+  let rid, audioRequests = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.endsWith('/audio')) { audioRequests++; return new Response(new ArrayBuffer(16)); }
+    if (options.method === 'PUT') {
+      rid = url.split('/').at(-1);
+      return response({ id: rid, conversation_id: 'c1', status: 'queued', input_text: '자동으로 답변을 듣고 싶어요.', result: {} });
+    }
+    return response({ id: 'c1', title: '자동 재생', messages: rid ? [
+      { id: 'user-new', role: 'user', content: '자동으로 답변을 듣고 싶어요.' },
+      { id: 'assistant-new', role: 'assistant', content: 'Let’s practice together.' },
+    ] : [], turns: rid ? [{ id: rid, conversation_id: 'c1', status: 'completed', has_output_audio: true,
+      result: { user_message_id: 'user-new', assistant_message_id: 'assistant-new' } }] : [] });
+  };
+  sessionStorage.setItem('talky:draft:u1:c1', '자동으로 답변을 듣고 싶어요.');
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  await React.act(async () => { document.querySelector('form.text-composer').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await tick(); });
+  await React.act(async () => { await new Promise(resolve => setTimeout(resolve, 1600)); });
+  await React.act(async () => { await tick(); });
+  assert.equal(audioRequests, 1);
+  assert.ok(document.querySelector('[aria-label="답변 음성 일시정지"]'));
+});
+
 test('mode cannot change during recording and tracks are released on unmount', async () => {
   let released = 0;
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() { released++; } }] }) } } });
