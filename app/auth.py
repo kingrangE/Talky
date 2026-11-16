@@ -24,8 +24,8 @@ def _login_name(value: str) -> str:
 
 
 def hash_password(password: str) -> str:
-    if not 12 <= len(password) <= 128:
-        raise ValueError("비밀번호는 12~128자여야 합니다.")
+    if not 8 <= len(password) <= 24:
+        raise ValueError("비밀번호는 8~24자여야 합니다.")
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, ITERATIONS)
     return f"pbkdf2_sha256${ITERATIONS}${salt.hex()}${digest.hex()}"
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     parser.add_argument("login_name")
     parser.add_argument("--existing-user-id")
     args = parser.parse_args()
-    password = getpass("Password (12+ characters): ")
+    password = getpass("Password (8–24 characters): ")
     if getpass("Repeat password: ") != password:
         parser.error("Passwords do not match")
     print(register_user(args.login_name, password, existing_user_id=args.existing_user_id))

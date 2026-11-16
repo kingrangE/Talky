@@ -25,8 +25,8 @@ def require_user() -> str:
             st.error("로그인할 수 없습니다. 계정 정보를 확인하거나 잠시 후 다시 시도하세요.")
     with signup, st.form("signup"):
         name = st.text_input("새 아이디", max_chars=64)
-        password = st.text_input("새 비밀번호 (12자 이상)", type="password", max_chars=128)
-        repeated = st.text_input("비밀번호 확인", type="password", max_chars=128)
+        password = st.text_input("새 비밀번호 (8~24자)", type="password", max_chars=24)
+        repeated = st.text_input("비밀번호 확인", type="password", max_chars=24)
         if st.form_submit_button("계정 만들기"):
             try:
                 if password != repeated:

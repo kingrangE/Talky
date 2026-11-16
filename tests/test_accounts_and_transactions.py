@@ -13,6 +13,24 @@ from app.runtime import ModelBusy, bounded_history, bounded_messages, format_mem
 PASSWORD = "test-only-long-password"
 
 
+@pytest.mark.parametrize('length', [7, 8, 24, 25])
+def test_new_password_length_boundaries(length):
+    password = 'a' * length
+    if 8 <= length <= 24:
+        assert auth.verify_password(password, auth.hash_password(password))
+    else:
+        with pytest.raises(ValueError, match='8~24'):
+            auth.hash_password(password)
+
+
+def test_existing_long_password_can_still_log_in():
+    import hashlib
+    password, salt = 'a' * 25, bytes(16)
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, auth.ITERATIONS)
+    encoded = f'pbkdf2_sha256${auth.ITERATIONS}${salt.hex()}${digest.hex()}'
+    assert auth.verify_password(password, encoded)
+
+
 def test_password_hashes_are_salted_and_verified():
     first = auth.hash_password(PASSWORD)
     assert first != auth.hash_password(PASSWORD)
