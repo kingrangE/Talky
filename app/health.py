@@ -19,7 +19,7 @@ def main():
         return
     with get_engine().connect() as connection:
         check_schema(connection)
-    urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=3).close()
+    urllib.request.urlopen('http://localhost:8501/api/health', timeout=3).close()
 
 
 if __name__ == '__main__':

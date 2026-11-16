@@ -115,7 +115,7 @@ Resources:
   AppSecurity:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: ALB to Streamlit only
+      GroupDescription: ALB to web API only
       VpcId:
         Ref: VpcId
       SecurityGroupIngress:
@@ -295,7 +295,7 @@ Resources:
       Port: 8501
       Protocol: HTTP
       TargetType: ip
-      HealthCheckPath: /_stcore/health
+      HealthCheckPath: /api/health
       TargetGroupAttributes:
       - Key: stickiness.enabled
         Value: 'true'

@@ -28,6 +28,9 @@ def stt_node(state: GraphState) -> dict:
             raise UserFacingError('speech_not_detected')
         if len(text) > get_settings().MAX_USER_TEXT_CHARS:
             raise UserFacingError('text_too_long')
+        if state.get('request_id'):
+            from app.conversation import record_transcript
+            record_transcript(state['request_id'], state['user_id'], state['turn_attempt'], text)
         return {"user_text": text, "language": lang}
     if state.get("language"):
         return {}

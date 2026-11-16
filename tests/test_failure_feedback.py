@@ -1,6 +1,7 @@
 import pytest
 
 from app.agents.nodes import stt
+from app.api import public_turn
 from app.errors import UserFacingError, error_code, failure_message, input_message
 from app.retry import error_name, retry_delay
 
@@ -9,6 +10,14 @@ def test_silent_speech_is_rejected_before_the_reply_graph(monkeypatch):
     monkeypatch.setattr(stt, 'transcribe', lambda _: ('   ', 'en'))
     with pytest.raises(ValueError, match='목소리|말소리'):
         stt.stt_node({'audio_bytes': b'test recording'})
+
+
+def test_failed_turn_has_safe_actionable_message():
+    turn = dict(id='t', conversation_id='c', status='failed', input_text='', result={},
+                error_code='speech_not_detected', input_audio_path='private.fernet', output_audio_path=None)
+    result = public_turn(turn)
+    assert '목소리' in result['error_message'] or '말소리' in result['error_message']
+    assert '녹음' in result['error_message']
 
 
 @pytest.mark.parametrize('status,expected,word', [
@@ -84,4 +93,4 @@ def test_silent_turn_persists_cause_and_never_calls_llm(pg_db, monkeypatch):
     conversation.fail_turn(job, caught.value)
     receipt = conversation.get_turn(rid, uid)
     assert receipt['status'] == 'failed' and receipt['error_code'] == 'speech_not_detected'
-    assert '목소리' in failure_message(receipt['error_code'])
+    assert '목소리' in public_turn(receipt)['error_message']

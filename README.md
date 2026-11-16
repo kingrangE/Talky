@@ -1,6 +1,6 @@
 # Talky
 
-LangGraph 기반 한·영 음성 회화 학습 AI 에이전트.
+React와 Python API, LangGraph 기반 한·영 음성 회화 학습 AI 에이전트.
 
 - **음성 루프**: STT (faster-whisper) → LangGraph 에이전트 → TTS (Piper)
 - **이중 언어**: 한국어 입력 → 영어 표현 안내 + 영어 응답 / 영어 입력 → 영어 응답 + "참고하세요!" 교정 토글
@@ -8,6 +8,18 @@ LangGraph 기반 한·영 음성 회화 학습 AI 에이전트.
 - **자기 진화 프롬프트**: 종료 시 별점에 따라 메타-LLM 이 system prompt 새 버전 생성
 - **모델 제공자 선택**: NVIDIA Nemotron API, OpenAI API 또는 로컬 Ollama를 설정으로 선택
 - **Speaking Mock Test**: 오리지널 11문항, 브라우저 자동 타이머 녹음, 로컬 STT와 제한된 루브릭 에이전트 평가
+- **즉시 보이는 대화**: 보낸 원문·녹음은 즉시 표시하고 한국어 발화의 영어 표현은 접어서 제공
+- **듣기 중심 응답**: 새 답변 음성 자동 재생, 자막·표현 교정은 펼쳐 보기, 텍스트·음성 입력 전환
+
+## 웹 화면과 API
+
+기본 웹은 React 정적 빌드와 FastAPI를 같은 Python 서버에서 제공합니다. 별도 Node 운영 서버는 필요하지 않으며 기존 8501 포트와 PostgreSQL·Neo4j·작업자를 유지합니다. Docker 빌드 단계에서만 Node 24로 프런트엔드를 빌드합니다. 기존 Streamlit 화면은 `main.py`에 남아 있지만 기본 실행 경로에서는 사용하지 않습니다.
+
+보낸 텍스트와 음성 말풍선은 서버 접수나 번역을 기다리지 않고 표시합니다. 음성 인식 결과는 번역 전에 조회할 수 있도록 작업 레코드에 저장하며, 영어 표현은 해당 사용자 메시지 아래에서 펼쳐 봅니다. AI 답변은 음성이 준비되면 한 번 자동 재생하고 자막은 기본적으로 접습니다. 브라우저가 자동 재생을 막거나 음성 생성에 실패하면 재생 버튼과 자막으로 확인할 수 있습니다. 이전 대화를 열거나 상태를 새로 조회할 때 기존 음성을 다시 자동 재생하지 않습니다.
+
+녹음은 브라우저 MediaRecorder를 사용합니다. 최대 90초, 녹음 상태·중지·미리 듣기·다시 녹음·전송을 제공하며, 마이크 권한 거부와 지원하지 않는 브라우저를 안내합니다. 업로드는 서버에서 크기와 실제 디코딩 길이를 다시 검증합니다. 텍스트·음성 입력 중 선택한 하나만 표시하고 한국어 조합 중 Enter는 전송하지 않습니다.
+
+인증은 기존 계정 검증과 로그인 잠금을 재사용하고 서명한 HttpOnly·SameSite 쿠키로 세션을 유지합니다. HTTPS에서는 Secure 쿠키를 사용하며 수정 요청의 Origin을 확인합니다. 요청·대화·음성은 매번 소유권을 검사합니다. 클라이언트에는 모델 API 키나 암호화 파일 경로를 보내지 않습니다. 접수 응답이 유실되면 같은 요청 번호로 다시 확인해 중복 대화를 방지합니다. 입력 초안은 현재 브라우저 탭에 보관하고, 보내지 못한 녹음은 화면을 유지하는 동안 재전송할 수 있습니다. 접수 전 녹음은 새로고침하면 사라질 수 있습니다.
 
 ## 빠른 시작 (NVIDIA Nemotron API)
 
@@ -74,7 +86,7 @@ worker가 중단되면 시험 처리와 만료 정리도 중단되므로 운영 
 
 | 서비스    | 포트                | 비고                                         |
 | -------- | ------------------- | -------------------------------------------- |
-| app      | localhost:8501      | Streamlit + LangGraph 에이전트              |
+| app      | localhost:8501      | React 정적 화면 + FastAPI                    |
 | worker   | 없음                 | 영속 시험 작업·만료 정리                    |
 | ollama   | 내부 11434          | 로컬 LLM. 첫 기동 시 `Modelfile` 로 모델 생성 |
 | postgres | 내부 5432           | 메시지/보고서/별점/프롬프트 버전              |
@@ -87,12 +99,16 @@ Postgres / Neo4j / Ollama 가 외부에 떠 있는 환경:
 ```bash
 pip install -r requirements-dev.txt
 alembic upgrade head
-streamlit run main.py --server.maxMessageSize=10 --server.maxUploadSize=5
+uvicorn app.api:app --host 127.0.0.1 --port 8501 --reload
 ```
 
 다른 터미널에서 `python -m app.mock_exam.worker`를 실행해야 시험 제출이 처리됩니다.
 Compose의 DB 포트는 게시하지 않으므로 호스트에서 개발하려면 별도 로컬 DB를 쓰거나
 개발 전용 Compose override에서 loopback 포트를 명시하세요.
+
+화면 개발은 실행 중인 Docker API 또는 위의 로컬 API에 연결합니다. Node 24를 사용하고 `frontend` 폴더에서 `npm ci`, `npm run dev`를 실행하면 Vite가 `/api` 요청을 localhost:8501로 전달합니다. 운영 빌드는 `npm run build`, 화면 회귀 테스트는 `npm test`, Python API와 기존 로직의 테스트는 루트에서 `python -m pytest -q`로 실행합니다. PostgreSQL 통합 테스트는 별도 `*_test` DB의 `TALKY_TEST_POSTGRES_DSN`이 필요합니다. `python -m app.graph_db.worker`도 실행해야 대화 기억 투영과 삭제가 처리됩니다.
+
+모의고사는 기존 11문항·자동 타이머·기술 오류 재시도·72시간 보관·일일 및 동시 이용 제한을 유지합니다. 복구 링크와 별도 HttpOnly 시험 쿠키를 사용하며, 원래의 10분 중단 복구 정책을 적용합니다. 새 웹의 서버 준비 상태 경로는 `/api/health`입니다.
 
 ## 사용자별 시스템 프롬프트
 
@@ -162,7 +178,7 @@ Talky는 공식 문항·로고·채점 결과를 사용하지 않으며 결과�
 
 ## 기술 스택
 
-LangGraph · LangChain · Langfuse · Neo4j · Streamlit · PostgreSQL · faster-whisper · Piper · Docker
+React · Vite · FastAPI · LangGraph · LangChain · Langfuse · Neo4j · PostgreSQL · faster-whisper · Piper · Docker
 
 ## Langfuse Cloud 프롬프트 관리
 
@@ -196,7 +212,7 @@ python -m app.llm.manage_prompts check
 ```
 
 Compose로 운영 중이라면 호스트의 Python 대신 다음 명령을 사용합니다. DB 포트를
-외부에 게시할 필요가 없습니다. 앱 기본 entrypoint는 Streamlit을 시작하므로 관리
+외부에 게시할 필요가 없습니다. 앱 기본 entrypoint는 웹 API를 시작하므로 관리
 명령에서는 반드시 `--entrypoint python`을 지정합니다.
 
 ```bash

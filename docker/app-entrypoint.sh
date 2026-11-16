@@ -16,5 +16,5 @@ print("postgres not reachable", file=sys.stderr)
 sys.exit(1)
 PY
 
-echo "[talky] starting Streamlit..."
-exec streamlit run main.py --server.address=0.0.0.0 --server.port=8501 --server.maxMessageSize=10 --server.maxUploadSize=5
+echo "[talky] starting React web and Python API..."
+exec uvicorn app.api:app --host 0.0.0.0 --port 8501 --no-access-log

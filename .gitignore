@@ -12,3 +12,6 @@ model/*.gguf
 .agents/
 .codex
 .claude
+frontend/node_modules/
+frontend/dist/
+frontend/.test-build/

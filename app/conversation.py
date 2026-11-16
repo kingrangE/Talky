@@ -105,6 +105,15 @@ def active_turn(conversation_id,user_id):
         return _record(row) if row else None
 
 
+def record_transcript(request_id, user_id, attempt, text):
+    """Expose recognized speech before coaching; stale workers cannot overwrite it."""
+    with session_scope() as session:
+        row = session.get(ConversationTurn, _to_uuid(request_id), with_for_update=True)
+        if not row or row.user_id != _to_uuid(user_id) or row.status != 'processing' or row.attempts != attempt:
+            raise ValueError('Stale conversation transcription attempt')
+        row.input_text = text
+
+
 def claim_turn():
     cfg=get_settings()
     now=datetime.now(timezone.utc)

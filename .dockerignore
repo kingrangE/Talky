@@ -23,3 +23,6 @@ todo.md
 .aws
 **/.aws
 .streamlit/secrets.toml
+**/node_modules
+frontend/dist
+frontend/.test-build

@@ -4,7 +4,7 @@
 
 `runtime.yaml`은 기존 VPC의 서로 다른 두 가용 영역에 있는 public·private subnet을 받아 HTTPS ALB, ECS Fargate 웹 2개·대화/시험 작업자 2개·Graph 작업자 2개, PostgreSQL 16.15 Multi-AZ RDS, 비공개 S3, Secrets Manager 참조, CloudWatch 로그·기본 경보를 정의한다. Terraform 상태 저장소를 새로 운영하는 부담을 줄이고 AWS의 변경 세트 검토를 사용하기 위해 CloudFormation을 선택했다. 실제 자원은 생성하지 않았다. 템플릿 검증은 배포 성공이나 장애 전환 성공을 증명하지 않는다.
 
-웹 연결은 ALB 세션 고정과 공통 Streamlit cookie secret을 사용한다. 웹 프로세스가 사라지면 현재 화면 상태와 로그인이 끊길 수 있지만, 계정으로 다시 로그인해 대화를 선택하면 DB에 접수된 작업과 저장된 기록을 조회할 수 있다. Fargate 서비스는 가용 영역 재균형과 배포 실패 롤백을 사용한다. 관련 동작은 [ECS 가용 영역 재균형](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-rebalancing.html), [ALB 세션 고정](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html)에 근거한다.
+웹은 React 정적 화면과 FastAPI를 같은 컨테이너에서 제공한다. 서명된 HttpOnly 세션 쿠키와 DB 요청 기록을 사용하며 복제본마다 `MOCK_EXAM_SIGNING_SECRET`을 동일하게 설정한다. 기존 ALB 세션 고정은 템플릿에 남아 있지만 웹 프로세스 메모리에 로그인 상태를 보관하지 않는다. Fargate 서비스는 가용 영역 재균형과 배포 실패 롤백을 사용한다. 관련 동작은 [ECS 가용 영역 재균형](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-rebalancing.html), [ALB 세션 고정](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html)에 근거한다. 이 템플릿의 기본 모델 설정은 Ollama용이며 NVIDIA/OpenAI API 운영 전환을 위한 ECS 환경변수·비밀 연결은 별도로 조정해야 한다.
 
 PostgreSQL은 Multi-AZ, 저장 암호화, 14일 자동 백업, 삭제 보호를 설정했다. 스택에서 DB를 제거할 때 스냅샷을 남기고 S3와 실행 계정 비밀은 보존한다. 템플릿의 엔진 버전은 배포 리전의 제공 여부를 다시 확인해야 한다. [RDS 백업 보존 정책](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.BackupRetention.html), [RDS PostgreSQL 지원 버전](https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-versions.html)을 참고한다.
 
@@ -53,7 +53,7 @@ python infrastructure/aws/migrate.py --stack TALKY_STACK --image ECR_IMAGE_WITH_
 4. 마이그레이션 성공 후 `ImageUri`를 같은 digest로 지정하고 `DeployServices=true`로 변경 세트를 적용한다. ECS 안정 상태, ALB 정상 대상, 작업자 heartbeat, 실제 로그인·대화·시험·삭제를 확인한다.
 5. 이후 릴리스도 새 이미지의 마이그레이션 작업을 먼저 실행하고 같은 이미지로 서비스를 업데이트한다. 기존 버전과 호환되는 확장 마이그레이션을 우선한다. 이번 구조 전환 시에는 기존 독점 작업자를 중지한 뒤 진행한다. 데이터 삭제나 기존 컬럼 의미 변경이 필요한 릴리스는 별도 유지보수 창과 복구 계획을 마련한다. 현재 웹 준비 검사는 스키마 버전 일치를 요구하므로 스키마 변경 배포를 무중단이라고 주장할 수 없다.
 
-Compose도 이제 `migrate` 일회성 서비스가 성공해야 웹을 시작한다. 웹 컨테이너마다 DDL을 동시에 실행하지 않는다. 웹 준비 상태는 Streamlit 응답과 스키마 일치를 확인하고, 작업자 준비 상태는 실제 처리 루프가 갱신하는 heartbeat를 확인한다. 프로세스가 살아 있는 것과 업무 처리가 가능한 것을 구분한다.
+Compose도 이제 `migrate` 일회성 서비스가 성공해야 웹을 시작한다. 웹 컨테이너마다 DDL을 동시에 실행하지 않는다. 웹 준비 상태는 `/api/health`의 응답과 스키마 호환성을 확인하고, 작업자 준비 상태는 실제 처리 루프가 갱신하는 heartbeat를 확인한다. 프로세스가 살아 있는 것과 업무 처리가 가능한 것을 구분한다.
 
 ## 복구와 용량 검증 기준
 
