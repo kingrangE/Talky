@@ -10,11 +10,12 @@ export function Notice({ children }) {
 
 function ExpressionFeedback({ value, original }) {
   if (!value) return null;
-  const parts = value.match(/^\*\*Try:\*\* ([\s\S]*?)\n\n\*([\s\S]*)\*$/);
+  const legacy = value.match(/^\*\*Try:\*\* ([\s\S]*?)\n\n\*([\s\S]*)\*$/);
+  const parts = legacy || value.match(/^\*\*([^\n]+)\*\*\n\n([\s\S]*)$/);
   const normalize = text => text.trim().replace(/[.!?]+$/, '').trim();
   if (parts && normalize(parts[1]) === normalize(original)) return null;
-  return <details className="message-disclosure"><summary>표현 다듬기</summary>
-    {parts ? <><p lang="en">{parts[1]}</p><p lang="ko">{parts[2]}</p></> : <p>{value}</p>}
+  return <details className="message-disclosure expression-feedback"><summary>표현 다듬기</summary>
+    {parts ? <><p lang="en"><strong>{parts[1]}</strong></p>{legacy ? <p lang="ko">{parts[2]}</p> : <ul lang="ko">{parts[2].split(/\r?\n|\s+-\s+/).map(line => line.trim().replace(/^[-*]\s+/, '')).filter(Boolean).map((line, index) => <li key={index}>{line}</li>)}</ul>}</> : <p>{value}</p>}
   </details>;
 }
 

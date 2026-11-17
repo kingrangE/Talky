@@ -148,6 +148,8 @@ small { font-size: .8125rem; color: var(--muted); }
 .message-disclosure { font-size: .875rem; margin-top: 8px; color: #405c52; }
 .message-disclosure summary { display: list-item; width: fit-content; min-height: 44px; align-content: center; cursor: pointer; padding: 8px 4px; }
 .message-disclosure p { margin: 0; padding: 8px 4px 12px; color: var(--text); white-space: pre-wrap; line-height: 1.8; }
+.expression-feedback ul { margin: 0; padding: 0 4px 12px 24px; color: var(--text); line-height: 1.8; overflow-wrap: anywhere; }
+.expression-feedback li + li { margin-top: 6px; }
 .composer-wrap { padding: 16px 40px max(18px, env(safe-area-inset-bottom)); width: 100%; max-width: 840px; margin: 0 auto; flex-shrink: 0; }
 .input-modes { display: flex; gap: 4px; width: fit-content; margin-bottom: 12px; padding: 3px; background: #eef2ef; border-radius: 10px; }
 .input-modes button { min-height: 38px; background: transparent; padding: 7px 14px; display: flex; align-items: center; gap: 6px; color: var(--muted); border-radius: 7px; font-size: .8125rem; }

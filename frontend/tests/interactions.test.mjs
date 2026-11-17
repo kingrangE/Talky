@@ -212,6 +212,39 @@ test('correction belongs to the user and missing Korean translation loads when o
   assert.equal(translations, 1);
 });
 
+test('expression feedback shows a bold rewrite then translation and useful expressions as bullets', async () => {
+  const suggestion = "I usually can't get up early, so I end up getting up after 12.";
+  const translation = '저는 보통 일찍 일어나지 못해서 결국 12시가 지나서 일어나게 돼요.';
+  const expression = 'end up ~ing: 결국 ~하게 되다.';
+  globalThis.fetch = async () => response({ id: 'c1', title: '표현', messages: [
+    { id: 'u1', role: 'user', content: 'I wake late after 12.', better_expression: `**${suggestion}**\n\n- ${translation}\n- ${expression}` },
+  ], turns: [] });
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  const feedback = document.querySelector('.expression-feedback');
+  assert.equal(feedback.querySelector('p strong').textContent, suggestion);
+  assert.deepEqual([...feedback.querySelectorAll('ul li')].map(item => item.textContent), [translation, expression]);
+  assert.ok(feedback.querySelector('p').compareDocumentPosition(feedback.querySelector('ul')) & window.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.doesNotMatch(feedback.textContent, /\*\*|Try:/);
+});
+
+test('stored inline feedback separates translation and each expression into real bullets', async () => {
+  const suggestion = "The most memorable place I've visited is Fukuoka, Japan. I went there with my ex-girlfriend about three times, and I really loved her, so I miss those times.";
+  const items = [
+    '가장 기억에 남는 방문지는 일본 후쿠오카예요. 전 여자친구랑 세 번쯤 갔었고, 그녀를 정말 사랑해서 그 시간들이 그리워요.',
+    "most memorable place I've visited: 'My Memorable Visit Place'보다 훨씬 자연스러운 표현이에요.",
+    "I went there: 'I have been traveled'는 문법 오류(수동태 오용)로, 단순 과거 'went'가 맞아요.",
+    "about three times: '세 번쯤'이라는 횟수를 자연스럽게 나타내요.",
+    "miss those times: 'miss that experience'보다 '그 시간들/그때가 그리워요'라는 뉘앙스로 더 자주 써요.",
+  ];
+  globalThis.fetch = async () => response({ id: 'c1', title: '표현', messages: [
+    { id: 'u1', role: 'user', content: 'My Memorable Visit Place is Fukuoka.', better_expression: `**${suggestion}**\n\n${items.join(' - ')}` },
+  ], turns: [] });
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  const feedback = document.querySelector('.expression-feedback');
+  assert.equal(feedback.querySelector('strong').textContent, suggestion);
+  assert.deepEqual([...feedback.querySelectorAll('li')].map(item => item.textContent), items);
+});
+
 test('natural user messages have no correction disclosure', async () => {
   globalThis.fetch = async () => response({ id: 'c1', title: '자연스러운 표현', turns: [], messages: [
     { id: 'u1', role: 'user', content: 'I went to the museum yesterday.', better_expression: null },
