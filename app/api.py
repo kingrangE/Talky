@@ -152,9 +152,19 @@ def detail(cid: UUID, uid: str = Depends(user_id)):
             .order_by(ConversationTurn.created_at.desc(), ConversationTurn.id.desc()).limit(200)).all()
         return {'id': str(cid), 'title': conv.title, 'ended_at': conv.ended_at,
                 'messages': [{'id': str(m.id), 'role': m.role, 'content': m.content,
-                    'english_expression': m.english_expression, 'better_expression': m.better_expression} for m in reversed(messages)],
+                    'english_expression': m.english_expression, 'better_expression': m.better_expression,
+                    'korean_translation': m.korean_translation} for m in reversed(messages)],
                 'turns': [public_turn(conversation._record(t)) for t in reversed(turns)],
                 'report': repo.get_report(str(cid), uid), 'rating': repo.get_rating(str(cid), uid)}
+
+
+@app.post('/api/messages/{mid}/translation')
+def reply_translation(mid: UUID, uid: str = Depends(user_id)):
+    from app.reply_translation import translate_reply
+    try:
+        return {'translation': translate_reply(mid, UUID(uid))}
+    except LookupError:
+        raise HTTPException(404, '번역할 답변을 찾을 수 없습니다.') from None
 
 
 class Title(BaseModel):

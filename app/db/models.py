@@ -84,6 +84,7 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     english_expression: Mapped[str | None] = mapped_column(Text)
     better_expression: Mapped[str | None] = mapped_column(Text)
+    korean_translation: Mapped[str | None] = mapped_column(Text)
     memory_topics: Mapped[list | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

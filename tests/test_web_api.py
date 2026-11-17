@@ -74,6 +74,27 @@ def test_cookie_flags_and_failed_login(web, monkeypatch):
     assert web.post('/api/auth/login', json={'login_name': 'learner', 'password': 'wrong'}).status_code == 401
 
 
+def test_reply_translation_requires_login_and_checks_ownership(pg_db, web, monkeypatch):
+    from app import reply_translation
+    from app.auth import register_user
+    from app.db import repo
+    uid = register_user('translate_web', 'test-only-password')
+    cid = repo.create_conversation(user_id=uid)
+    user, assistant = repo.save_turn(cid, uid, 'Hello.', 'How was your day?')
+    path = f'/api/messages/{assistant}/translation'
+    assert web.post(path).status_code == 401
+    api.app.dependency_overrides[api.user_id] = lambda: uid
+    class Model:
+        def invoke(self, _messages):
+            return reply_translation.KoreanTranslation(translation='오늘 하루는 어땠어요?')
+    monkeypatch.setattr(reply_translation, 'get_structured_llm', lambda *_args, **_kwargs: Model())
+    assert web.post(path).json() == {'translation': '오늘 하루는 어땠어요?'}
+    assert web.get(f'/api/conversations/{cid}').json()['messages'][-1]['korean_translation'] == '오늘 하루는 어땠어요?'
+    assert web.post(f'/api/messages/{user}/translation').status_code == 404
+    api.app.dependency_overrides[api.user_id] = lambda: str(uuid.uuid4())
+    assert web.post(path).status_code == 404
+
+
 def test_api_hides_storage_paths_and_voice_scope(web, monkeypatch):
     uid, other = str(uuid.uuid4()), str(uuid.uuid4())
     api.app.dependency_overrides[api.user_id] = lambda: uid

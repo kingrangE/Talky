@@ -142,10 +142,60 @@ test('translation and assistant captions are collapsed and autoplay starts only 
   globalThis.fetch = async () => response(snapshot);
   await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' }, onCreated() {}, onRefresh() {} })); await tick(); });
   const disclosures = [...document.querySelectorAll('.message-disclosure')];
-  assert.equal(disclosures.length, 2);
+  assert.equal(disclosures.length, 3);
   assert.ok(disclosures.every(detail => !detail.open));
   assert.match(disclosures[0].querySelector('summary').textContent, /영어로는/);
   assert.equal(disclosures[1].querySelector('summary').textContent, '자막 보기');
+  assert.equal(disclosures[2].querySelector('summary').textContent, '한국어로 확인하기');
+});
+
+test('correction belongs to the user and Korean translation is loaded only when opened then reused', async () => {
+  let translations = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.endsWith('/translation')) {
+      assert.equal(options.method, 'POST'); translations++;
+      return response({ translation: '박물관에서 무엇이 가장 좋았어요?' });
+    }
+    return response({ id: 'c1', title: '표현 연습', turns: [], messages: [
+      { id: 'u1', role: 'user', content: 'I go museum yesterday.' },
+      { id: 'a1', role: 'assistant', content: 'What did you like most at the museum?', better_expression: '**Try:** I went to the museum yesterday.\n\n*과거형을 사용해요.*' },
+    ] });
+  };
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  assert.equal(translations, 0);
+  assert.match(document.querySelector('.user-message').textContent, /표현 다듬기/);
+  assert.doesNotMatch(document.querySelector('.user-message').textContent, /\*\*Try/);
+  assert.doesNotMatch(document.querySelector('.assistant-message').textContent, /표현 다듬기/);
+  const details = [...document.querySelectorAll('details')].find(d => d.querySelector('summary')?.textContent === '한국어로 확인하기');
+  await React.act(async () => { details.open = true; await tick(); });
+  assert.equal(translations, 1);
+  assert.match(details.textContent, /박물관에서 무엇이 가장 좋았어요/);
+  await React.act(async () => { details.open = false; await tick(); details.open = true; await tick(); });
+  assert.equal(translations, 1);
+});
+
+test('natural user messages have no correction disclosure', async () => {
+  globalThis.fetch = async () => response({ id: 'c1', title: '자연스러운 표현', turns: [], messages: [
+    { id: 'u1', role: 'user', content: 'I went to the museum yesterday.', better_expression: null },
+    { id: 'a1', role: 'assistant', content: 'What did you see?', better_expression: '**Try:** I went to the museum yesterday.\n\n*자연스러운 문장입니다.*' },
+  ] });
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  assert.doesNotMatch(document.querySelector('.user-message').textContent, /표현 다듬기/);
+});
+
+test('failed Korean translation keeps the English caption and can be retried', async () => {
+  let attempts = 0;
+  globalThis.fetch = async url => url.endsWith('/translation')
+    ? ++attempts === 1 ? response({ detail: '잠시 후 다시 시도해 주세요.' }, 503) : response({ translation: '오늘은 어땠어요?' })
+    : response({ id: 'c1', title: '번역 재시도', turns: [], messages: [{ id: 'a1', role: 'assistant', content: 'How was your day?' }] });
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  const details = [...document.querySelectorAll('details')].find(d => d.querySelector('summary')?.textContent === '한국어로 확인하기');
+  await React.act(async () => { details.open = true; await tick(); });
+  assert.match(document.querySelector('.assistant-message').textContent, /How was your day/);
+  assert.match(details.textContent, /잠시 후 다시 시도/);
+  await React.act(async () => { details.querySelector('button').click(); await tick(); });
+  assert.match(details.textContent, /오늘은 어땠어요/);
+  assert.equal(attempts, 2);
 });
 
 test('autoplay is acknowledged only after playback starts and a failed attempt can be retried', async () => {
@@ -206,13 +256,4 @@ test('mode cannot change during recording and tracks are released on unmount', a
   assert.ok([...document.querySelectorAll('.input-modes button')].every(button => button.disabled));
   await React.act(async () => root.render(null));
   assert.ok(released >= 1);
-});
-
-test('natural user messages have no correction disclosure', async () => {
-  globalThis.fetch = async () => response({ id: 'c1', title: '자연스러운 표현', turns: [], messages: [
-    { id: 'u1', role: 'user', content: 'I went to the museum yesterday.', better_expression: null },
-    { id: 'a1', role: 'assistant', content: 'What did you see?', better_expression: '**Try:** I went to the museum yesterday.\n\n*자연스러운 문장입니다.*' },
-  ] });
-  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} })); await tick(); });
-  assert.doesNotMatch(document.querySelector('.user-message').textContent, /표현 다듬기/);
 });
