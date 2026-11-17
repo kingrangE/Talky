@@ -1,6 +1,6 @@
 """사용자별 초기 system prompt를 RDB에 저장한다.
 
-기존 개인 프롬프트는 재시작이나 시드 파일 변경으로 덮어쓰지 않는다.
+개인화된 프롬프트는 보존하고, 기본값 변경은 새 대화용 새 버전으로 적용한다.
 사용: python -m app.db.seed
 """
 
@@ -31,17 +31,21 @@ def seed_prompt_v1(session, user_id) -> PromptVersion:
         ).limit(1)
     ).first()
     reference = None
+    seed_path = Path(__file__).resolve().parents[2] / "prompts" / "seed_v1.md"
+    content = seed_path.read_text(encoding="utf-8").strip()
     if active is not None:
-        if getattr(active, "langfuse_name", None) != "talky/system" or not get_settings().LANGFUSE_ENABLED:
-            return active
-        reference = resolve_reference("talky/system")
-        if reference["version"] == active.langfuse_version:
+        if get_settings().LANGFUSE_ENABLED:
+            if getattr(active, "langfuse_name", None) != "talky/system":
+                return active
+            reference = resolve_reference("talky/system")
+            if reference["version"] == active.langfuse_version:
+                return active
+        elif (getattr(active, 'langfuse_name', None) is not None
+              or active.rationale != SEED_RATIONALE or active.content.strip() == content):
             return active
         active.active = False
         session.flush()
 
-    seed_path = Path(__file__).resolve().parents[2] / "prompts" / "seed_v1.md"
-    content = seed_path.read_text(encoding="utf-8").strip()
     if reference is None and get_settings().LANGFUSE_ENABLED:
         reference = resolve_reference("talky/system")
     max_v = session.scalars(

@@ -128,6 +128,22 @@ def test_seed_preserves_each_users_evolved_prompt(db):
     assert repo.get_active_prompt(bob)["version"] == 1
 
 
+def test_new_conversation_refreshes_default_without_changing_existing_conversation(db):
+    scope, (alice, _bob) = db
+    from app.db.models import PromptVersion
+    first_cid = repo.create_conversation(user_id=alice)
+    first = repo.get_conversation_prompt(first_cid, alice)
+    with scope() as session:
+        session.get(PromptVersion, uuid.UUID(first['id'])).content = 'Earlier default conversation style'
+    second_cid = repo.create_conversation(user_id=alice)
+    second = repo.get_conversation_prompt(second_cid, alice)
+    assert second['id'] != first['id']
+    assert second['content'] == prompt_registry.builtin_text('talky/system').strip()
+    assert repo.get_conversation_prompt(first_cid, alice)['content'] == 'Earlier default conversation style'
+    third_cid = repo.create_conversation(user_id=alice)
+    assert repo.get_conversation_prompt(third_cid, alice)['id'] == second['id']
+
+
 @pytest.mark.parametrize("user_text", ["Hello", "안녕하세요"])
 def test_agent_loads_own_rdb_prompt_before_calling_llm(db, monkeypatch, user_text):
     from types import SimpleNamespace
