@@ -115,11 +115,11 @@ small { font-size: .8125rem; color: var(--muted); }
 .conversation-menu form { position: absolute; top: 100%; right: 0; width: 270px; padding: 20px; background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 30px #172c2c12; border-radius: 12px; z-index: 3; display: grid; gap: 10px; }
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .chat-content { max-width: 840px; padding: 32px 40px; margin: 0 auto; }
-.empty-conversation { padding: clamp(24px, 9vh, 96px) 0 40px; max-width: 550px; margin: 0 auto; }
+.empty-conversation { padding: clamp(24px, 9vh, 96px) 0 40px; max-width: 760px; margin: 0 auto; }
 .empty-mark { width: 64px; height: 64px; background: #eaf2ed; border-radius: 20px; color: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 28px; }
 .empty-conversation h2 { font-size: 1.5rem; margin-bottom: 12px; }
 .empty-conversation p { font-size: .9375rem; color: var(--muted); line-height: 1.85; }
-.starter-prompts { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 32px; }
+.starter-prompts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 32px; }
 .starter-prompts button { background: transparent; border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; color: #405c52; font-size: .875rem; text-align: left; display: flex; align-items: center; gap: 20px; }
 .starter-prompts button:hover { background: #f0f5f1; border-color: #9db4a8; }
 .starter-prompts button span { margin-left: auto; color: var(--accent); }
@@ -251,7 +251,7 @@ th, td { text-align: left; padding: 12px; border: 1px solid #b6c6bc; }
   .empty-conversation h2 { font-size: 1.25rem; }
   .empty-conversation p { font-size: .875rem; }
   .empty-conversation br { display: none; }
-  .starter-prompts button { font-size: .8125rem; width: 100%; }
+  .starter-prompts button { font-size: .8125rem; }
   .empty-mark { width: 52px; height: 52px; border-radius: 16px; margin-bottom: 20px; }
   .message { max-width: 100%; }
   .user-message { max-width: 94%; }
