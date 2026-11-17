@@ -11,7 +11,9 @@ from app.db.models import Conversation, ConversationTurn, GraphSyncEvent, Messag
 
 
 @pytest.fixture
-def chat(pg_db):
+def chat(pg_db, monkeypatch):
+    from app.agents import conversation_graph as graph
+    monkeypatch.setattr(graph, 'translation_node', lambda _: {})
     with pg_db[1]() as session:
         user = User(display_name='chat-test')
         session.add(user)

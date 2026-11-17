@@ -18,12 +18,14 @@ function ExpressionFeedback({ value, original }) {
   </details>;
 }
 
-export function KoreanReply({ message }) {
+export function KoreanReply({ message, generating = false }) {
+  const [open, setOpen] = useState(false);
   const [translation, setTranslation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
   const value = translation || message.korean_translation;
+  useEffect(() => { if (open && !generating && !value) void load(); }, [open, generating, value]);
   async function load() {
     if (value || pending.current) return;
     pending.current = true; setLoading(true); setError('');
@@ -31,9 +33,9 @@ export function KoreanReply({ message }) {
     catch (err) { setError(err.message); }
     finally { pending.current = false; setLoading(false); }
   }
-  return <details className="message-disclosure" onToggle={event => { if (event.currentTarget.open) void load(); }}>
+  return <details className="message-disclosure" onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>한국어로 확인하기</summary>
-    {value && <p lang="ko">{value}</p>}{loading && <p role="status">한국어로 옮기고 있어요…</p>}
+    {value && <p lang="ko">{value}</p>}{!value && (loading || generating) && <p role="status">한국어로 옮기고 있어요…</p>}
     {error && <div><p className="error-text" role="alert">{error}</p><button className="text-button" onClick={() => void load()}>번역 다시 시도</button></div>}
   </details>;
 }
@@ -299,7 +301,7 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
         const reply = turn ? messages.find(m => m.id === turn.result?.assistant_message_id) : messages[index + 1]?.role === 'assistant' ? messages[index + 1] : null;
         const correction = message.better_expression || turn?.result?.better_expression || reply?.better_expression;
         return message.role === 'user' ? <article key={message.id} className="message user-message"><span className="message-label">나</span><div className="user-bubble">{message.content}</div>{message.english_expression && <details className="message-disclosure"><summary>영어로는 이렇게 말해요</summary><p lang="en">{message.english_expression}</p></details>}<ExpressionFeedback value={correction} original={message.content}/></article>
-        : <article key={message.id} className="message assistant-message"><span className="message-label"><Mark/>Talky</span>{turn ? <AudioReply turn={turn} autoPlay={autoIds.current.has(turn.id) && !played.current.has(turn.id)} onPlayed={id => played.current.add(id)}/> : <p className="muted">저장된 답변</p>}<details className="message-disclosure"><summary>자막 보기</summary><p lang="en">{message.content}</p></details><KoreanReply message={message}/></article>;
+        : <article key={message.id} className="message assistant-message"><span className="message-label"><Mark/>Talky</span>{turn ? <AudioReply turn={turn} autoPlay={autoIds.current.has(turn.id) && !played.current.has(turn.id)} onPlayed={id => played.current.add(id)}/> : <p className="muted">저장된 답변</p>}<details className="message-disclosure"><summary>자막 보기</summary><p lang="en">{message.content}</p></details><KoreanReply message={message} generating={['queued', 'processing'].includes(turn?.status)}/></article>;
       })}
       {pendingTurns(turns).map(pending)}
       {data?.report && <Report key={cid} report={data.report} rating={data.rating} onSave={body => api(`/conversations/${cid}/rating`, json('PUT', body))}/>}

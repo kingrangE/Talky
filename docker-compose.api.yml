@@ -3,16 +3,24 @@ services:
   app:
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+      AUDIO_CAPACITY: ${AUDIO_CAPACITY:-2}
+      INFERENCE_CAPACITY: ${INFERENCE_CAPACITY:-2}
     depends_on: !override
       migrate:
         condition: service_completed_successfully
       neo4j:
         condition: service_healthy
   worker:
+    deploy:
+      replicas: ${WORKER_REPLICAS:-2}
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+      AUDIO_CAPACITY: ${AUDIO_CAPACITY:-2}
+      INFERENCE_CAPACITY: ${INFERENCE_CAPACITY:-2}
   graph-worker:
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+      AUDIO_CAPACITY: ${AUDIO_CAPACITY:-2}
+      INFERENCE_CAPACITY: ${INFERENCE_CAPACITY:-2}
   ollama:
     profiles: [local-model]

@@ -1,4 +1,6 @@
-"""Generate a cached translation only when the owner asks to see it."""
+"""Cache Korean replies during generation, with an owner-only retry endpoint."""
+import logging
+from uuid import UUID
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
@@ -10,6 +12,7 @@ from app.llm.factory import get_structured_llm
 from app.runtime import bounded_messages
 
 TRANSLATION_LOCK = 74221932
+log = logging.getLogger(__name__)
 
 
 class KoreanTranslation(BaseModel):
@@ -29,9 +32,10 @@ def translate_reply(message_id, user_id):
         row = _owned_message(session, message_id, user_id)
         if row.korean_translation:
             return row.korean_translation
-    # One optional translation at a time avoids duplicate calls and connection-pool buildup.
+    # Deduplicate the same reply; different replies share the inference capacity limit.
+    lock_params = {'namespace': TRANSLATION_LOCK, 'message_id': str(message_id)}
     with get_engine().connect() as connection:
-        acquired = connection.scalar(text('SELECT pg_try_advisory_lock(:key)'), {'key': TRANSLATION_LOCK})
+        acquired = connection.scalar(text('SELECT pg_try_advisory_lock(:namespace, hashtext(:message_id))'), lock_params)
         connection.commit()
         if not acquired:
             raise UserFacingError('resource_busy')
@@ -54,5 +58,15 @@ def translate_reply(message_id, user_id):
             return translated
         finally:
             connection.rollback()
-            connection.execute(text('SELECT pg_advisory_unlock(:key)'), {'key': TRANSLATION_LOCK})
+            connection.execute(text('SELECT pg_advisory_unlock(:namespace, hashtext(:message_id))'), lock_params)
             connection.commit()
+
+
+def translation_node(state):
+    if not state.get('assistant_message_id'):
+        return {}
+    try:
+        translate_reply(UUID(state['assistant_message_id']), UUID(state['user_id']))
+    except Exception as exc:
+        log.warning('Translation unavailable; keeping committed reply (%s)', type(exc).__name__)
+    return {}

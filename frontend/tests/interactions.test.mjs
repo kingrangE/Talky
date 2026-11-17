@@ -10,7 +10,7 @@ HTMLElement.prototype.scrollIntoView = () => {};
 const React = await import('react');
 const { createRoot } = await import('react-dom/client');
 const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
-const { default: App, Conversation, Composer, AudioReply } = await vite.ssrLoadModule('/src/App.jsx');
+const { default: App, Conversation, Composer, AudioReply, KoreanReply } = await vite.ssrLoadModule('/src/App.jsx');
 const { pendingTurns } = await vite.ssrLoadModule('/src/api.js');
 let root;
 const response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -187,7 +187,7 @@ test('translation and assistant captions are collapsed and autoplay starts only 
   assert.equal(disclosures[2].querySelector('summary').textContent, '한국어로 확인하기');
 });
 
-test('correction belongs to the user and Korean translation is loaded only when opened then reused', async () => {
+test('correction belongs to the user and missing Korean translation loads when opened then is reused', async () => {
   let translations = 0;
   globalThis.fetch = async (url, options = {}) => {
     if (url.endsWith('/translation')) {
@@ -219,6 +219,32 @@ test('natural user messages have no correction disclosure', async () => {
   ] });
   await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} })); await tick(); });
   assert.doesNotMatch(document.querySelector('.user-message').textContent, /표현 다듬기/);
+});
+
+test('opening during generation uses the polled translation without a duplicate request', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return response({ translation: 'unexpected' }); };
+  const message = { id: 'a1', content: 'Hello!' };
+  await React.act(async () => { root.render(React.createElement(KoreanReply, { message, generating: true })); await tick(); });
+  const details = document.querySelector('details');
+  await React.act(async () => { details.open = true; details.dispatchEvent(new Event('toggle')); await tick(); });
+  assert.match(details.textContent, /한국어로 옮기고 있어요/);
+  assert.equal(calls, 0);
+  await React.act(async () => { root.render(React.createElement(KoreanReply, { message: { ...message, korean_translation: '안녕하세요!' }, generating: true })); await tick(); });
+  assert.match(details.textContent, /안녕하세요!/);
+  assert.doesNotMatch(details.textContent, /한국어로 옮기고 있어요/);
+  assert.equal(calls, 0);
+});
+
+test('missing background translation falls back after generation finishes', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return response({ translation: '안녕하세요!' }); };
+  const message = { id: 'a1', content: 'Hello!' };
+  await React.act(async () => { root.render(React.createElement(KoreanReply, { message, generating: true })); await tick(); });
+  await React.act(async () => { document.querySelector('details').open = true; document.querySelector('details').dispatchEvent(new Event('toggle')); await tick(); });
+  await React.act(async () => { root.render(React.createElement(KoreanReply, { message, generating: false })); await tick(); });
+  assert.equal(calls, 1);
+  assert.match(document.querySelector('details').textContent, /안녕하세요!/);
 });
 
 test('failed Korean translation keeps the English caption and can be retried', async () => {

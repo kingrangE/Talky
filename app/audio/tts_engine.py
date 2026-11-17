@@ -11,6 +11,7 @@ from __future__ import annotations
 from app.runtime import audio_capacity
 
 import io
+import json
 import logging
 import urllib.request
 import wave
@@ -65,9 +66,16 @@ def _voice(lang: str):
     if onnx_path is None:
         return None
     try:
+        import onnxruntime
+        from piper.config import PiperConfig
         from piper.voice import PiperVoice
 
-        return PiperVoice.load(str(onnx_path))
+        options = onnxruntime.SessionOptions()
+        # Replicas share the CPU; each voice must not claim every available core.
+        options.intra_op_num_threads = 1
+        config = json.loads(Path(f'{onnx_path}.json').read_text(encoding='utf-8'))
+        return PiperVoice(config=PiperConfig.from_dict(config), session=onnxruntime.InferenceSession(
+            str(onnx_path), sess_options=options, providers=['CPUExecutionProvider']))
     except Exception as exc:
         log.warning("piper voice %s 로드 실패: %s", voice_name, exc)
         return None

@@ -1,7 +1,38 @@
 import threading
 import time
+import pytest
 from concurrent.futures import ThreadPoolExecutor
 from app.runtime import resource_slot
+from app.settings import get_settings
+
+
+@pytest.mark.parametrize('kind,setting', [('audio', 'AUDIO_CAPACITY'), ('inference', 'INFERENCE_CAPACITY')])
+def test_capacity_two_allows_two_tasks_and_queues_the_third(pg_db, monkeypatch, kind, setting):
+    monkeypatch.setenv(setting, '2')
+    get_settings.cache_clear()
+    entered, release, third = threading.Barrier(3), threading.Event(), threading.Event()
+
+    def occupy():
+        with resource_slot(kind):
+            entered.wait(timeout=3)
+            assert release.wait(3)
+
+    def later():
+        with resource_slot(kind):
+            third.set()
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        tasks = [pool.submit(occupy) for _ in range(2)]
+        try:
+            entered.wait(timeout=3)
+            pending = pool.submit(later)
+            assert not third.wait(.2)
+        finally:
+            release.set()
+        for task in tasks:
+            task.result()
+        pending.result()
+    assert third.is_set()
 
 
 def test_cpu_stage_does_not_hold_inference_capacity(pg_db):

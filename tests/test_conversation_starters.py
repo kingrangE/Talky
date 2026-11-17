@@ -23,6 +23,7 @@ def chat(pg_db, monkeypatch):
         return SimpleNamespace(content='Let’s talk about travel. Where would you like to go next?')
     monkeypatch.setattr(starters, 'invoke_with_prompt', opening)
     monkeypatch.setattr(graph, 'tts_node', lambda _: {})
+    monkeypatch.setattr(graph, 'translation_node', lambda _: {})
     monkeypatch.setattr(graph, 'memory_recall_node', lambda _: {})
     monkeypatch.setattr(graph, 'en_reply_node', lambda _: {'ai_reply': 'What would you like to see there?'})
     monkeypatch.setattr(graph, 'better_expr_node', lambda _: {'better_expression': None, 'correction_status': 'completed'})
