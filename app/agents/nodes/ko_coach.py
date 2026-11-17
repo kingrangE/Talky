@@ -1,4 +1,4 @@
-"""한국어 입력 → 영어 native 응답 + 사용자 발화의 원어민 영어 표현."""
+"""한국어·한영 혼합 입력 → 영어 응답 + 전체 발화의 원어민 영어 표현."""
 
 from __future__ import annotations
 
@@ -18,13 +18,14 @@ MEMORY_HEADER = "\n\n[참고할 이전 대화 메모리]\n"
 class KoCoachOutput(BaseModel):
     reply: str = Field(description="native English conversational reply")
     english_expression: str = Field(
-        description="user's last Korean utterance rewritten as a native, idiomatic English line"
+        description="The user's ENTIRE latest message rewritten in natural, idiomatic English. Include both existing English and Korean portions of mixed-language input, correcting the English too. Preserve every fact, time, quantity, negation and intent; never translate only the Korean portion."
     )
 
 
 def _build_messages(state: GraphState) -> list:
     suffix = state.get("common_prompt_texts", {}).get("talky/ko-coach", KO_COACH_SUFFIX)
     system = state["system_prompt"] + "\n\n" + suffix
+    system += '\n\nFor english_expression, rewrite the ENTIRE latest user message as natural spoken English, including every English and Korean portion in its original order. Correct grammar and improve phrasing in the existing English as well as translating the Korean. Never omit an English sentence merely because it is already English. Preserve all facts, events, quantities, time relationships, negation, intensity and intent; use history only as context, not extra text to rewrite. Before returning, check that each clause of the latest message is represented. Keep this full rewrite separate from reply, which continues the conversation.'
     system += format_memory(state.get("retrieved_memory") or [], MEMORY_HEADER)
 
     msgs = [SystemMessage(content=system)]
