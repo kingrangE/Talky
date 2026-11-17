@@ -53,6 +53,17 @@ test('selecting a topic starts with an assistant message and leaves manual input
   assert.match(document.querySelector('.assistant-message').textContent, /한국어로 확인하기/);
 });
 
+test('a stale screen receives an update notice without an automatic reload', async () => {
+  const script = document.createElement('script'); script.type = 'module'; script.src = '/assets/index-previous.js'; document.head.append(script);
+  globalThis.fetch = async () => new Response(JSON.stringify({ id: 'c1', title: '업데이트', messages: [], turns: [] }),
+    { headers: { 'Content-Type': 'application/json', 'X-Talky-Web-Build': 'index-new.js' } });
+  try {
+    await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' }, onCreated() {}, onRefresh() {} })); await tick(); });
+    assert.match(document.querySelector('.conversation-view').textContent, /새 기능이 업데이트/);
+    assert.ok([...document.querySelectorAll('button')].some(b => b.textContent === '최신 화면 불러오기'));
+  } finally { script.remove(); }
+});
+
 test('anonymous visitors can open the existing mock exam without registering', async () => {
   globalThis.fetch = async url => {
     if (url === '/api/auth/me') return response({ detail: '로그인 필요' }, 401);

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 import logging
+import re
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -23,6 +24,9 @@ from app.errors import UserFacingError, error_code, failure_message, input_messa
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 COOKIE = 'talky_session'
 log = logging.getLogger(__name__)
+_index = Path(__file__).resolve().parents[1] / 'frontend/dist/index.html'
+_asset = re.search(r'/assets/(index-[^"/]+\.js)', _index.read_text()) if _index.exists() else None
+WEB_BUILD = _asset.group(1) if _asset else ''
 
 
 @app.middleware('http')
@@ -42,6 +46,8 @@ async def boundary(request: Request, call_next):
         response = await call_next(request)
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
+        if WEB_BUILD:
+            response.headers['X-Talky-Web-Build'] = WEB_BUILD
         return response
     return await call_next(request)
 

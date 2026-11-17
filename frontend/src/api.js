@@ -15,6 +15,9 @@ export async function api(path, options = {}) {
     if (response.status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event('talky:unauthorized'));
     throw error;
   }
+  const build = response.headers.get('X-Talky-Web-Build');
+  const loaded = document.querySelector('script[type="module"][src*="/assets/index-"]')?.getAttribute('src')?.split('/').at(-1);
+  if (build && loaded && build !== loaded) window.dispatchEvent(new Event('talky:update-available'));
   return response.json();
 }
 

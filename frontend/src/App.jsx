@@ -200,6 +200,7 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
   const [ending, setEnding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const bottom = useRef(null);
   const current = useRef(cid);
   const inFlight = useRef(false);
@@ -208,6 +209,11 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
   const scroll = useRef(null);
   const nearBottom = useRef(true);
   current.current = cid;
+  useEffect(() => {
+    const available = () => setUpdateAvailable(true);
+    window.addEventListener('talky:update-available', available);
+    return () => window.removeEventListener('talky:update-available', available);
+  }, []);
   useEffect(() => {
     const key = `talky:draft:${user.id}:${cid || 'new'}`;
     setDraft(sessionStorage.getItem(key) || '');
@@ -281,6 +287,7 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     finally { setEnding(false); }
   }
   return <section className="conversation-view">
+    {updateAvailable && <div className="notice" role="status">새 기능이 업데이트됐어요. 보내지 않은 녹음이 있다면 먼저 보내 주세요. <button className="text-button" onClick={() => window.location.reload()}>최신 화면 불러오기</button></div>}
     <header className="conversation-header"><div><span className="section-kicker">영어 회화</span><h1>{data?.title && data.title !== 'New Conversation' ? data.title : '나의 이야기가 영어가 되는 시간'}</h1></div>
       {cid && data && <div className="header-actions"><button className="quiet" disabled={outstanding || ending || !messages.length || Boolean(data.report)} onClick={end}>{ending ? '돌아보는 중…' : data.ended_at && !data.report ? '보고서 다시 만들기' : '대화 마치기'}</button><details className="conversation-menu"><summary aria-label="대화 관리"><Icon name="more"/></summary><form onSubmit={async event => { event.preventDefault(); try { await api(`/conversations/${cid}`, json('PATCH', { title })); void onRefresh(); } catch (err) { setError(err.message); } }}><label htmlFor="title">대화 이름</label><input id="title" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} required/><button className="quiet">이름 저장</button><button type="button" className="danger" onClick={async () => { if (!window.confirm(`‘${data.title}’ 대화와 학습 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return; try { await api(`/conversations/${cid}`, { method: 'DELETE' }); onCreated(null); await onRefresh(); } catch (err) { setError(err.message); } }}>대화 삭제</button></form></details></div>}
     </header>
