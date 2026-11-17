@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_, func, select, text, update
 
 from app.audio.validation import validate_audio
-from app.db.models import ConversationTurn, PendingAudioDeletion
+from app.db.models import ConversationTurn, PendingAudioDeletion, Message
 from app.db.postgres import session_scope
 from app.db.repo import _owned_conversation, _to_uuid, load_messages
 from app.mock_exam.privacy import audio_store
@@ -22,7 +22,7 @@ def _record(row):
     return {'id':str(row.id),'conversation_id':str(row.conversation_id),'user_id':str(row.user_id),
             'created_at':row.created_at.isoformat(),'status':row.status,'attempt':row.attempts,'input_text':row.input_text,
             'input_audio_path':row.input_audio_path,'output_audio_path':row.output_audio_path,
-            'result':row.result or {},'error_code':row.error_code}
+            'result':row.result or {},'error_code':row.error_code,'starter_topic':row.starter_topic}
 
 
 def _discard(path):
@@ -35,18 +35,23 @@ def _discard(path):
             session.merge(PendingAudioDeletion(path=path))
 
 
-def submit_turn(*, request_id, conversation_id, user_id, user_text=None, audio_bytes=None):
+def submit_turn(*, request_id, conversation_id, user_id, user_text=None, audio_bytes=None, starter_topic=None):
     cfg=get_settings()
     rid,cid,uid=map(_to_uuid,(request_id,conversation_id,user_id))
-    if bool(audio_bytes)==bool(user_text and user_text.strip()):
+    if sum((bool(audio_bytes), bool(user_text and user_text.strip()), bool(starter_topic))) != 1:
         raise ValueError('텍스트나 음성 중 하나를 보내주세요.')
+    if starter_topic:
+        from app.conversation_starters import TOPICS
+        if starter_topic not in TOPICS:
+            raise ValueError('Unknown conversation topic')
     if user_text and len(user_text)>cfg.MAX_USER_TEXT_CHARS:
         raise ValueError('입력 문장이 너무 깁니다.')
     with session_scope() as session:
         _owned_conversation(session,cid,uid)
     if audio_bytes:
         validate_audio(audio_bytes)
-    digest=hashlib.sha256(b'audio\0'+audio_bytes if audio_bytes else ('text\0'+user_text).encode()).hexdigest()
+    digest=hashlib.sha256(b'audio\0'+audio_bytes if audio_bytes else
+                          ('starter\0'+starter_topic if starter_topic else 'text\0'+user_text).encode()).hexdigest()
     uploaded=audio_store().save(str(rid),1,audio_bytes) if audio_bytes else None
     accepted=False
     try:
@@ -61,6 +66,8 @@ def submit_turn(*, request_id, conversation_id, user_id, user_text=None, audio_b
                 return _record(existing)
             if conv.ended_at:
                 raise ValueError('종료된 대화입니다.')
+            if starter_topic and session.scalar(select(Message.id).where(Message.conversation_id == cid).limit(1)):
+                raise ValueError('대화가 시작된 후에는 주제로 다시 시작할 수 없습니다.')
             session.execute(update(ConversationTurn).where(ConversationTurn.status=='queued',
                 ConversationTurn.queue_deadline<=now).values(status='failed',error_code='queue_expired',updated_at=now))
             if session.scalar(select(ConversationTurn.id).where(ConversationTurn.conversation_id==cid,
@@ -75,7 +82,7 @@ def submit_turn(*, request_id, conversation_id, user_id, user_text=None, audio_b
             if count>=cfg.CONVERSATION_QUEUE_LIMIT:
                 raise ValueError('요청이 많습니다. 잠시 후 다시 보내주세요.')
             row=ConversationTurn(id=rid,conversation_id=cid,user_id=uid,input_digest=digest,
-                input_text=user_text,input_audio_path=uploaded,queue_deadline=now+timedelta(seconds=cfg.CONVERSATION_QUEUE_WAIT_SECONDS),
+                input_text=user_text,starter_topic=starter_topic,input_audio_path=uploaded,queue_deadline=now+timedelta(seconds=cfg.CONVERSATION_QUEUE_WAIT_SECONDS),
                 audio_expires_at=now+timedelta(hours=cfg.MOCK_EXAM_AUDIO_TTL_HOURS))
             session.add(row)
             session.flush()
@@ -169,7 +176,9 @@ def process_turn(job):
         state = {'conversation_id': job['conversation_id'], 'user_id': job['user_id'],
                  'request_id': job['id'], 'turn_attempt': job['attempt'],
                  'history': load_messages(job['conversation_id'], job['user_id'])}
-        if job['input_audio_path']:
+        if job.get('starter_topic'):
+            state['starter_topic'] = job['starter_topic']
+        elif job['input_audio_path']:
             state['audio_bytes'] = audio_store().load(job['input_audio_path'])
         else:
             state['user_text'] = job['input_text']

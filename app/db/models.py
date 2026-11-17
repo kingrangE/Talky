@@ -344,6 +344,7 @@ class ConversationTurn(Base):
     conversation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     input_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    starter_topic: Mapped[str | None] = mapped_column(String(32))
     input_text: Mapped[str | None] = mapped_column(Text)
     input_audio_path: Mapped[str | None] = mapped_column(Text)
     output_audio_path: Mapped[str | None] = mapped_column(Text)

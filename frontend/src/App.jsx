@@ -238,9 +238,10 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     if (inFlight.current || (outstanding && !previous)) return;
     inFlight.current = true; setError('');
     const voice = content instanceof Blob;
+    const topic = !voice && typeof content === 'object' ? content.starter_topic : null;
     const rid = previous?.id || crypto.randomUUID();
     let destination = cid;
-    const local = previous || { id: rid, conversation_id: cid, status: 'sending', input_text: voice ? '' : content,
+    const local = previous || { id: rid, conversation_id: cid, status: 'sending', input_text: voice || topic ? '' : content, starter_topic: topic,
       result: {}, has_input_audio: voice, has_output_audio: false, blob: voice ? content : null, preview };
     if (!previous) setLocals(old => [...old, local]);
     else setLocals(old => old.map(t => t.id === rid ? { ...t, status: 'sending' } : t));
@@ -248,10 +249,11 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     try {
       if (!destination) {
         destination = (await api('/conversations', { method: 'POST' })).id;
+        if (topic && draft) sessionStorage.setItem(`talky:draft:${user.id}:${destination}`, draft);
         setLocals(old => old.map(t => t.id === rid ? { ...t, conversation_id: destination } : t));
         onCreated(destination); void onRefresh();
       }
-      const received = await api(`/conversations/${destination}/turns/${rid}${voice ? '/voice' : ''}`, voice ? { method: 'PUT', body: content } : json('PUT', { text: content }));
+      const received = await api(`/conversations/${destination}/turns/${rid}${voice ? '/voice' : topic ? '/starter' : ''}`, voice ? { method: 'PUT', body: content } : json('PUT', topic ? { topic } : { text: content }));
       setLocals(old => old.map(t => t.id === rid ? { ...received, preview } : t));
       const draftKey = `talky:draft:${user.id}:${cid || 'new'}`;
       if (!voice && sessionStorage.getItem(draftKey) === content) sessionStorage.removeItem(draftKey);
@@ -265,6 +267,7 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     } finally { inFlight.current = false; }
   }
   function pending(turn) {
+    if (turn.starter_topic) return <article className="message assistant-message" key={turn.id}><span className="message-label"><Mark/>Talky</span><p role="status">{turn.status === 'failed' ? turn.error_message || '대화를 시작하지 못했어요. 새 대화에서 다시 시도해 주세요.' : turn.status === 'unconfirmed' ? '주제 선택의 접수 여부를 확인하지 못했어요.' : '주제에 맞는 첫 질문을 준비하고 있어요…'}</p>{turn.failure && <p className="error-text">{turn.failure}</p>}{turn.status === 'unconfirmed' && <button className="text-button" onClick={() => send({ starter_topic: turn.starter_topic }, null, null, turn)}>다시 확인하고 시작하기</button>}</article>;
     return <article className="message user-message" key={turn.id}><span className="message-label">나</span><div className="user-bubble">{turn.input_text || <><Icon name="mic" size={18}/>보낸 음성{!turn.result?.user_text && ['queued', 'processing'].includes(turn.status) && <span className="muted"> · 문장을 인식하고 있어요</span>}</>}</div>
       <p className="message-status" role="status">{turn.status === 'unconfirmed' ? '접수 여부를 확인하지 못했어요. 같은 요청으로 다시 확인할 수 있습니다.' : turn.status === 'sending' ? '보내는 중…' : turn.status === 'failed' ? turn.error_message || '처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.' : '답변을 준비하고 있어요…'}</p>
       {turn.failure && <p className="error-text">{turn.failure}</p>}
@@ -283,7 +286,7 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     </header>
     <div className="chat-scroll" ref={scroll} onScroll={() => { const el = scroll.current; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}><div className="chat-content"><Notice>{error}</Notice>
       {loading && <p className="muted" role="status">대화를 불러오고 있어요…</p>}
-      {!loading && !messages.length && !turns.length && <div className="empty-conversation"><div className="empty-mark"><Mark/></div><h2>오늘은 어떤 이야기를 해볼까요?</h2><p>영어가 바로 떠오르지 않으면 한국어로 말해도 괜찮아요.<br/>내가 보낸 말은 바로 보이고, 영어 표현은 아래에서 확인할 수 있어요.</p><div className="starter-prompts">{['오늘 있었던 일을 이야기하고 싶어요.', '영어로 자기소개를 연습하고 싶어요.', '다가오는 여행 이야기를 해볼까요?'].map(text => <button key={text} onClick={() => { setMode('text'); updateDraft(text); document.getElementById('message')?.focus(); }}>{text}<span aria-hidden="true">↗</span></button>)}</div></div>}
+      {!loading && !messages.length && !turns.length && <div className="empty-conversation"><div className="empty-mark"><Mark/></div><h2>오늘은 어떤 이야기를 해볼까요?</h2><p>주제를 고르면 Talky가 먼저 말을 걸어요.<br/>아래에서 직접 이야기하며 시작해도 좋아요.</p><div className="starter-prompts" aria-label="AI가 먼저 시작할 대화 주제">{[['daily','오늘의 일상'],['travel','여행'],['food','음식'],['hobbies','취미'],['work','일과 학교'],['random','아무 주제나']].map(([topic,label]) => <button key={topic} disabled={outstanding || inFlight.current} onClick={() => { void unlockAudio().catch(() => {}); void send({ starter_topic: topic }); }}>{label}<span aria-hidden="true">↗</span></button>)}</div></div>}
       {messages.map((message, index) => {
         const turn = turns.find(t => t.result?.[message.role === 'user' ? 'user_message_id' : 'assistant_message_id'] === message.id);
         const reply = turn ? messages.find(m => m.id === turn.result?.assistant_message_id) : messages[index + 1]?.role === 'assistant' ? messages[index + 1] : null;

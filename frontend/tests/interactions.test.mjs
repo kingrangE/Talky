@@ -23,7 +23,34 @@ test('older completed receipts do not reappear as pending bubbles outside the hi
   assert.deepEqual(pendingTurns([
     { id: 'old', status: 'completed', result: { user_message_id: 'outside-history' } },
     { id: 'new', status: 'processing', result: {} },
+    { id: 'opening', status: 'completed', starter_topic: 'travel', result: { assistant_message_id: 'opening-message', user_message_id: null } },
   ]).map(t => t.id), ['new']);
+});
+
+test('selecting a topic starts with an assistant message and leaves manual input available initially', async () => {
+  let rid, topic;
+  globalThis.fetch = async (url, options = {}) => {
+    if (options.method === 'PUT') {
+      assert.ok(url.endsWith('/starter'));
+      rid = url.split('/').at(-2); topic = JSON.parse(options.body).topic;
+      return response({ id: rid, conversation_id: 'c1', status: 'queued', starter_topic: topic, result: {} });
+    }
+    return response({ id: 'c1', title: '주제 대화', messages: rid ? [{ id: 'opening', role: 'assistant', content: 'Where would you like to go next?' }] : [],
+      turns: rid ? [{ id: rid, conversation_id: 'c1', status: 'completed', starter_topic: topic,
+        result: { user_message_id: null, assistant_message_id: 'opening' } }] : [] });
+  };
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  assert.ok(document.querySelector('textarea'));
+  const button = [...document.querySelectorAll('.starter-prompts button')].find(b => b.textContent.includes('여행'));
+  await React.act(async () => { button.click(); await tick(); });
+  assert.equal(topic, 'travel');
+  assert.equal(document.querySelector('.user-message'), null);
+  assert.match(document.querySelector('.assistant-message').textContent, /첫 질문/);
+  await React.act(async () => { await new Promise(resolve => setTimeout(resolve, 1600)); });
+  await React.act(async () => { await tick(); });
+  assert.equal(document.querySelectorAll('.assistant-message').length, 1);
+  assert.equal(document.querySelector('.user-message'), null);
+  assert.match(document.querySelector('.assistant-message').textContent, /한국어로 확인하기/);
 });
 
 test('anonymous visitors can open the existing mock exam without registering', async () => {

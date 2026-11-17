@@ -1,6 +1,6 @@
 """Turn 단위 LangGraph.
 
-load_prompt → STT → memory_recall → router → reply → persist → optional correction → TTS
+load_prompt → starter → TTS, 또는 STT → memory_recall → router → reply → persist → optional correction → TTS
 이후 Phase F 에서 ending_graph 가 별도로 추가됨.
 """
 
@@ -21,6 +21,7 @@ from app.agents.nodes.stt import stt_node
 from app.agents.nodes.tts import tts_node
 from app.agents.state import GraphState
 from app.llm.prompts import load_conversation_prompt_node
+from app.conversation_starters import starter_node
 
 
 @lru_cache(maxsize=1)
@@ -35,9 +36,12 @@ def build_conversation_graph():
     g.add_node("tts", timed_stage("tts", tts_node))
     g.add_node("persist", timed_stage("persist", persist_node))
     g.add_node("persist_correction", timed_stage("persist_correction", persist_correction_node))
+    g.add_node('starter', timed_stage('starter', starter_node))
 
     g.add_edge(START, "load_prompt")
-    g.add_edge("load_prompt", "stt")
+    g.add_conditional_edges('load_prompt', lambda state: 'starter' if state.get('starter_topic') else 'stt',
+                            {'starter': 'starter', 'stt': 'stt'})
+    g.add_edge('starter', 'tts')
     g.add_edge("stt", "memory_recall")
     g.add_conditional_edges(
         "memory_recall", route_by_lang, {"ko": "ko_coach", "en": "en_reply"}

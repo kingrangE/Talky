@@ -26,5 +26,5 @@ export function mergeTurns(serverTurns, localTurns) {
 }
 
 export function pendingTurns(turns) {
-  return turns.filter(turn => !turn.result?.user_message_id);
+  return turns.filter(turn => !turn.result?.user_message_id && !turn.result?.assistant_message_id);
 }

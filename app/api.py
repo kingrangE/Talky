@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 import logging
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -137,6 +138,7 @@ def create(uid: str = Depends(user_id)):
 def public_turn(turn):
     return {key: turn[key] for key in ('id', 'conversation_id', 'status', 'input_text', 'result', 'error_code')} | {
         'has_input_audio': bool(turn['input_audio_path']), 'has_output_audio': bool(turn['output_audio_path']),
+        'starter_topic': turn.get('starter_topic'),
         'error_message': failure_message(turn['error_code']) if turn['status'] == 'failed' else None}
 
 
@@ -187,6 +189,16 @@ def delete(cid: UUID, uid: str = Depends(user_id)):
 
 class TextTurn(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
+
+
+class Starter(BaseModel):
+    topic: Literal['daily', 'travel', 'food', 'hobbies', 'work', 'random']
+
+
+@app.put('/api/conversations/{cid}/turns/{rid}/starter')
+def start_topic(cid: UUID, rid: UUID, body: Starter, uid: str = Depends(user_id)):
+    return public_turn(conversation.submit_turn(request_id=str(rid), conversation_id=str(cid),
+                        user_id=uid, starter_topic=body.topic))
 
 
 @app.put('/api/conversations/{cid}/turns/{rid}')

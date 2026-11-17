@@ -21,6 +21,7 @@ class GraphState(TypedDict, total=False):
     # 입력
     audio_bytes: Optional[bytes]
     user_text: str
+    starter_topic: str
     language: Optional[Literal["ko", "en"]]
     history: list[HistoryItem]
     system_prompt: str
