@@ -52,7 +52,7 @@ def process_one() -> bool:
                 ok = ingest_turn(conversation_id=str(event.conversation_id), user_id=str(event.user_id),
                     user_msg_id=str(user.id), user_text=user.content, language=user.language,
                     assistant_msg_id=str(assistant.id), ai_text=assistant.content,
-                    english_expression=user.english_expression, better_expression=assistant.better_expression,
+                    english_expression=user.english_expression, better_expression=user.better_expression or assistant.better_expression,
                     previous_message_id=payload.get('previous_message_id'),
                     user_created_at=user.created_at, assistant_created_at=assistant.created_at)
                 if ok and user.memory_topics and not payload.get('skip_topics'):

@@ -207,3 +207,12 @@ test('mode cannot change during recording and tracks are released on unmount', a
   await React.act(async () => root.render(null));
   assert.ok(released >= 1);
 });
+
+test('natural user messages have no correction disclosure', async () => {
+  globalThis.fetch = async () => response({ id: 'c1', title: '자연스러운 표현', turns: [], messages: [
+    { id: 'u1', role: 'user', content: 'I went to the museum yesterday.', better_expression: null },
+    { id: 'a1', role: 'assistant', content: 'What did you see?', better_expression: '**Try:** I went to the museum yesterday.\n\n*자연스러운 문장입니다.*' },
+  ] });
+  await React.act(async () => { root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} })); await tick(); });
+  assert.doesNotMatch(document.querySelector('.user-message').textContent, /표현 다듬기/);
+});

@@ -245,7 +245,7 @@ def _render_message(m: dict) -> None:
             st.markdown(
                 f"> 💡 **영어로는:** {m['english_expression']}"
             )
-        if m["role"] == "assistant" and m.get("better_expression"):
+        if m.get("better_expression"):
             with st.expander("✨ 참고하세요!"):
                 st.markdown(m["better_expression"])
 

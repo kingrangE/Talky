@@ -190,9 +190,10 @@ def save_turn(
         previous = s.scalar(select(Message.id).where(Message.conversation_id == cid)
                             .order_by(Message.created_at.desc(), Message.id.desc()).limit(1))
         user_msg = Message(conversation_id=cid, role="user", content=user_text,
-                           language=language, english_expression=english_expression, memory_topics=memory_topics or [])
+                           language=language, english_expression=english_expression,
+                           better_expression=better_expression, memory_topics=memory_topics or [])
         ai_msg = Message(conversation_id=cid, role="assistant", content=ai_reply,
-                         language=language, better_expression=better_expression)
+                         language=language)
         s.add_all([user_msg, ai_msg])
         s.flush()
         s.add(GraphSyncEvent(conversation_id=cid, user_id=_to_uuid(user_id), kind='upsert', payload={
@@ -549,9 +550,10 @@ def save_correction(*, conversation_id, user_id, user_message_id, assistant_mess
         if (not user or not assistant or user.conversation_id!=cid or assistant.conversation_id!=cid
                 or user.role!='user' or assistant.role!='assistant'):
             raise ValueError('Correction message ownership mismatch')
-        if assistant.better_expression==better_expression:
+        if user.better_expression==better_expression and assistant.better_expression is None:
             return
-        assistant.better_expression=better_expression
+        user.better_expression=better_expression
+        assistant.better_expression=None
         if turn:
             turn.result={**turn.result,'better_expression':better_expression}
         session.add(GraphSyncEvent(conversation_id=cid,user_id=uid,kind='upsert',payload={

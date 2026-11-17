@@ -8,6 +8,16 @@ export function Notice({ children }) {
   return children ? <div className="notice" role="alert">{children}</div> : null;
 }
 
+function ExpressionFeedback({ value, original }) {
+  if (!value) return null;
+  const parts = value.match(/^\*\*Try:\*\* ([\s\S]*?)\n\n\*([\s\S]*)\*$/);
+  const normalize = text => text.trim().replace(/[.!?]+$/, '').trim();
+  if (parts && normalize(parts[1]) === normalize(original)) return null;
+  return <details className="message-disclosure"><summary>표현 다듬기</summary>
+    {parts ? <><p lang="en">{parts[1]}</p><p lang="ko">{parts[2]}</p></> : <p>{value}</p>}
+  </details>;
+}
+
 export function AudioReply({ turn, autoPlay, onPlayed }) {
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -254,10 +264,12 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     <div className="chat-scroll" ref={scroll} onScroll={() => { const el = scroll.current; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}><div className="chat-content"><Notice>{error}</Notice>
       {loading && <p className="muted" role="status">대화를 불러오고 있어요…</p>}
       {!loading && !messages.length && !turns.length && <div className="empty-conversation"><div className="empty-mark"><Mark/></div><h2>오늘은 어떤 이야기를 해볼까요?</h2><p>영어가 바로 떠오르지 않으면 한국어로 말해도 괜찮아요.<br/>내가 보낸 말은 바로 보이고, 영어 표현은 아래에서 확인할 수 있어요.</p><div className="starter-prompts">{['오늘 있었던 일을 이야기하고 싶어요.', '영어로 자기소개를 연습하고 싶어요.', '다가오는 여행 이야기를 해볼까요?'].map(text => <button key={text} onClick={() => { setMode('text'); updateDraft(text); document.getElementById('message')?.focus(); }}>{text}<span aria-hidden="true">↗</span></button>)}</div></div>}
-      {messages.map(message => {
+      {messages.map((message, index) => {
         const turn = turns.find(t => t.result?.[message.role === 'user' ? 'user_message_id' : 'assistant_message_id'] === message.id);
-        return message.role === 'user' ? <article key={message.id} className="message user-message"><span className="message-label">나</span><div className="user-bubble">{message.content}</div>{message.english_expression && <details className="message-disclosure"><summary>영어로는 이렇게 말해요</summary><p lang="en">{message.english_expression}</p></details>}</article>
-        : <article key={message.id} className="message assistant-message"><span className="message-label"><Mark/>Talky</span>{turn ? <AudioReply turn={turn} autoPlay={autoIds.current.has(turn.id) && !played.current.has(turn.id)} onPlayed={id => played.current.add(id)}/> : <p className="muted">저장된 답변</p>}<details className="message-disclosure"><summary>자막 보기</summary><p lang="en">{message.content}</p></details>{message.better_expression && <details className="message-disclosure"><summary>표현 다듬기</summary><p>{message.better_expression}</p></details>}</article>;
+        const reply = turn ? messages.find(m => m.id === turn.result?.assistant_message_id) : messages[index + 1]?.role === 'assistant' ? messages[index + 1] : null;
+        const correction = message.better_expression || turn?.result?.better_expression || reply?.better_expression;
+        return message.role === 'user' ? <article key={message.id} className="message user-message"><span className="message-label">나</span><div className="user-bubble">{message.content}</div>{message.english_expression && <details className="message-disclosure"><summary>영어로는 이렇게 말해요</summary><p lang="en">{message.english_expression}</p></details>}<ExpressionFeedback value={correction} original={message.content}/></article>
+        : <article key={message.id} className="message assistant-message"><span className="message-label"><Mark/>Talky</span>{turn ? <AudioReply turn={turn} autoPlay={autoIds.current.has(turn.id) && !played.current.has(turn.id)} onPlayed={id => played.current.add(id)}/> : <p className="muted">저장된 답변</p>}<details className="message-disclosure"><summary>자막 보기</summary><p lang="en">{message.content}</p></details></article>;
       })}
       {pendingTurns(turns).map(pending)}
       {data?.report && <Report key={cid} report={data.report} rating={data.rating} onSave={body => api(`/conversations/${cid}/rating`, json('PUT', body))}/>}
