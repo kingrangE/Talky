@@ -236,16 +236,24 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     setData(null); setError(''); setLoading(Boolean(cid));
     if (!cid) return;
     let alive = true, timer, controller;
+    let waitingForTranscript = false;
     async function refresh() {
       controller = new AbortController();
       try {
         const next = await api(`/conversations/${cid}`, { signal: controller.signal });
         if (!alive) return;
+        waitingForTranscript = next.turns.some(turn => turn.has_input_audio && !turn.input_text
+          && ['queued', 'processing'].includes(turn.status));
         setData(next); setError(''); setLoading(false);
         const received = new Set(next.turns.map(turn => turn.id));
         setLocals(old => old.filter(turn => !received.has(turn.id)));
-      } catch (err) { if (alive && err.name !== 'AbortError') { setError(err.message); setLoading(false); } }
-      if (alive) timer = setTimeout(refresh, 1500);
+      } catch (err) {
+        waitingForTranscript = false;
+        if (alive && err.name !== 'AbortError') { setError(err.message); setLoading(false); }
+      }
+      if (alive) {
+        timer = setTimeout(refresh, waitingForTranscript ? 400 : 1500);
+      }
     }
     void refresh();
     return () => { alive = false; clearTimeout(timer); controller?.abort(); };

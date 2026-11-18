@@ -18,7 +18,7 @@ globalThis.AudioContext = class {
 const React = await import('react');
 const { createRoot } = await import('react-dom/client');
 const vite = await createServer({ server:{middlewareMode:true,hmr:false,ws:false}, appType:'custom', logLevel:'error' });
-const { default:App, AudioReply } = await vite.ssrLoadModule('/src/App.jsx');
+const { default:App, AudioReply, Conversation } = await vite.ssrLoadModule('/src/App.jsx');
 const json = value => new Response(JSON.stringify(value),{headers:{'content-type':'application/json'}});
 const tick = (ms=20) => new Promise(resolve => setTimeout(resolve,ms));
 let root;
@@ -58,4 +58,36 @@ test('conversation starts partial speech while coaching is processing and does n
   await React.act(async()=>{render({...turn,status:'completed',has_output_audio:true});await tick();});
   assert.equal(requests,1); // Stopping never replays the already heard prefix automatically.
   network.close();
+});
+
+test('conversation checks sooner while speech is untranscribed and restores the normal interval once displayed', async ({ mock }) => {
+  const { timers } = mock;
+  timers.enable({ apis: ['setTimeout'] });
+  let requests = 0;
+  let inputText = null;
+  globalThis.fetch = async url => {
+    assert.equal(url, '/api/conversations/c1');
+    requests++;
+    return json({ messages: [], turns: [{
+      id:'voice-1', conversation_id:'c1', status:'processing',
+      has_input_audio:true, input_text:inputText, result:{},
+    }] });
+  };
+  await React.act(async () => root.render(React.createElement(Conversation, {
+    cid:'c1', user:{ id:'u1' }, onRefresh() {}, onCreated() {},
+  })));
+  assert.equal(requests, 1);
+  inputText = 'I went to the museum.';
+  await React.act(async () => timers.tick(399));
+  assert.equal(requests, 1);
+  await React.act(async () => timers.tick(1));
+  assert.equal(requests, 2);
+  assert.equal(document.querySelector('.user-bubble').textContent, inputText);
+  await React.act(async () => timers.tick(1499));
+  assert.equal(requests, 2);
+  await React.act(async () => timers.tick(1));
+  assert.equal(requests, 3);
+  await React.act(async () => root.unmount());
+  timers.tick(1500);
+  assert.equal(requests, 3);
 });

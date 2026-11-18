@@ -34,6 +34,9 @@ def _run_worker(channel) -> None:
                 channel.send("started")
                 started = time.monotonic()
                 wait_ms = max(0, (datetime.now(timezone.utc) - datetime.fromisoformat(job["created_at"])).total_seconds()*1000)
+                if job["kind"] == "conversation" and job.get("input_audio_path"):
+                    log.info(json.dumps({"event": "voice_job_claimed", "request_id": job["id"],
+                        "attempt": job["attempt"], "queue_wait_ms": round(wait_ms, 2)}))
                 outcome = "ok"
                 try:
                     with job_budget(get_settings().MOCK_EXAM_JOB_TIMEOUT_SECONDS):

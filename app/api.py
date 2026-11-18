@@ -1,6 +1,7 @@
 """Same-origin web API; workers continue to own durable inference jobs."""
 from datetime import datetime, timezone
 from pathlib import Path
+from time import monotonic
 from uuid import UUID
 import logging
 import re
@@ -37,12 +38,14 @@ async def boundary(request: Request, call_next):
             if ((origin and origin != f'{request.url.scheme}://{request.headers.get("host")}')
                     or request.headers.get('sec-fetch-site') == 'cross-site'):
                 return JSONResponse({'detail': '다른 사이트에서 보낸 요청은 허용하지 않습니다.'}, status_code=403)
+            receive_started = monotonic()
             data = bytearray()
             async for part in request.stream():
                 data.extend(part)
                 if len(data) > get_settings().MAX_AUDIO_BYTES + 32768:
                     return JSONResponse({'detail': '업로드가 너무 큽니다.'}, status_code=413)
             request._body = bytes(data)
+            request.state.body_receive_ms = (monotonic() - receive_started) * 1000
         response = await call_next(request)
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -218,12 +221,17 @@ def send_text(cid: UUID, rid: UUID, body: TextTurn, uid: str = Depends(user_id))
 
 
 @app.put('/api/conversations/{cid}/turns/{rid}/voice')
-async def send_voice(cid: UUID, rid: UUID, request: Request, uid: str = Depends(user_id)):
+async def send_voice(cid: UUID, rid: UUID, request: Request, response: Response, uid: str = Depends(user_id)):
     from starlette.concurrency import run_in_threadpool
     data = await request.body()
     if not data:
         raise UserFacingError('audio_empty')
+    started = monotonic()
     turn = await run_in_threadpool(conversation.submit_turn, request_id=str(rid), conversation_id=str(cid), user_id=uid, audio_bytes=data)
+    response.headers['Server-Timing'] = (
+        f'body;dur={request.state.body_receive_ms:.2f}, '
+        f'accept;dur={(monotonic() - started) * 1000:.2f}'
+    )
     return public_turn(turn)
 
 

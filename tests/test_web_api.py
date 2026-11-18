@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+import re
 from types import SimpleNamespace
 import uuid
 
@@ -60,6 +61,18 @@ def test_empty_voice_and_provider_failure_have_safe_explanations(web, monkeypatc
     assert response.json()['error_code'] == 'request_timeout'
     assert '시간' in response.json()['detail']
     assert 'SECRET' not in response.text and '/private' not in response.text
+
+
+def test_voice_receipt_exposes_body_and_accept_timings(web, monkeypatch):
+    uid, cid, rid = (str(uuid.uuid4()) for _ in range(3))
+    api.app.dependency_overrides[api.user_id] = lambda: uid
+    monkeypatch.setattr(conversation, 'submit_turn', lambda **fields: fields)
+    monkeypatch.setattr(api, 'public_turn', lambda turn: {'id': turn['request_id']})
+    response = web.put(f'/api/conversations/{cid}/turns/{rid}/voice', content=b'test-audio')
+    assert response.status_code == 200
+    assert response.json() == {'id': rid}
+    assert re.fullmatch(r'body;dur=\d+\.\d{2}, accept;dur=\d+\.\d{2}',
+                        response.headers['server-timing'])
 
 
 def test_cookie_flags_and_failed_login(web, monkeypatch):
