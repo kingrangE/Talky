@@ -103,6 +103,16 @@ def test_uncertain_full_detection_is_checked_even_when_probe_prefers_the_same_la
     assert engine.decoded == ['en', 'ko', 'en']
 
 
+@pytest.mark.parametrize('preferred', ['en', 'ko'])
+def test_unrelated_middle_window_uses_candidate_transcriptions(engine, preferred):
+    engine.initial = metadata('ko', 0.532, 0.314, duration=11)
+    engine.probe = SimpleNamespace(language='bo', language_probability=0.7,
+                                   all_language_probs=[('bo', 0.7), ('en', 0.043), ('ko', 0.016)])
+    engine.quality = {lang: -0.778 if lang == preferred else -1.675 for lang in ('en', 'ko')}
+    assert stt_engine.transcribe.__wrapped__(b'fixture')[1] == preferred
+    assert engine.decoded == ['en', 'ko', preferred]
+
+
 @pytest.mark.parametrize('probability,other,duration', [(0.55, 0.4, 2), (0.79, 0.01, 8)])
 def test_short_or_uncompetitive_alternative_does_not_trigger_probe(engine, probability, other, duration):
     engine.initial = metadata(probability=probability, other=other, duration=duration)

@@ -50,13 +50,16 @@ def _recheck_language(model, audio_bytes, info):
         probe_segments, probe = model.transcribe(sample, beam_size=1, vad_filter=False, language=None,
                                                task='transcribe', temperature=0, condition_on_previous_text=False)
         scores = dict(probe.all_language_probs or [])
+        # A short window can vote for a third language even when the full
+        # recording has strong evidence for both conversational languages.
+        uncertain_probe = probe.language not in {'en', 'ko'} and probabilities[alternative] >= 0.2
         # shortcut: thresholds use synthetic checks; recalibrate with labeled human recordings.
         if (probe.language == alternative and probe.language_probability >= 0.6
                 and scores.get(alternative, 0) - scores.get(initial, 0) >= 0.4
                 and probabilities[alternative] + scores.get(alternative, 0)
                 - probabilities.get(initial, 1) - scores.get(initial, 0) >= 0.3):
             selected = alternative
-        elif scores.get(alternative, 0) >= 0.05:
+        elif scores.get(alternative, 0) >= 0.05 or uncertain_probe:
             alternative_segments = probe_segments
             if probe.language != alternative:
                 alternative_segments, _ = model.transcribe(sample, beam_size=1, vad_filter=False, language=alternative,
