@@ -1,25 +1,21 @@
 """AI-first openings are assistant messages, never invented user utterances."""
-from langchain_core.messages import SystemMessage, HumanMessage
+from secrets import choice
 from app.db.postgres import session_scope
 from app.db.models import Message, ConversationTurn
 from app.db.repo import _owned_conversation, _to_uuid
-from app.llm.factory import get_chat_llm
-from app.llm.prompt_registry import invoke_with_prompt
-from app.runtime import bounded_messages
-from app.errors import UserFacingError
 
-TOPICS = {'daily': 'everyday life', 'travel': 'travel', 'food': 'food',
-          'hobbies': 'hobbies', 'work': 'work or school', 'random': 'one easy everyday topic of your choice'}
+TOPICS = {
+    'daily': 'How has your day been so far?',
+    'travel': 'Where would you like to go on your next trip?',
+    'food': "What's a meal you could eat every day without getting tired of it?",
+    'hobbies': 'What do you like to do in your free time?',
+    'work': 'What does a typical weekday look like for you?',
+    'random': None,
+}
 
 
 def starter_node(state):
     topic = state['starter_topic']
-    system = state['system_prompt'] + '\n\nStart the conversation yourself in English about the selected topic. The user selected a topic but has not spoken yet. Use simple everyday words, one or two friendly sentences and one concrete question they can answer. Do not assume prior experience with the topic. Do not pretend they said anything, invent personal facts, give a lecture, or offer support services.'
-    reply = invoke_with_prompt(get_chat_llm(), bounded_messages([
-        SystemMessage(content=system), HumanMessage(content='Selected topic: ' + TOPICS[topic]),
-    ]), state, 'talky/en-reply').content.strip()
-    if not reply:
-        raise UserFacingError('response_empty')
     with session_scope() as session:
         conv = _owned_conversation(session, state['conversation_id'], state['user_id'], lock=True)
         turn = session.get(ConversationTurn, _to_uuid(state['request_id']), with_for_update=True)
@@ -28,6 +24,8 @@ def starter_node(state):
             raise ValueError('Stale conversation opening attempt')
         if turn.result:
             return turn.result
+        # The first turn has no prior utterance to react to; only later turns use free generation.
+        reply = TOPICS[topic] or choice([question for question in TOPICS.values() if question])
         message = Message(conversation_id=conv.id, role='assistant', language='en', content=reply)
         session.add(message)
         session.flush()

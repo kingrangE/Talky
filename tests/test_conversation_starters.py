@@ -17,11 +17,11 @@ def chat(pg_db, monkeypatch):
     uid = register_user('topic_learner', 'test-only-password')
     cid = repo.create_conversation(user_id=uid)
     calls = []
-    monkeypatch.setattr(starters, 'get_chat_llm', lambda: object())
+    monkeypatch.setattr(starters, 'get_chat_llm', lambda: object(), raising=False)
     def opening(*args):
         calls.append(args)
         return SimpleNamespace(content='Let’s talk about travel. Where would you like to go next?')
-    monkeypatch.setattr(starters, 'invoke_with_prompt', opening)
+    monkeypatch.setattr(starters, 'invoke_with_prompt', opening, raising=False)
     monkeypatch.setattr(graph, 'tts_node', lambda _: {})
     monkeypatch.setattr(graph, 'translation_node', lambda _: {})
     monkeypatch.setattr(graph, 'memory_recall_node', lambda _: {})
@@ -45,7 +45,7 @@ def test_topic_creates_only_assistant_opening_and_can_continue_with_user_speech(
     assert receipt['result']['assistant_message_id']
     messages = repo.load_messages(cid, uid)
     assert len(messages) == 1 and messages[0]['role'] == 'assistant'
-    assert len(calls) == 1
+    assert len(calls) == 0
     assert queue.submit_turn(**request)['status'] == 'completed'
     queue.submit_turn(request_id=str(uuid.uuid4()), conversation_id=cid, user_id=uid, user_text='I would like to go to Japan.')
     queue.process_turn(queue.claim_turn())
@@ -71,3 +71,30 @@ def test_topic_retries_keep_request_identity_and_input_type(chat):
         queue.submit_turn(request_id=rid, conversation_id=cid, user_id=uid, starter_topic='food')
     with pytest.raises(ValueError):
         queue.submit_turn(request_id=str(uuid.uuid4()), conversation_id=cid, user_id=uid, starter_topic='food', user_text='Hello')
+
+
+def test_food_opens_with_a_standalone_question_instead_of_an_invented_reaction(chat, monkeypatch):
+    uid, cid, _ = chat
+    monkeypatch.setattr(starters, 'invoke_with_prompt', lambda *_: SimpleNamespace(content=
+        "I'm hungry just thinking about it. What's a meal you could eat any day of the week and never get tired of?"), raising=False)
+    rid = str(uuid.uuid4())
+    queue.submit_turn(request_id=rid, conversation_id=cid, user_id=uid, starter_topic='food')
+    queue.process_turn(queue.claim_turn())
+    assert queue.get_turn(rid, uid)['result']['ai_reply'] == "What's a meal you could eat every day without getting tired of it?"
+
+
+@pytest.mark.parametrize('topic', ['daily', 'travel', 'food', 'hobbies', 'work', 'random'])
+def test_each_topic_begins_with_a_reviewed_question_and_retry_reuses_it(chat, topic):
+    uid, cid, calls = chat
+    rid = str(uuid.uuid4())
+    queue.submit_turn(request_id=rid, conversation_id=cid, user_id=uid, starter_topic=topic)
+    job = queue.claim_turn()
+    queue.process_turn(job)
+    first = queue.get_turn(rid, uid)['result']
+    assert first['ai_reply'] in {question for question in starters.TOPICS.values() if question}
+    if topic != 'random':
+        assert first['ai_reply'] == starters.TOPICS[topic]
+    assert first['ai_reply'].count('?') == 1
+    assert queue.process_turn(job)['ai_reply'] == first['ai_reply']
+    assert len(repo.load_messages(cid, uid)) == 1
+    assert not calls
