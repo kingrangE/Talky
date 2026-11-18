@@ -245,6 +245,20 @@ test('stored inline feedback separates translation and each expression into real
   assert.deepEqual([...feedback.querySelectorAll('li')].map(item => item.textContent), items);
 });
 
+test('present perfect continuous explanation appears below the translation', async () => {
+  const suggestion = "I've been getting up around 11 lately and studying my major.";
+  const translation = '저는 요즘 11시쯤 일어나서 전공 공부를 하고 있어요.';
+  const grammar = 'have/has been ~ing: 현재완료진행형으로 최근부터 지금까지 이어지거나 반복되는 행동을 말해요. 여기서는 요즘의 생활 패턴이 이어진다는 뜻이에요.';
+  globalThis.fetch = async () => response({ id:'c1', title:'표현', turns:[], messages:[
+    {id:'u1', role:'user', content:'These days I get up at about 11 and study for my major.', better_expression:
+      `**${suggestion}**\n\n- ${translation}\n- ${grammar}`},
+  ] });
+  await React.act(async () => { root.render(React.createElement(Conversation, {cid:'c1', user:{id:'u1'}, onCreated(){}, onRefresh(){}})); await tick(); });
+  const feedback = document.querySelector('.expression-feedback');
+  assert.equal(feedback.querySelector('strong').textContent, suggestion);
+  assert.deepEqual([...feedback.querySelectorAll('li')].map(item=>item.textContent),[translation,grammar]);
+});
+
 test('natural user messages have no correction disclosure', async () => {
   globalThis.fetch = async () => response({ id: 'c1', title: '자연스러운 표현', turns: [], messages: [
     { id: 'u1', role: 'user', content: 'I went to the museum yesterday.', better_expression: null },

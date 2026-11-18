@@ -2,6 +2,10 @@ import pytest
 from app.agents.nodes import better_expr
 
 
+def learning_note(translation, pattern='past simple', explanation='과거에 끝난 일을 말해요.'):
+    return {'translation':translation, 'explanations':[{'pattern':pattern, 'explanation':explanation}]}
+
+
 @pytest.mark.parametrize('error', [TimeoutError('timeout'), ValueError('invalid JSON')])
 def test_optional_correction_failure_is_explicit(monkeypatch, error):
     class Broken:
@@ -19,7 +23,7 @@ def test_optional_correction_failure_is_explicit(monkeypatch, error):
     (True, 'I went to a museum yesterday.', '**I went to a museum yesterday.**'),
 ])
 def test_natural_expressions_do_not_generate_a_correction(monkeypatch, needs_improvement, suggestion, expected):
-    result = better_expr.BetterExpressionOutput(needs_improvement=needs_improvement, suggestion=suggestion, note='설명')
+    result = better_expr.BetterExpressionOutput(needs_improvement=needs_improvement, suggestion=suggestion, note=learning_note('해석'))
     monkeypatch.setattr(better_expr, 'get_structured_llm', lambda _: object())
     monkeypatch.setattr(better_expr, 'invoke_with_prompt', lambda *_: result)
     correction = better_expr.better_expr_node({'user_text': 'I went to the museum yesterday.'})
@@ -32,7 +36,7 @@ def test_natural_expressions_do_not_generate_a_correction(monkeypatch, needs_imp
 
 def test_speech_formatting_does_not_create_a_false_correction(monkeypatch):
     result = better_expr.BetterExpressionOutput(needs_improvement=True,
-        suggestion="Hi, I'm studying English. Can you help me?", note='대문자와 구두점을 정리했어요.')
+        suggestion="Hi, I'm studying English. Can you help me?", note=learning_note('안녕하세요. 저는 영어를 공부하고 있어요. 도와주실 수 있나요?', 'be ~ing', '현재 진행 중인 행동을 말해요.'))
     monkeypatch.setattr(better_expr, 'get_structured_llm', lambda _: object())
     monkeypatch.setattr(better_expr, 'invoke_with_prompt', lambda *_: result)
     assert better_expr.better_expr_node({'user_text':"Hi I'm studying english Can you help me?", 'audio_bytes':b'fixture'})['better_expression'] is None
@@ -41,7 +45,7 @@ def test_speech_formatting_does_not_create_a_false_correction(monkeypatch):
 def test_correction_preserves_bold_sentence_and_translation_first_bullets(monkeypatch):
     suggestion = "I usually can't get up early, so I end up getting up after 12."
     note = '- 저는 보통 일찍 일어나지 못해서 결국 12시가 지나서 일어나게 돼요.\n- end up ~ing: 결국 ~하게 되다.'
-    output = better_expr.BetterExpressionOutput(suggestion=suggestion, note=note)
+    output = better_expr.BetterExpressionOutput(suggestion=suggestion, note=learning_note('저는 보통 일찍 일어나지 못해서 결국 12시가 지나서 일어나게 돼요.', 'end up ~ing', '결국 ~하게 되다.'))
     monkeypatch.setattr(better_expr, 'get_structured_llm', lambda _: object())
     monkeypatch.setattr(better_expr, 'invoke_with_prompt', lambda *_: output)
     result = better_expr.better_expr_node({'user_text': 'I wake up late after 12 because I cannot wake early.'})
@@ -51,8 +55,8 @@ def test_correction_preserves_bold_sentence_and_translation_first_bullets(monkey
 def test_managed_prompt_also_receives_translation_first_format():
     messages = better_expr._build_messages({'user_text': 'I wake late.',
         'common_prompt_texts': {'talky/better-expression': 'Previously published coaching prompt.'}})
-    assert 'The first bullet must translate the entire suggestion into Korean.' in messages[0].content
-    assert 'actually used in the suggestion' in messages[0].content
+    assert 'note must be an object with translation and explanations' in messages[0].content
+    assert 'explain meaningful tense/aspect' in messages[0].content
 
 
 @pytest.mark.parametrize('original,suggestion,expression', [
@@ -69,7 +73,7 @@ def test_grammatical_input_can_receive_a_conversational_rewrite(monkeypatch, ori
             assert 'set needs_improvement=true' in instruction
             assert suggestion in instruction
             return better_expr.BetterExpressionOutput(needs_improvement=True,
-                suggestion=suggestion, note=f'- 개선 문장의 한국어 해석.\n- {expression}')
+                suggestion=suggestion, note=learning_note('개선 문장의 한국어 해석.', *expression.split(': ', 1)))
 
     monkeypatch.setattr(better_expr, 'get_structured_llm', lambda _: Coach())
     monkeypatch.setattr(better_expr, 'invoke_with_prompt', lambda llm, messages, *_: llm.invoke(messages))

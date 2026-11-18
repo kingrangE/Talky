@@ -119,6 +119,26 @@ def test_english_only_explanation_is_reviewed_without_replacing_the_judge_grade(
     assert review_flags('expression',output,{},scores)['explanation_korean_present'] == 1
 
 
+def test_expression_evaluation_serializes_structured_learning_notes(monkeypatch):
+    from types import SimpleNamespace
+    from app import evaluate
+    from app.agents.nodes import better_expr
+    output = better_expr.BetterExpressionOutput(suggestion="I've been studying lately.", note={
+        'translation':'요즘 공부를 계속하고 있어요.',
+        'explanations':[{'pattern':'have been ~ing', 'explanation':'최근부터 지금까지 이어지는 행동을 말해요.'}],
+    })
+    monkeypatch.setattr(evaluate, 'get_structured_llm', lambda _: object())
+    monkeypatch.setattr(evaluate, 'invoke_with_prompt', lambda *_: output)
+    benchmark = Benchmark.__new__(Benchmark)
+    benchmark.prompts = {'talky/system':SimpleNamespace(prompt='A conversational tutor.')}
+    benchmark.refs = {'talky/system':{}}
+    benchmark.client = SimpleNamespace(get_current_trace_id=lambda: None)
+    candidate, _ = benchmark.generate('en_correction', 'I study these days.')
+    assert candidate['needs_improvement'] is True
+    assert candidate['suggestion'] == output.suggestion
+    assert candidate['note'] == '- 요즘 공부를 계속하고 있어요.\n- have been ~ing: 최근부터 지금까지 이어지는 행동을 말해요.'
+
+
 def test_judge_cannot_list_unsupported_claims_and_award_full_grounding():
     verdict = {'unsupported_claims':['Your cat is named Luna.'],'faithfulness':2,'hallucination':0}
     assert judge_conflicts('memory',verdict) == {'judge_conflict':1}

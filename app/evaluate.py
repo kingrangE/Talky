@@ -323,7 +323,9 @@ class Benchmark:
         llm = get_structured_llm(schema) if schema else get_chat_llm(streaming=False)
         value = invoke_with_prompt(llm, messages, state, name)
         candidate = value.model_dump() if schema else {'reply': value.content}
-        if not all(isinstance(value, str) and value.strip() for value in candidate.values()):
+        if schema is better_expr.BetterExpressionOutput:
+            candidate['note'] = value.note.as_bullets()
+        if not all(isinstance(value, str) and value.strip() for key, value in candidate.items() if key != 'needs_improvement'):
             raise ValueError('The generation contains an empty or non-text output field')
         if schema is ko_coach.KoCoachOutput:
             candidate['english_expression'] = value.english_expression
