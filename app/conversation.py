@@ -172,6 +172,10 @@ def process_turn(job):
         raise ValueError('Stale conversation attempt')
     if current['result']:
         result = current['result']
+        if (get_settings().CONVERSATION_TTS_PROVIDER == 'google_neural2'
+                and result.get('speech', {}).get('status') != 'ready'):
+            from app.agents.nodes.tts import tts_node
+            tts_node({**result, 'request_id': job['id'], 'user_id': job['user_id'], 'turn_attempt': job['attempt']})
     else:
         state = {'conversation_id': job['conversation_id'], 'user_id': job['user_id'],
                  'request_id': job['id'], 'turn_attempt': job['attempt'],
@@ -192,7 +196,8 @@ def process_turn(job):
                 raise ValueError('Stale conversation attempt')
             if not row.result:
                 raise ValueError('empty_conversation_result')
-            row.output_audio_path = path
+            if path:
+                row.output_audio_path = path
             row.status = 'completed'
             row.lease_until = None
             row.updated_at = datetime.now(timezone.utc)

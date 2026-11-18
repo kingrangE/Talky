@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     TTS_VOICE_EN: str = "en_US-amy-medium"
     TTS_VOICE_KO: str = "ko_KR-kss-medium"
     AUDIO_CACHE_DIR: str = "./.cache"
+    CONVERSATION_TTS_PROVIDER: Literal['piper', 'google_neural2'] = 'piper'
 
     # Speaking mock test
     AUDIO_S3_BUCKET: str = ""

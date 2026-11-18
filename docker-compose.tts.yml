@@ -1,0 +1,16 @@
+# Optional Google Neural2 conversation TTS. Credentials stay outside the repository.
+services:
+  app:
+    environment:
+      CONVERSATION_TTS_PROVIDER: google_neural2
+      GOOGLE_APPLICATION_CREDENTIALS: /run/google/adc.json
+      GOOGLE_CLOUD_QUOTA_PROJECT: ${GOOGLE_CLOUD_PROJECT:?Set the conversation project}
+    volumes:
+      - ${GOOGLE_ADC_FILE:?Set the ADC file path}:/run/google/adc.json:ro
+  worker:
+    environment:
+      CONVERSATION_TTS_PROVIDER: google_neural2
+      GOOGLE_APPLICATION_CREDENTIALS: /run/google/adc.json
+      GOOGLE_CLOUD_QUOTA_PROJECT: ${GOOGLE_CLOUD_PROJECT:?Set the conversation project}
+    volumes:
+      - ${GOOGLE_ADC_FILE:?Set the ADC file path}:/run/google/adc.json:ro

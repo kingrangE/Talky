@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
+COPY requirements-google-tts.txt .
+RUN pip install -r requirements-google-tts.txt
+
 COPY . .
 COPY --from=frontend /web/dist ./frontend/dist
 

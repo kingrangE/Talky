@@ -17,6 +17,7 @@ def offline_prompt_defaults(monkeypatch):
     monkeypatch.setenv("LANGFUSE_ENABLED", "false")
     monkeypatch.setenv("LANGFUSE_PROMPT_VERSIONS", "{}")
     monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    monkeypatch.setenv("CONVERSATION_TTS_PROVIDER", "piper")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

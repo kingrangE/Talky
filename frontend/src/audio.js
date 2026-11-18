@@ -28,6 +28,12 @@ export function stopPlayback() {
   if (activeSource) { try { activeSource.stop(); } catch {} activeSource = null; }
 }
 
+export function setPlayback(source) {
+  stopPlayback();
+  activeSource = source;
+  return () => { if (activeSource === source) activeSource = null; };
+}
+
 export async function unlockAudio() {
   const Audio = globalThis.AudioContext || window.webkitAudioContext;
   if (!Audio) throw new PlaybackError('이 브라우저에서 음성을 재생할 수 없습니다. 자막으로 확인해 주세요.');

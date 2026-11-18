@@ -3,6 +3,7 @@ import { api, json, mergeTurns, pendingTurns } from './api.js';
 import { playAudio, playbackMessage, recordingMessage, startCapture, stopPlayback, unlockAudio } from './audio.js';
 import { Icon, Mark } from './icons.jsx';
 import { Exam } from './Exam.jsx';
+import { streamPcm } from './pcm.js';
 
 export function Notice({ children }) {
   return children ? <div className="notice" role="alert">{children}</div> : null;
@@ -48,9 +49,21 @@ export function AudioReply({ turn, autoPlay, onPlayed }) {
   const stop = useRef(null);
   const alive = useRef(true);
   const run = useRef(0);
+  const autoAttempted = useRef(false);
+  const available = turn.has_output_audio || turn.has_audio_stream;
   async function play() {
     const attempt = ++run.current;
     setLoading(true); setError('');
+    if (turn.has_audio_stream) {
+      const current = () => alive.current && attempt === run.current;
+      const speech = streamPcm(`/api/turns/${turn.id}/audio-stream`, {}, {
+        onStarted: () => { if (current()) { setLoading(false); setPlaying(true); onPlayed(turn.id); } },
+        onEnded: () => { if (current()) { setLoading(false); setPlaying(false); } },
+        onError: message => { if (current()) setError(message); },
+      });
+      stop.current = speech.stop;
+      return;
+    }
     try {
       const cancel = await playAudio(`/api/turns/${turn.id}/audio`, () => { if (alive.current && attempt === run.current) setPlaying(false); });
       if (!alive.current || attempt !== run.current) { cancel(); return; }
@@ -65,15 +78,15 @@ export function AudioReply({ turn, autoPlay, onPlayed }) {
     return () => { alive.current = false; run.current++; stop.current?.(); };
   }, []);
   useEffect(() => {
-    if (turn.has_output_audio && autoPlay) void play();
-  }, [turn.has_output_audio, autoPlay]);
+    if (available && autoPlay && !autoAttempted.current) { autoAttempted.current = true; void play(); }
+  }, [available, autoPlay]);
   return <div className="reply-audio">
-    <button className="audio-button" aria-label={playing ? '답변 음성 일시정지' : '답변 음성 재생'} disabled={!turn.has_output_audio || loading}
-      onClick={() => { if (playing) { run.current++; stop.current?.(); setPlaying(false); } else void play(); }}>
-      <Icon name={playing ? 'pause' : 'play'} size={17}/>
+    <button className="audio-button" aria-label={playing || loading ? '답변 음성 일시정지' : '답변 음성 재생'} disabled={!available}
+      onClick={() => { if (playing || loading) { run.current++; stop.current?.(); setPlaying(false); setLoading(false); } else void play(); }}>
+      <Icon name={playing || loading ? 'pause' : 'play'} size={17}/>
     </button>
     <div><strong>{playing ? '답변을 듣고 있어요' : loading ? '음성을 불러오는 중' : 'Talky의 답변'}</strong>
-      <span>{turn.has_output_audio ? '다시 듣고 싶으면 재생해 주세요.' : turn.status === 'failed' ? turn.error_message || '음성을 제공하지 못했어요. 자막으로 확인해 주세요.' : turn.status === 'completed' ? '음성을 제공하지 못했어요. 자막으로 확인해 주세요.' : '음성이 준비되면 자동으로 재생돼요.'}</span></div>
+      <span>{available ? '다시 듣고 싶으면 재생해 주세요.' : turn.status === 'failed' ? turn.error_message || '음성을 제공하지 못했어요. 자막으로 확인해 주세요.' : turn.status === 'completed' ? '음성을 제공하지 못했어요. 자막으로 확인해 주세요.' : '음성이 준비되면 자동으로 재생돼요.'}</span></div>
     {playing && <span className="sound-bars" aria-hidden="true"><i/><i/><i/><i/></span>}
     {error && <p className="audio-error" role="status">{error}</p>}
   </div>;
@@ -333,9 +346,16 @@ export default function App() {
     catch (err) { setError(err.message); }
   }
   useEffect(() => { setList([]); if (user) void refresh(); }, [user?.id, page]);
-  function choose(id) { setCid(id); setView('chat'); setNavOpen(false); const url = new URL(location.href); url.searchParams.delete('exam'); if (id) url.searchParams.set('c', id); else url.searchParams.delete('c'); history.replaceState({}, '', url); }
+  function choose(id) { setCid(id); setView('chat'); setNavOpen(false); const url = new URL(location.href); url.searchParams.delete('exam'); url.searchParams.delete('tts'); if (id) url.searchParams.set('c', id); else url.searchParams.delete('c'); history.replaceState({}, '', url); }
+  function openView(next) {
+    setView(next); setNavOpen(false);
+    const url = new URL(location.href);
+    url.searchParams.delete('exam'); url.searchParams.delete('tts');
+    if (next !== 'chat') url.searchParams.set(next, '1');
+    history.replaceState({}, '', url);
+  }
   if (user === undefined) return <main className="loading-screen"><div className="brand"><Mark/>talky.</div><p role="status">대화를 준비하고 있어요…</p><Notice>{error}</Notice>{error && <button className="primary" onClick={checkLogin}>다시 연결</button>}</main>;
   if (!user && view === 'exam') return <main className="guest-layout"><header className="guest-header"><a className="brand" href="/"><Mark/>talky.</a><button className="quiet" onClick={() => setView('chat')}>로그인으로 돌아가기</button></header><Exam/></main>;
   if (!user) return <Auth onGuest={() => setView('exam')} onLogin={value => { setUser(value); setList([]); choose(null); }}/>;
-  return <div className="app-shell"><button className="mobile-nav-button quiet" onClick={() => setNavOpen(!navOpen)} aria-expanded={navOpen} aria-controls="sidebar">{navOpen ? '메뉴 닫기' : '메뉴 열기'}</button><aside id="sidebar" className={`sidebar ${navOpen ? 'open' : ''}`}><a className="brand" href="/" onClick={e => { e.preventDefault(); choose(null); }}><Mark/>talky<span className="brand-period">.</span></a><button className="primary new-conversation" onClick={() => choose(null)}><Icon name="plus" size={18}/>새 대화</button><nav aria-label="학습 메뉴"><button className={view === 'chat' ? 'selected' : ''} aria-current={view === 'chat' ? 'page' : undefined} onClick={() => { setView('chat'); setNavOpen(false); }}><Icon name="chat"/>영어 회화</button><button className={view === 'exam' ? 'selected' : ''} aria-current={view === 'exam' ? 'page' : undefined} onClick={() => { setView('exam'); setNavOpen(false); }}><Icon name="book"/>스피킹 모의고사</button></nav><section className="history"><h2>내 대화</h2><Notice>{error}</Notice>{!list.length && <p className="empty-history">새로운 이야기를 시작해 보세요.</p>}<div className="history-list">{list.map(item => <button key={item.id} className={cid === item.id && view === 'chat' ? 'active' : ''} onClick={() => choose(item.id)}><Icon name="chat" size={16}/><span>{item.title === 'New Conversation' ? '새로운 대화' : item.title}</span>{item.ended_at && <span className="sr-only">종료됨</span>}</button>)}</div>{(page > 0 || list.length === 50) && <div className="history-pages"><button disabled={!page} onClick={() => setPage(page - 1)}>이전</button><span>{page + 1}</span><button disabled={list.length < 50} onClick={() => setPage(page + 1)}>다음</button></div>}</section><footer className="sidebar-footer"><span className="user-avatar">{(user.name || '나')[0].toUpperCase()}</span><span>{user.name}</span><button className="icon-button" aria-label="로그아웃" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); setUser(null); setCid(null); setList([]); } catch (err) { setError(err.message); } }}><Icon name="logout" size={18}/></button></footer></aside><main className="workspace">{view === 'chat' ? <Conversation cid={cid} onCreated={choose} onRefresh={refresh} user={user}/> : <Exam/>}</main></div>;
+  return <div className="app-shell"><button className="mobile-nav-button quiet" onClick={() => setNavOpen(!navOpen)} aria-expanded={navOpen} aria-controls="sidebar">{navOpen ? '메뉴 닫기' : '메뉴 열기'}</button><aside id="sidebar" className={`sidebar ${navOpen ? 'open' : ''}`}><a className="brand" href="/" onClick={e => { e.preventDefault(); choose(null); }}><Mark/>talky<span className="brand-period">.</span></a><button className="primary new-conversation" onClick={() => choose(null)}><Icon name="plus" size={18}/>새 대화</button><nav aria-label="학습 메뉴"><button className={view === 'chat' ? 'selected' : ''} aria-current={view === 'chat' ? 'page' : undefined} onClick={() => openView('chat')}><Icon name="chat"/>영어 회화</button><button className={view === 'exam' ? 'selected' : ''} aria-current={view === 'exam' ? 'page' : undefined} onClick={() => openView('exam')}><Icon name="book"/>스피킹 모의고사</button></nav><section className="history"><h2>내 대화</h2><Notice>{error}</Notice>{!list.length && <p className="empty-history">새로운 이야기를 시작해 보세요.</p>}<div className="history-list">{list.map(item => <button key={item.id} className={cid === item.id && view === 'chat' ? 'active' : ''} onClick={() => choose(item.id)}><Icon name="chat" size={16}/><span>{item.title === 'New Conversation' ? '새로운 대화' : item.title}</span>{item.ended_at && <span className="sr-only">종료됨</span>}</button>)}</div>{(page > 0 || list.length === 50) && <div className="history-pages"><button disabled={!page} onClick={() => setPage(page - 1)}>이전</button><span>{page + 1}</span><button disabled={list.length < 50} onClick={() => setPage(page + 1)}>다음</button></div>}</section><footer className="sidebar-footer"><span className="user-avatar">{(user.name || '나')[0].toUpperCase()}</span><span>{user.name}</span><button className="icon-button" aria-label="로그아웃" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); setUser(null); setCid(null); setList([]); } catch (err) { setError(err.message); } }}><Icon name="logout" size={18}/></button></footer></aside><main className="workspace">{view === 'chat' ? <Conversation cid={cid} onCreated={choose} onRefresh={refresh} user={user}/> : <Exam/>}</main></div>;
 }

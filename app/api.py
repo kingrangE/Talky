@@ -8,7 +8,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
@@ -143,7 +143,12 @@ def create(uid: str = Depends(user_id)):
 
 def public_turn(turn):
     return {key: turn[key] for key in ('id', 'conversation_id', 'status', 'input_text', 'result', 'error_code')} | {
-        'has_input_audio': bool(turn['input_audio_path']), 'has_output_audio': bool(turn['output_audio_path']),
+        'has_input_audio': bool(turn['input_audio_path']),
+        'has_output_audio': bool(turn['output_audio_path']) and turn['result'].get('speech', {}).get('status', 'ready') == 'ready',
+        'has_audio_stream': bool(turn['output_audio_path']) and (
+            turn['result'].get('speech', {}).get('status') == 'ready' or (
+                turn['status'] == 'processing' and turn['result'].get('speech', {}).get('status') == 'generating'
+                and turn['result']['speech'].get('attempt') == turn['attempt'])),
         'starter_topic': turn.get('starter_topic'),
         'error_message': failure_message(turn['error_code']) if turn['status'] == 'failed' else None}
 
@@ -222,12 +227,38 @@ async def send_voice(cid: UUID, rid: UUID, request: Request, uid: str = Depends(
     return public_turn(turn)
 
 
+@app.get('/api/turns/{rid}/audio-stream')
+async def turn_audio_stream(rid: UUID, uid: str = Depends(user_id)):
+    from starlette.concurrency import run_in_threadpool
+    from app.conversation_audio import stream
+    turn = await run_in_threadpool(conversation.get_turn, str(rid), uid)
+    if not public_turn(turn)['has_audio_stream']:
+        raise HTTPException(404, '음성을 사용할 수 없거나 보관 기간이 지났습니다.')
+    chunks = stream(str(rid), uid, turn['attempt'])
+    try:
+        first = await anext(chunks)
+    except Exception:
+        await chunks.aclose()
+        raise HTTPException(503, '음성을 불러오지 못했어요. 자막으로 확인해 주세요.') from None
+    async def deliver():
+        try:
+            yield first
+            async for chunk in chunks:
+                yield chunk
+        finally:
+            await chunks.aclose()
+    return StreamingResponse(deliver(), media_type='audio/pcm', headers={
+        'X-Audio-Sample-Rate': '24000', 'X-Accel-Buffering': 'no'})
+
+
 @app.get('/api/turns/{rid}/audio')
 def turn_audio(rid: UUID, kind: str = 'output', uid: str = Depends(user_id)):
     if kind not in {'input', 'output'}:
         raise HTTPException(404)
     turn = conversation.get_turn(str(rid), uid)
     path = turn[f'{kind}_audio_path']
+    if kind == 'output' and not public_turn(turn)['has_output_audio']:
+        path = None
     if not path:
         raise HTTPException(404, '음성을 사용할 수 없거나 보관 기간이 지났습니다.')
     try:
