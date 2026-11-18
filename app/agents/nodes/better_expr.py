@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.agents.state import GraphState
 from app.llm.factory import get_structured_llm
 from app.llm.prompt_registry import builtin_text, invoke_with_prompt
+from app.llm.conversation_style import NATIVE_ENGLISH_STYLE
 from app.runtime import bounded_history, bounded_messages
 
 BETTER_EXPR_PROMPT = builtin_text("talky/better-expression")
@@ -28,6 +29,7 @@ def _build_messages(state: GraphState) -> list:
     instruction += '\n\nFormat note as Korean bullet points, each on its own line starting with "- ". The first bullet must translate the entire suggestion into Korean. Each following bullet must name a useful expression or grammar pattern actually used in the suggestion and explain its meaning and use in this context in concise Korean (for example, end up ~ing, have + p.p., or taken by ~ only when present). Do not list unrelated patterns, explain every basic word, repeat the translation, or write a general paragraph about why the rewrite sounds better. Keep suggestion as plain English without Markdown.'
     if state.get('audio_bytes'):
         instruction += '\nThis is a speech transcript. Capitalization, punctuation or ASR formatting alone do not require a correction.'
+    instruction += NATIVE_ENGLISH_STYLE
     messages = [
         SystemMessage(content=instruction),
     ]

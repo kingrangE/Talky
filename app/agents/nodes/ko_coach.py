@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.agents.state import GraphState
 from app.llm.factory import get_structured_llm
 from app.llm.prompt_registry import builtin_text, invoke_with_prompt
+from app.llm.conversation_style import NATIVE_ENGLISH_STYLE
 from app.runtime import bounded_messages, format_memory
 
 KO_COACH_SUFFIX = builtin_text("talky/ko-coach")
@@ -27,6 +28,7 @@ def _build_messages(state: GraphState) -> list:
     system = state["system_prompt"] + "\n\n" + suffix
     system += '\n\nFor english_expression, rewrite the ENTIRE latest user message as natural spoken English, including every English and Korean portion in its original order. Correct grammar and improve phrasing in the existing English as well as translating the Korean. Never omit an English sentence merely because it is already English. Preserve all facts, events, quantities, time relationships, negation, intensity and intent; use history only as context, not extra text to rewrite. Before returning, check that each clause of the latest message is represented. Keep this full rewrite separate from reply, which continues the conversation.'
     system += format_memory(state.get("retrieved_memory") or [], MEMORY_HEADER)
+    system += NATIVE_ENGLISH_STYLE
 
     msgs = [SystemMessage(content=system)]
     for m in state.get("history", []):

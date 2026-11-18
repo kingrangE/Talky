@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from app.agents.state import GraphState
 from app.llm.factory import get_chat_llm
 from app.llm.prompt_registry import builtin_text, invoke_with_prompt
+from app.llm.conversation_style import NATIVE_ENGLISH_STYLE
 from app.runtime import bounded_messages, format_memory
 
 NATIVE_SUFFIX = builtin_text("talky/en-reply")
@@ -19,6 +20,7 @@ def _build_messages(state: GraphState) -> list:
         state["system_prompt"]
         + state.get("common_prompt_texts", {}).get("talky/en-reply", NATIVE_SUFFIX)
         + format_memory(state.get("retrieved_memory") or [], MEMORY_HEADER)
+        + NATIVE_ENGLISH_STYLE
     )
     msgs: list = [SystemMessage(content=system)]
     for m in state.get("history", []):
