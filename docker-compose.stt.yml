@@ -1,0 +1,10 @@
+# Google Chirp 3 for conversation audio. The exam keeps local Whisper.
+services:
+  worker:
+    environment:
+      CONVERSATION_STT_PROVIDER: google_chirp3
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:?Set the conversation project}
+      GOOGLE_CLOUD_QUOTA_PROJECT: ${GOOGLE_CLOUD_PROJECT:?Set the conversation project}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/google/adc.json
+    volumes:
+      - ${GOOGLE_ADC_FILE:?Set the ADC file path}:/run/google/adc.json:ro

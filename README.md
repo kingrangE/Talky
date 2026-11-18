@@ -329,6 +329,16 @@ Piper의 ONNX 세션은 프로세스당 계산 스레드를 1개로 제한해 �
 
 2026-11-17 로컬 Docker에서 Amy medium 모델을 미리 로딩한 프로세스 2개로 동일한 짧은 문장 4개를 합성했을 때, 최종 스레드 설정에서 오디오 슬롯 1개는 3.64초, 2개는 1.80초였으며 실제 합성 동시 실행도 각각 1개·2개로 확인했습니다. 슬롯 2개에서 프로세스별 최대 RSS 합계는 약 566MiB였습니다. 이는 TTS만의 소규모 측정이며, 모델 로딩·STT·원격 LLM·HTTP·브라우저 지연을 포함한 전체 서비스의 처리량이나 메모리 상한은 아닙니다.
 
+### Google Chirp 3 대화 음성 인식
+
+Cloud Speech-to-Text API를 활성화하고 아래 구성으로 시작하면 대화 작업자가 사용자 녹음을 Google Cloud Speech-to-Text V2의 미국 멀티 리전으로 보내 영어와 한국어를 자동 판별해 전사합니다. TTS에서 쓰는 `GOOGLE_CLOUD_PROJECT`와 `GOOGLE_ADC_FILE`을 재사용합니다. 인식 요금은 음성 길이에 따라 별도로 청구됩니다. 최대 녹음 길이는 유지하며, Google 동기 인식 한도를 넘길 수 있는 오디오는 짧은 구간으로 나눠 처리합니다.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.api.yml -f docker-compose.tts.yml -f docker-compose.stt.yml up -d --no-deps --build app worker
+```
+
+Whisper로 돌아갈 때는 같은 명령에서 `-f docker-compose.stt.yml`을 빼고 실행합니다. 모의고사는 계속 Whisper를 사용합니다.
+
 ### Google Neural2 대화 음성
 
 일반 회화에는 선택적으로 Google Neural2(F)를 사용합니다. 첫 문장을 암호화 저장한 즉시 재생 경로에 공개하고 뒤 문장을 이어서 생성하므로 번역·교정 완료와 전체 음성 완성을 기다리지 않습니다. Neural2는 양방향 스트리밍 API가 아닌 문장별 합성을 사용하며 화면은 기존 1.5초 상태 조회 주기를 사용합니다. 모의고사와 기존 저장 음성은 기존 경로를 사용합니다.

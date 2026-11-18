@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     CONVERSATION_QUEUE_LIMIT: Annotated[int, Field(ge=1, le=10000)] = 32
     CONVERSATION_QUEUE_WAIT_SECONDS: Annotated[int, Field(ge=1, le=3600)] = 300
 
+    CONVERSATION_STT_PROVIDER: Literal["whisper", "google_chirp3"] = "whisper"
+    GOOGLE_CLOUD_PROJECT: str = ""
     WHISPER_MODEL: str = "small"
     WHISPER_DEVICE: Literal["cpu", "cuda"] = "cpu"
     WHISPER_COMPUTE_TYPE: str = "int8"

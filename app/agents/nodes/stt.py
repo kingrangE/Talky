@@ -1,6 +1,6 @@
 """STT 노드.
 
-audio_bytes 가 있으면 faster-whisper 로 텍스트 + 언어 검출.
+audio_bytes가 있으면 설정된 대화 음성 인식기로 텍스트와 언어를 얻는다.
 없으면 user_text 의 한글 포함 여부로 언어를 휴리스틱 결정.
 """
 
@@ -29,7 +29,11 @@ def stt_node(state: GraphState) -> dict:
     audio = state.get("audio_bytes")
     if audio:
         started = monotonic()
-        text, lang = transcribe(audio)
+        if get_settings().CONVERSATION_STT_PROVIDER == "google_chirp3":
+            from app.audio.google_stt import transcribe as google_transcribe
+            text, lang = google_transcribe(audio)
+        else:
+            text, lang = transcribe(audio)
         recognized = monotonic()
         text = text.strip()
         if not text:
