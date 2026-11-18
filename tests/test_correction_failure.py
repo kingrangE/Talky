@@ -1,5 +1,12 @@
+from app.llm.rewrite_protection import ProtectedRewrite
 import pytest
 from app.agents.nodes import better_expr
+
+
+@pytest.fixture(autouse=True)
+def isolated_source_protection(monkeypatch):
+    # These tests isolate generation/formatting; name protection has separate failure scenarios.
+    monkeypatch.setattr(better_expr, 'prepare_rewrite', lambda state: ProtectedRewrite(state, {}, []))
 
 
 def learning_note(translation, pattern='past simple', explanation='과거에 끝난 일을 말해요.'):

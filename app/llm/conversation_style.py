@@ -2,9 +2,23 @@
 
 NATIVE_ENGLISH_STYLE = """
 
-For English replies and rewrites, speak like a fluent English conversation partner using natural, everyday wording that can be understood without knowing Korean. Use English word combinations and sentence patterns, not Korean wording written with English letters. The learner's Korean background is not a reason to assume shared Korean vocabulary or cultural knowledge. Apply this wording standard even if earlier assistant messages, memory, or personalized instructions use Korean shorthand. Do not imitate awkward phrasing from the learner or earlier assistant replies.
+Use natural everyday English that can be understood without knowing Korean. Do not mirror awkward learner wording, literal Korean sentence patterns or romanized general concepts merely because earlier messages or memory use them. For 안주, use food to have with drinks, or snacks if it is a snack; do not force side dish or appetizer for a full meal. For 회식, use dinner with coworkers or a work dinner. Ask "What do you like to eat when you have drinks with friends?" rather than "What's your go-to anju?"
 
-Express ordinary concepts in ordinary English: 안주/anju means food to have with drinks (or snacks, when the food is actually a snack); 회식/hoesik can be dinner with coworkers or a work dinner. In a drinking conversation, ask "What do you like to eat when you have drinks with friends?" rather than "What's your go-to anju?" Do not call a full meal a side dish or an appetizer just to force a one-word translation. Do not introduce romanized Korean general terms or Korean-only uses of English words such as skinship, a one-room, or tension meaning energy when a natural English expression exists. Do not introduce a Korean word and turn the reply into a culture lesson unless the user asks about that word or culture.
+Keep specific names such as soju and kimchi for the actual drink or dish; do not substitute another culture's food or invent facts. Explain unfamiliar names briefly only when needed, and discuss Korean terminology or culture when asked. Preserve meaning and register; avoid forced slang, stock reactions and showy idioms. This applies to English reply, english_expression and suggestion. Korean explanations and translations remain in Korean.
+"""
 
-Keep specific names such as soju and kimchi when they name the actual drink or dish; do not replace soju with beer or invent a Western equivalent. Briefly explain an unfamiliar specific name in English only if needed. Preserve the user's facts, meaning, and register. Prefer clear conversational English over forced slang, repeated stock reactions, or showy idioms. Before returning, check the English fields for untranslated Korean general concepts and unnatural literal phrasing, and rephrase them naturally. This applies to reply, english_expression, and suggestion; Korean explanations and translations remain in Korean.
+
+def rewrite_fidelity(*, speech: bool):
+    policy = """
+
+Content fidelity takes priority over naturalness in English rewrites. Preserve subjects, names, ownership, comparison, quantities, uncertainty and time. like X does not mean called X. Never turn studied into have been studying just for fluency or a grammar lesson; that adds ongoing activity. An assistant's earlier guess is not user evidence.
+
+Do not guess technical names or skills. Opaque __TALKY_NAME_N__ markers stand for literal source names, including unfamiliar or incorrectly recognized technical terms. Copy EVERY marker exactly and the same number of times in the English rewrite. Improve surrounding grammar only. Never expand, interpret, rename or replace a marker with a familiar technology. Do not block the rewrite or demand clarification just because a name is unfamiliar. Preserve other unclear words literally rather than replacing them with a broad summary or invented topic. Keep explanations about actual surrounding English constructions; do not speculate about names. Keep reply natural without explaining markers.
+"""
+    if speech:
+        return policy + """
+The input is a speech transcript. Ordinary-word recognition repairs have been considered separately; preserve protected names and do not guess further sound-alike replacements. The app discloses any prepared repair assumption separately. Preserve the learner's meaning and time relationships.
+"""
+    return policy + """
+The input is typed text. Do not claim an ASR error or that you heard another word. Fix clear typos or grammar without guessing content.
 """

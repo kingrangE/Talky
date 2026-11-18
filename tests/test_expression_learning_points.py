@@ -1,7 +1,14 @@
+from app.llm.rewrite_protection import ProtectedRewrite
 import pytest
 from pydantic import ValidationError
 
 from app.agents.nodes import better_expr
+
+
+@pytest.fixture(autouse=True)
+def isolated_source_protection(monkeypatch):
+    # These tests isolate generation/formatting; name protection has separate failure scenarios.
+    monkeypatch.setattr(better_expr, 'prepare_rewrite', lambda state: ProtectedRewrite(state, {}, []))
 
 SUGGESTION = "I've been getting up around 11 lately and studying my major."
 TRANSLATION = '저는 요즘 11시쯤 일어나서 전공 공부를 하고 있어요.'

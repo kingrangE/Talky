@@ -27,6 +27,7 @@ from app.graph_db.neo4j_client import get_driver
 from app.graph_db.recall import recall_related
 from app.llm.factory import get_chat_llm, get_structured_llm
 from app.llm.prompt_registry import get_client, invoke_with_prompt, remote_prompt, resolve_reference
+from app.llm.rewrite_protection import prepare_rewrite, restore_rewrite
 from app.runtime import bounded_history, bounded_messages
 from app.settings import get_settings
 
@@ -319,9 +320,12 @@ class Benchmark:
             name, schema, builder = 'talky/ko-coach', ko_coach.KoCoachOutput, ko_coach._build_messages
         else:
             name, schema, builder = 'talky/en-reply', None, en_reply._build_messages
-        messages = bounded_messages(builder(state))
+        prepared = prepare_rewrite(state) if schema else None
+        messages = bounded_messages(builder(prepared.state if prepared else state))
         llm = get_structured_llm(schema) if schema else get_chat_llm(streaming=False)
         value = invoke_with_prompt(llm, messages, state, name)
+        if prepared:
+            value = restore_rewrite(value, prepared)
         candidate = value.model_dump() if schema else {'reply': value.content}
         if schema is better_expr.BetterExpressionOutput:
             candidate['note'] = value.note.as_bullets()

@@ -1,6 +1,13 @@
+from app.llm.rewrite_protection import ProtectedRewrite
 import pytest
 
 from app.agents.nodes import ko_coach
+
+
+@pytest.fixture(autouse=True)
+def isolated_source_protection(monkeypatch):
+    # These tests isolate generation/formatting; name protection has separate failure scenarios.
+    monkeypatch.setattr(ko_coach, 'prepare_rewrite', lambda state: ProtectedRewrite(state, {}, []))
 from app.agents.nodes.router import route_by_lang
 from app.agents.nodes.stt import stt_node
 

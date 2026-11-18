@@ -1,3 +1,4 @@
+from app.llm.rewrite_protection import ProtectedRewrite
 import pytest
 import json
 
@@ -129,6 +130,7 @@ def test_expression_evaluation_serializes_structured_learning_notes(monkeypatch)
     })
     monkeypatch.setattr(evaluate, 'get_structured_llm', lambda _: object())
     monkeypatch.setattr(evaluate, 'invoke_with_prompt', lambda *_: output)
+    monkeypatch.setattr(evaluate, 'prepare_rewrite', lambda state: ProtectedRewrite(state, {}, []))
     benchmark = Benchmark.__new__(Benchmark)
     benchmark.prompts = {'talky/system':SimpleNamespace(prompt='A conversational tutor.')}
     benchmark.refs = {'talky/system':{}}
