@@ -108,11 +108,16 @@ small { font-size: .8125rem; color: var(--muted); }
 .conversation-header { min-height: 108px; padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #e7ece9; }
 .conversation-header h1 { font-size: 1.125rem; margin: 4px 0 0; }
 .section-kicker { font-size: .75rem; font-weight: 550; color: var(--muted); }
+.conversation-heading { min-width: 0; }
+.conversation-title, .conversation-title-editor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.conversation-title h1 { overflow-wrap: anywhere; }
+.conversation-title-editor input { min-width: 0; width: min(220px, 100%); padding: 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.conversation-title-editor .notice { flex-basis: 100%; }
 .header-actions { display: flex; gap: 12px; align-items: center; flex-shrink: 0; }
 .conversation-menu { position: relative; }
 .conversation-menu > summary { list-style: none; display: flex; width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; }
 .conversation-menu > summary::-webkit-details-marker { display: none; }
-.conversation-menu form { position: absolute; top: 100%; right: 0; width: 270px; padding: 20px; background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 30px #172c2c12; border-radius: 12px; z-index: 3; display: grid; gap: 10px; }
+.conversation-menu-panel { position: absolute; top: 100%; right: 0; width: 270px; padding: 20px; background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 30px #172c2c12; border-radius: 12px; z-index: 3; display: grid; gap: 10px; }
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .chat-content { max-width: 840px; padding: 32px 40px; margin: 0 auto; }
 .empty-conversation { padding: clamp(24px, 9vh, 96px) 0 40px; max-width: 760px; margin: 0 auto; }

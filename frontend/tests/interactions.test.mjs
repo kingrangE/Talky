@@ -368,3 +368,38 @@ test('mode cannot change during recording and tracks are released on unmount', a
   await React.act(async () => root.render(null));
   assert.ok(released >= 1);
 });
+
+test('automatic title reaches the sidebar and a manual rename updates it without reopening', async () => {
+  history.replaceState({}, '', '/?c=c1');
+  let serverTitle = null;
+  let patch;
+  globalThis.fetch = async (url, options = {}) => {
+    if (url === '/api/auth/me') return response({ id: 'u1', name: 'Learner' });
+    if (url.startsWith('/api/conversations?')) return response([{ id: 'c1', title: null }]);
+    if (options.method === 'PATCH') {
+      patch = JSON.parse(options.body);
+      serverTitle = patch.title;
+      return response({ ok: true });
+    }
+    return response({ id: 'c1', title: serverTitle, messages: [], turns: [] });
+  };
+  await React.act(async () => { root.render(React.createElement(App)); await tick(); });
+  await React.act(async () => { await tick(); });
+  assert.equal(document.querySelector('.history-list button span').textContent, '새로운 대화');
+  serverTitle = '파스타 만들기';
+  await React.act(async () => { await new Promise(resolve => setTimeout(resolve, 1550)); });
+  assert.equal(document.querySelector('.history-list button span').textContent, '파스타 만들기');
+  await React.act(async () => { document.querySelector('.conversation-title button').click(); });
+  const input = document.getElementById('conversation-title');
+  await React.act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, '내 파스타 연습');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await React.act(async () => {
+    document.querySelector('.conversation-title-editor').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+  });
+  assert.deepEqual(patch, { title: '내 파스타 연습' });
+  assert.equal(document.querySelector('.conversation-title h1').textContent, '내 파스타 연습');
+  assert.equal(document.querySelector('.history-list button span').textContent, '내 파스타 연습');
+});

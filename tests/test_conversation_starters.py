@@ -45,6 +45,7 @@ def test_topic_creates_only_assistant_opening_and_can_continue_with_user_speech(
     assert receipt['result']['assistant_message_id']
     messages = repo.load_messages(cid, uid)
     assert len(messages) == 1 and messages[0]['role'] == 'assistant'
+    assert repo.list_conversations(uid)[0]['title'] == '가고 싶은 여행지'
     assert len(calls) == 0
     assert queue.submit_turn(**request)['status'] == 'completed'
     queue.submit_turn(request_id=str(uuid.uuid4()), conversation_id=cid, user_id=uid, user_text='I would like to go to Japan.')

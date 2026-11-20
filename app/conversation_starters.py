@@ -14,6 +14,12 @@ TOPICS = {
 }
 
 
+TOPIC_TITLES = {
+    "daily": "오늘의 일상", "travel": "가고 싶은 여행지", "food": "좋아하는 음식",
+    "hobbies": "여가 시간과 취미", "work": "평일 일과",
+}
+
+
 def starter_node(state):
     topic = state['starter_topic']
     with session_scope() as session:
@@ -25,7 +31,10 @@ def starter_node(state):
         if turn.result:
             return turn.result
         # The first turn has no prior utterance to react to; only later turns use free generation.
-        reply = TOPICS[topic] or choice([question for question in TOPICS.values() if question])
+        selected = choice(list(TOPIC_TITLES)) if topic == "random" else topic
+        reply = TOPICS[selected]
+        if conv.title is None:
+            conv.title = TOPIC_TITLES[selected]
         message = Message(conversation_id=conv.id, role='assistant', language='en', content=reply)
         session.add(message)
         session.flush()

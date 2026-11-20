@@ -19,6 +19,7 @@ from app.agents.nodes.persist import persist_node, persist_correction_node
 from app.agents.nodes.router import route_by_lang
 from app.agents.nodes.stt import stt_node
 from app.agents.nodes.tts import tts_node
+from app.agents.nodes.title import title_node
 from app.agents.state import GraphState
 from app.llm.prompts import load_conversation_prompt_node
 from app.conversation_starters import starter_node
@@ -51,6 +52,9 @@ def build_conversation_graph():
     )
     g.add_edge("ko_coach", "persist")
     g.add_edge("en_reply", "persist")
+    g.add_node("title", title_node)
+    g.add_edge("persist", "title")
+    g.add_edge("title", END)
     g.add_edge("persist", "tts")
     g.add_edge("persist", "translation")
     g.add_conditional_edges("persist", lambda state: "better_expr" if state.get("language")=="en" else END,

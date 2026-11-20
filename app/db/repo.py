@@ -100,7 +100,7 @@ def get_conversation_prompt(conversation_id: str, user_id: str | uuid.UUID) -> d
     return _hydrate_prompt(result)
 
 
-def create_conversation(title: str = "New Conversation", *, user_id: str | uuid.UUID) -> str:
+def create_conversation(title: str | None = None, *, user_id: str | uuid.UUID) -> str:
     user_id = _to_uuid(user_id)
     from app.db.seed import seed_prompt_v1
 
@@ -156,6 +156,22 @@ def update_conversation_title(conversation_id: str, title: str, user_id: str | u
     with session_scope() as s:
         conv = _owned_conversation(s, cid, user_id, lock=True)
         conv.title = title.strip()[:256]
+
+
+def conversation_needs_title(conversation_id, user_id) -> bool:
+    with session_scope() as s:
+        conv = _owned_conversation(s, conversation_id, user_id)
+        return conv.title is None
+
+
+def save_automatic_title(conversation_id, user_id, title: str) -> None:
+    with session_scope() as s:
+        # A concurrent manual rename always wins, including while the model is running.
+        s.execute(update(Conversation).where(
+            Conversation.id == _to_uuid(conversation_id),
+            Conversation.user_id == _to_uuid(user_id),
+            Conversation.title.is_(None),
+        ).values(title=title))
 
 
 def save_turn(

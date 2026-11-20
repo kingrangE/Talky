@@ -45,6 +45,20 @@ def test_upload_boundary_and_validation_do_not_echo_secrets(web, monkeypatch):
     assert secret not in response.text
 
 
+def test_create_accepts_an_optional_manual_title(web, monkeypatch):
+    uid = str(uuid.uuid4())
+    api.app.dependency_overrides[api.user_id] = lambda: uid
+    calls = []
+    def create(**fields):
+        calls.append(fields)
+        return 'conversation-id'
+    monkeypatch.setattr(api.repo, 'create_conversation', create)
+    assert web.post('/api/conversations').status_code == 201
+    assert web.post('/api/conversations', json={'title': '  회화 연습  '}).status_code == 201
+    assert web.post('/api/conversations', json={'title': '  '}).status_code == 400
+    assert calls == [{'user_id': uid}, {'title': '회화 연습', 'user_id': uid}]
+
+
 def test_empty_voice_and_provider_failure_have_safe_explanations(web, monkeypatch):
     api.app.dependency_overrides[api.user_id] = lambda: str(uuid.uuid4())
     path = f'/api/conversations/{uuid.uuid4()}/turns/{uuid.uuid4()}/voice'

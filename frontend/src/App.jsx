@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, json, mergeTurns, pendingTurns } from './api.js';
 import { playAudio, playbackMessage, recordingMessage, startCapture, stopPlayback, unlockAudio } from './audio.js';
 import { Icon, Mark } from './icons.jsx';
@@ -207,7 +207,7 @@ function Report({ report, rating, onSave }) {
   </section>;
 }
 
-export function Conversation({ cid, onRefresh, onCreated, user }) {
+export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [locals, setLocals] = useState([]);
@@ -215,7 +215,10 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
   const [mode, setMode] = useState('text');
   const [ending, setEnding] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(null);
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [titleError, setTitleError] = useState('');
+  const titleRevision = useRef(0);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const bottom = useRef(null);
   const current = useRef(cid);
@@ -234,17 +237,25 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     const key = `talky:draft:${user.id}:${cid || 'new'}`;
     setDraft(sessionStorage.getItem(key) || '');
     setData(null); setError(''); setLoading(Boolean(cid));
+    setTitle(null); setTitleError('');
     if (!cid) return;
     let alive = true, timer, controller;
     let waitingForTranscript = false;
     async function refresh() {
       controller = new AbortController();
+      const revision = titleRevision.current;
       try {
         const next = await api(`/conversations/${cid}`, { signal: controller.signal });
         if (!alive) return;
         waitingForTranscript = next.turns.some(turn => turn.has_input_audio && !turn.input_text
           && ['queued', 'processing'].includes(turn.status));
-        setData(next); setError(''); setLoading(false);
+        if (revision === titleRevision.current) {
+          setData(next);
+          onTitleChange?.(cid, next.title);
+        } else {
+          setData(old => ({ ...next, title: old?.title ?? next.title }));
+        }
+        setError(''); setLoading(false);
         const received = new Set(next.turns.map(turn => turn.id));
         setLocals(old => old.filter(turn => !received.has(turn.id)));
       } catch (err) {
@@ -257,15 +268,42 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
     }
     void refresh();
     return () => { alive = false; clearTimeout(timer); controller?.abort(); };
-  }, [cid, user.id]);
-  useEffect(() => { setTitle(data?.title || ''); }, [data?.title]);
+  }, [cid, user.id, onTitleChange]);
+  async function saveTitle(event) {
+    event.preventDefault();
+    const value = title?.trim();
+    if (!value || savingTitle || inFlight.current) return;
+    setSavingTitle(true); setTitleError('');
+    try {
+      if (cid) {
+        await api(`/conversations/${cid}`, json('PATCH', { title: value }));
+        onTitleChange?.(cid, value);
+        if (current.current === cid) {
+          titleRevision.current++;
+          setData(old => old && { ...old, title: value });
+        }
+      } else {
+        const created = await api('/conversations', json('POST', { title: value }));
+        if (current.current === cid) {
+          if (draft) sessionStorage.setItem(`talky:draft:${user.id}:${created.id}`, draft);
+          onCreated(created.id);
+        }
+        void onRefresh();
+      }
+      if (current.current === cid) setTitle(null);
+    } catch (err) {
+      if (current.current === cid) setTitleError(err.message);
+    } finally {
+      setSavingTitle(false);
+    }
+  }
   function updateDraft(value) { setDraft(value); sessionStorage.setItem(`talky:draft:${user.id}:${cid || 'new'}`, value); }
   const turns = mergeTurns(data?.turns || [], locals.filter(turn => turn.conversation_id === cid || (!cid && !turn.conversation_id)));
   const messages = data?.messages || [];
   const outstanding = turns.some(turn => ['queued', 'processing', 'sending', 'unconfirmed'].includes(turn.status));
   useEffect(() => { if (nearBottom.current) bottom.current?.scrollIntoView({ block: 'end', behavior: 'instant' }); }, [messages.length, turns.length, turns.filter(t => t.has_output_audio).length, cid]);
   async function send(content, preview, clearClip, previous) {
-    if (inFlight.current || (outstanding && !previous)) return;
+    if (inFlight.current || (!cid && savingTitle) || (outstanding && !previous)) return;
     inFlight.current = true; setError('');
     const voice = content instanceof Blob;
     const topic = !voice && typeof content === 'object' ? content.starter_topic : null;
@@ -312,12 +350,42 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
   }
   return <section className="conversation-view">
     {updateAvailable && <div className="notice" role="status">새 기능이 업데이트됐어요. 보내지 않은 녹음이 있다면 먼저 보내 주세요. <button className="text-button" onClick={() => window.location.reload()}>최신 화면 불러오기</button></div>}
-    <header className="conversation-header"><div><span className="section-kicker">영어 회화</span><h1>{data?.title && data.title !== 'New Conversation' ? data.title : '나의 이야기가 영어가 되는 시간'}</h1></div>
-      {cid && data && <div className="header-actions"><button className="quiet" disabled={outstanding || ending || !messages.length || Boolean(data.report)} onClick={end}>{ending ? '돌아보는 중…' : data.ended_at && !data.report ? '보고서 다시 만들기' : '대화 마치기'}</button><details className="conversation-menu"><summary aria-label="대화 관리"><Icon name="more"/></summary><form onSubmit={async event => { event.preventDefault(); try { await api(`/conversations/${cid}`, json('PATCH', { title })); void onRefresh(); } catch (err) { setError(err.message); } }}><label htmlFor="title">대화 이름</label><input id="title" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} required/><button className="quiet">이름 저장</button><button type="button" className="danger" onClick={async () => { if (!window.confirm(`‘${data.title}’ 대화와 학습 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return; try { await api(`/conversations/${cid}`, { method: 'DELETE' }); onCreated(null); await onRefresh(); } catch (err) { setError(err.message); } }}>대화 삭제</button></form></details></div>}
+    <header className="conversation-header">
+      <div className="conversation-heading">
+        <span className="section-kicker">영어 회화</span>
+        {title === null ? <div className="conversation-title">
+          <h1>{data?.title && data.title !== 'New Conversation' ? data.title : '새로운 대화'}</h1>
+          {(!cid || data) && <button className="quiet" onClick={() => {
+            setTitle(data?.title === 'New Conversation' ? '' : data?.title || '');
+            setTitleError('');
+          }}>제목 수정</button>}
+        </div> : <form className="conversation-title-editor" onSubmit={saveTitle}>
+          <label className="sr-only" htmlFor="conversation-title">대화 제목</label>
+          <input id="conversation-title" autoFocus value={title} onChange={event => setTitle(event.target.value)}
+            maxLength={100} required disabled={savingTitle} placeholder="대화 제목"
+            onKeyDown={event => { if (event.key === 'Escape' && !savingTitle) setTitle(null); }}/>
+          <button className="primary" disabled={savingTitle || !title.trim()}>저장</button>
+          <button type="button" className="quiet" disabled={savingTitle} onClick={() => setTitle(null)}>취소</button>
+          <Notice>{titleError}</Notice>
+        </form>}
+      </div>
+      {cid && data && <div className="header-actions">
+        <button className="quiet" disabled={outstanding || ending || !messages.length || Boolean(data.report)} onClick={end}>{ending ? '돌아보는 중…' : data.ended_at && !data.report ? '보고서 다시 만들기' : '대화 마치기'}</button>
+        <details className="conversation-menu">
+          <summary aria-label="대화 관리"><Icon name="more"/></summary>
+          <div className="conversation-menu-panel">
+            <button type="button" className="danger" onClick={async () => {
+              if (!window.confirm(`‘${data.title || '새로운 대화'}’ 대화와 학습 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+              try { await api(`/conversations/${cid}`, { method: 'DELETE' }); onCreated(null); await onRefresh(); }
+              catch (err) { setError(err.message); }
+            }}>대화 삭제</button>
+          </div>
+        </details>
+      </div>}
     </header>
     <div className="chat-scroll" ref={scroll} onScroll={() => { const el = scroll.current; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}><div className="chat-content"><Notice>{error}</Notice>
       {loading && <p className="muted" role="status">대화를 불러오고 있어요…</p>}
-      {!loading && !messages.length && !turns.length && <div className="empty-conversation"><div className="empty-mark"><Mark/></div><h2>오늘은 어떤 이야기를 해볼까요?</h2><p>주제를 고르면 Talky가 먼저 말을 걸어요.<br/>아래에서 직접 이야기하며 시작해도 좋아요.</p><div className="starter-prompts" aria-label="AI가 먼저 시작할 대화 주제">{[['daily','오늘의 일상'],['travel','여행'],['food','음식'],['hobbies','취미'],['work','일과 학교'],['random','아무 주제나']].map(([topic,label]) => <button key={topic} disabled={outstanding || inFlight.current} onClick={() => { void unlockAudio().catch(() => {}); void send({ starter_topic: topic }); }}>{label}<span aria-hidden="true">↗</span></button>)}</div></div>}
+      {!loading && !messages.length && !turns.length && <div className="empty-conversation"><div className="empty-mark"><Mark/></div><h2>오늘은 어떤 이야기를 해볼까요?</h2><p>주제를 고르면 Talky가 먼저 말을 걸어요.<br/>아래에서 직접 이야기하며 시작해도 좋아요.</p><div className="starter-prompts" aria-label="AI가 먼저 시작할 대화 주제">{[['daily','오늘의 일상'],['travel','여행'],['food','음식'],['hobbies','취미'],['work','일과 학교'],['random','아무 주제나']].map(([topic,label]) => <button key={topic} disabled={outstanding || inFlight.current || savingTitle} onClick={() => { void unlockAudio().catch(() => {}); void send({ starter_topic: topic }); }}>{label}<span aria-hidden="true">↗</span></button>)}</div></div>}
       {messages.map((message, index) => {
         const turn = turns.find(t => t.result?.[message.role === 'user' ? 'user_message_id' : 'assistant_message_id'] === message.id);
         const reply = turn ? messages.find(m => m.id === turn.result?.assistant_message_id) : messages[index + 1]?.role === 'assistant' ? messages[index + 1] : null;
@@ -329,7 +397,7 @@ export function Conversation({ cid, onRefresh, onCreated, user }) {
       {data?.report && <Report key={cid} report={data.report} rating={data.rating} onSave={body => api(`/conversations/${cid}/rating`, json('PUT', body))}/>}
       <div ref={bottom}/>
     </div></div>
-    {!data?.ended_at && <Composer key={cid || 'new'} disabled={outstanding || ending || loading || Boolean(cid && !data)} onSend={send} draft={draft} setDraft={updateDraft} mode={mode} setMode={setMode}/>}
+    {!data?.ended_at && <Composer key={cid || 'new'} disabled={outstanding || ending || loading || (!cid && savingTitle) || Boolean(cid && !data)} onSend={send} draft={draft} setDraft={updateDraft} mode={mode} setMode={setMode}/>}
     {data?.ended_at && !data.report && <div className="ended-note" role="status">대화를 마쳤어요. 위의 버튼으로 보고서를 다시 만들 수 있습니다.</div>}
   </section>;
 }
@@ -354,6 +422,11 @@ export default function App() {
     catch (err) { setError(err.message); }
   }
   useEffect(() => { setList([]); if (user) void refresh(); }, [user?.id, page]);
+  const updateListTitle = useCallback((id, title) => {
+    setList(items => items.some(item => item.id === id && item.title !== title)
+      ? items.map(item => item.id === id ? { ...item, title } : item)
+      : items);
+  }, []);
   function choose(id) { setCid(id); setView('chat'); setNavOpen(false); const url = new URL(location.href); url.searchParams.delete('exam'); url.searchParams.delete('tts'); if (id) url.searchParams.set('c', id); else url.searchParams.delete('c'); history.replaceState({}, '', url); }
   function openView(next) {
     setView(next); setNavOpen(false);
@@ -365,5 +438,5 @@ export default function App() {
   if (user === undefined) return <main className="loading-screen"><div className="brand"><Mark/>talky.</div><p role="status">대화를 준비하고 있어요…</p><Notice>{error}</Notice>{error && <button className="primary" onClick={checkLogin}>다시 연결</button>}</main>;
   if (!user && view === 'exam') return <main className="guest-layout"><header className="guest-header"><a className="brand" href="/"><Mark/>talky.</a><button className="quiet" onClick={() => setView('chat')}>로그인으로 돌아가기</button></header><Exam/></main>;
   if (!user) return <Auth onGuest={() => setView('exam')} onLogin={value => { setUser(value); setList([]); choose(null); }}/>;
-  return <div className="app-shell"><button className="mobile-nav-button quiet" onClick={() => setNavOpen(!navOpen)} aria-expanded={navOpen} aria-controls="sidebar">{navOpen ? '메뉴 닫기' : '메뉴 열기'}</button><aside id="sidebar" className={`sidebar ${navOpen ? 'open' : ''}`}><a className="brand" href="/" onClick={e => { e.preventDefault(); choose(null); }}><Mark/>talky<span className="brand-period">.</span></a><button className="primary new-conversation" onClick={() => choose(null)}><Icon name="plus" size={18}/>새 대화</button><nav aria-label="학습 메뉴"><button className={view === 'chat' ? 'selected' : ''} aria-current={view === 'chat' ? 'page' : undefined} onClick={() => openView('chat')}><Icon name="chat"/>영어 회화</button><button className={view === 'exam' ? 'selected' : ''} aria-current={view === 'exam' ? 'page' : undefined} onClick={() => openView('exam')}><Icon name="book"/>스피킹 모의고사</button></nav><section className="history"><h2>내 대화</h2><Notice>{error}</Notice>{!list.length && <p className="empty-history">새로운 이야기를 시작해 보세요.</p>}<div className="history-list">{list.map(item => <button key={item.id} className={cid === item.id && view === 'chat' ? 'active' : ''} onClick={() => choose(item.id)}><Icon name="chat" size={16}/><span>{item.title === 'New Conversation' ? '새로운 대화' : item.title}</span>{item.ended_at && <span className="sr-only">종료됨</span>}</button>)}</div>{(page > 0 || list.length === 50) && <div className="history-pages"><button disabled={!page} onClick={() => setPage(page - 1)}>이전</button><span>{page + 1}</span><button disabled={list.length < 50} onClick={() => setPage(page + 1)}>다음</button></div>}</section><footer className="sidebar-footer"><span className="user-avatar">{(user.name || '나')[0].toUpperCase()}</span><span>{user.name}</span><button className="icon-button" aria-label="로그아웃" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); setUser(null); setCid(null); setList([]); } catch (err) { setError(err.message); } }}><Icon name="logout" size={18}/></button></footer></aside><main className="workspace">{view === 'chat' ? <Conversation cid={cid} onCreated={choose} onRefresh={refresh} user={user}/> : <Exam/>}</main></div>;
+  return <div className="app-shell"><button className="mobile-nav-button quiet" onClick={() => setNavOpen(!navOpen)} aria-expanded={navOpen} aria-controls="sidebar">{navOpen ? '메뉴 닫기' : '메뉴 열기'}</button><aside id="sidebar" className={`sidebar ${navOpen ? 'open' : ''}`}><a className="brand" href="/" onClick={e => { e.preventDefault(); choose(null); }}><Mark/>talky<span className="brand-period">.</span></a><button className="primary new-conversation" onClick={() => choose(null)}><Icon name="plus" size={18}/>새 대화</button><nav aria-label="학습 메뉴"><button className={view === 'chat' ? 'selected' : ''} aria-current={view === 'chat' ? 'page' : undefined} onClick={() => openView('chat')}><Icon name="chat"/>영어 회화</button><button className={view === 'exam' ? 'selected' : ''} aria-current={view === 'exam' ? 'page' : undefined} onClick={() => openView('exam')}><Icon name="book"/>스피킹 모의고사</button></nav><section className="history"><h2>내 대화</h2><Notice>{error}</Notice>{!list.length && <p className="empty-history">새로운 이야기를 시작해 보세요.</p>}<div className="history-list">{list.map(item => <button key={item.id} className={cid === item.id && view === 'chat' ? 'active' : ''} onClick={() => choose(item.id)}><Icon name="chat" size={16}/><span>{!item.title || item.title === 'New Conversation' ? '새로운 대화' : item.title}</span>{item.ended_at && <span className="sr-only">종료됨</span>}</button>)}</div>{(page > 0 || list.length === 50) && <div className="history-pages"><button disabled={!page} onClick={() => setPage(page - 1)}>이전</button><span>{page + 1}</span><button disabled={list.length < 50} onClick={() => setPage(page + 1)}>다음</button></div>}</section><footer className="sidebar-footer"><span className="user-avatar">{(user.name || '나')[0].toUpperCase()}</span><span>{user.name}</span><button className="icon-button" aria-label="로그아웃" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); setUser(null); setCid(null); setList([]); } catch (err) { setError(err.message); } }}><Icon name="logout" size={18}/></button></footer></aside><main className="workspace">{view === 'chat' ? <Conversation cid={cid} onCreated={choose} onRefresh={refresh} onTitleChange={updateListTitle} user={user}/> : <Exam/>}</main></div>;
 }

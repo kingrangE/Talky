@@ -139,9 +139,18 @@ def conversations(offset: int = 0, uid: str = Depends(user_id)):
     return repo.list_conversations(uid, offset=max(0, offset))
 
 
+class Title(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+
+
 @app.post('/api/conversations', status_code=201)
-def create(uid: str = Depends(user_id)):
-    return {'id': repo.create_conversation(user_id=uid)}
+def create(body: Title | None = None, uid: str = Depends(user_id)):
+    if body is None:
+        return {'id': repo.create_conversation(user_id=uid)}
+    title = body.title.strip()
+    if not title:
+        raise ValueError('대화 제목을 입력해 주세요.')
+    return {'id': repo.create_conversation(title=title, user_id=uid)}
 
 
 def public_turn(turn):
@@ -181,10 +190,6 @@ def reply_translation(mid: UUID, uid: str = Depends(user_id)):
         return {'translation': translate_reply(mid, UUID(uid))}
     except LookupError:
         raise HTTPException(404, '번역할 답변을 찾을 수 없습니다.') from None
-
-
-class Title(BaseModel):
-    title: str = Field(min_length=1, max_length=100)
 
 
 @app.patch('/api/conversations/{cid}')
