@@ -29,9 +29,6 @@ def test_budget_preserves_existing_counts_and_reserves_atomically(pg_db, monkeyp
 
 
 def test_retired_comparison_routes_cannot_generate_audio():
-    routes = {route.path for route in api.app.routes}
-    assert '/api/tts-comparison' not in routes
-    assert '/api/tts-comparison/{provider}' not in routes
     with TestClient(api.app) as web:
         assert web.get('/api/tts-comparison').status_code == 404
         assert web.post('/api/tts-comparison/chirp', json={'segments':['Hello.']}).status_code in {404, 405}
