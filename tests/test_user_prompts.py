@@ -13,6 +13,7 @@ from app.db import repo, seed
 from app.db.models import Base, User
 from app.llm import prompts
 from app.llm import manage_prompts, prompt_registry
+from app.llm.rewrite_protection import ProtectedRewrite
 from app.settings import get_settings
 from test_langfuse_prompts import cloud
 
@@ -156,12 +157,17 @@ def test_agent_loads_own_rdb_prompt_before_calling_llm(db, monkeypatch, user_tex
     calls = []
 
     class FakeLLM:
+        def __init__(self, response):
+            self.response = response
+
         def invoke(self, messages):
             calls.append(messages)
-            return SimpleNamespace(content="Hello!", reply="Hello!", english_expression="Hello")
+            return self.response
 
-    monkeypatch.setattr(en_reply, "get_chat_llm", lambda: FakeLLM())
-    monkeypatch.setattr(ko_coach, "get_structured_llm", lambda _schema: FakeLLM())
+    monkeypatch.setattr(en_reply, "get_chat_llm", lambda: FakeLLM(SimpleNamespace(content="Hello!")))
+    monkeypatch.setattr(ko_coach, "get_structured_llm",
+                        lambda schema: FakeLLM(schema(reply="Hello!", english_expression="Hello")))
+    monkeypatch.setattr(ko_coach, "prepare_rewrite", lambda state: ProtectedRewrite(state, {}, []))
     for name in ("memory_recall_node", "better_expr_node", "tts_node", "persist_node", "persist_correction_node"):
         monkeypatch.setattr(conversation_graph, name, lambda _state: {})
     conversation_graph.build_conversation_graph.cache_clear()

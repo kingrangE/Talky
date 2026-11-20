@@ -1,0 +1,16 @@
+[Unit]
+Description=Deploy Talky after GitHub CI passes on main
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/talky
+StateDirectory=talky-deploy
+StateDirectoryMode=0700
+UMask=0077
+Environment=GIT_TERMINAL_PROMPT=0
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /usr/local/sbin/talky-deploy
+TimeoutStartSec=20min
