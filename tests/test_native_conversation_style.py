@@ -27,3 +27,20 @@ def test_native_wording_applies_to_older_prompts_and_korean_context(module, name
     assert instruction.index('Use familiar Korean words') < instruction.index('understood without knowing Korean')
     assert messages[-1].content == text
     assert any(message.content == history[-1]['content'] for message in messages)
+
+
+@pytest.mark.parametrize('module,name,text', [
+    (en_reply, 'talky/en-reply', "Next time I go to Singapore, I'd like to visit the zoo."),
+    (ko_coach, 'talky/ko-coach', '다음에 싱가포르에 가면 동물원에 가고 싶어요.'),
+])
+def test_reply_follows_the_learners_interest_before_offering_planning_options(module, name, text):
+    messages = module._build_messages({
+        'system_prompt': 'A friendly companion for a Korean learner.',
+        'common_prompt_texts': {name: 'Offer an easy choice to continue the conversation.'},
+        'user_text': text,
+    })
+    instruction = messages[0].content
+    assert instruction.index('Offer an easy choice') < instruction.index('ask one easy question about what appeals to them')
+    assert 'timing, logistics, or planning choices only if the learner asks about them' in instruction
+    assert 'asks for practical advice or to compare options, answer that request directly' in instruction
+    assert messages[-1].content == text
