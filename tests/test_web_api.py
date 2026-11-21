@@ -6,10 +6,10 @@ import uuid
 
 from fastapi.testclient import TestClient
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select, update
 
 from app import api, conversation
-from app.db.models import ConversationTurn, User
+from app.db.models import Conversation, ConversationTurn, Rating, Report, User
 from app.mock_exam.privacy import audio_store, sign_recovery_token
 from app.settings import get_settings
 
@@ -149,8 +149,12 @@ def test_accounts_conversation_idempotence_and_owner_isolation(pg_db, web):
     cid = web.post('/api/conversations').json()['id']
     rid = str(uuid.uuid4())
     path = f'/api/conversations/{cid}/turns/{rid}'
+    receipt_path = f'/api/turns/{rid}'
+    missing = web.get(receipt_path)
+    assert missing.status_code == 404
     first = web.put(path, json={'text': '번역 전에 보낸 원문'}).json()
     assert first['status'] == 'queued' and first['input_text'] == '번역 전에 보낸 원문'
+    assert web.get(receipt_path).json() == first
     assert web.put(path, json={'text': '번역 전에 보낸 원문'}).json()['id'] == rid
     assert web.put(path, json={'text': '다른 내용'}).status_code == 400
     assert web.get(f'/api/conversations/{cid}').json()['turns'][0]['input_text'] == '번역 전에 보낸 원문'
@@ -159,13 +163,45 @@ def test_accounts_conversation_idempotence_and_owner_isolation(pg_db, web):
         assert len(session.scalars(select(ConversationTurn)).all()) == 1
     web.post('/api/auth/logout')
     assert web.get(f'/api/conversations/{cid}').status_code == 401
+    assert web.get(receipt_path).status_code == 401
     other = {'login_name': 'another_learner', 'password': 'sufficient-password'}
     web.post('/api/auth/register', json=other)
     web.post('/api/auth/login', json=other)
     assert web.get(f'/api/conversations/{cid}').status_code == 400
     assert web.put(path, json={'text': '가로채기'}).status_code == 400
+    other_receipt = web.get(receipt_path)
+    assert other_receipt.status_code == missing.status_code
+    assert other_receipt.json() == missing.json()
     assert web.get(f'/api/turns/{rid}/audio').status_code == 400
     assert web.get('/api/conversations').json() == []
+
+
+def test_detail_keeps_report_and_rating_in_the_same_snapshot(pg_db, web):
+    engine, scope = pg_db
+    uid, cid = uuid.uuid4(), uuid.uuid4()
+    with scope() as session:
+        session.add(User(id=uid))
+        session.flush()
+        session.add(Conversation(id=cid, user_id=uid))
+        session.flush()
+        session.add_all([Report(conversation_id=cid, summary='first'), Rating(conversation_id=cid, stars=2)])
+    web.cookies.set(api.COOKIE, sign_recovery_token(f'account:{uid}', ttl_seconds=60))
+
+    def publish_during_read(_conn, _cursor, statement, *_):
+        if 'FROM conversation_turns' in statement:
+            with scope() as session:
+                session.execute(update(Conversation).where(Conversation.id == cid).values(ended_at=datetime.now(timezone.utc)))
+                session.execute(update(Report).where(Report.conversation_id == cid).values(summary='second'))
+                session.execute(update(Rating).where(Rating.conversation_id == cid).values(stars=5))
+
+    event.listen(engine, 'after_cursor_execute', publish_during_read)
+    try:
+        first = web.get(f'/api/conversations/{cid}').json()
+    finally:
+        event.remove(engine, 'after_cursor_execute', publish_during_read)
+    assert (first['ended_at'], first['report']['summary'], first['rating']['stars']) == (None, 'first', 2)
+    second = web.get(f'/api/conversations/{cid}').json()
+    assert second['ended_at'] and second['report']['summary'] == 'second' and second['rating']['stars'] == 5
 
 
 @pytest.mark.parametrize('length', [7, 8, 24, 25])

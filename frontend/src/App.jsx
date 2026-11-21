@@ -207,6 +207,11 @@ function Report({ report, rating, onSave }) {
   </section>;
 }
 
+const idleRefreshMs = 15000;
+const queuedOrProcessing = turn => ['queued', 'processing'].includes(turn.status);
+const hasPublishedMessages = turn => turn.result?.user_message_id || turn.result?.assistant_message_id;
+const turnRefreshMs = turn => turn?.has_input_audio && !turn.input_text ? 400 : 1500;
+
 export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -227,7 +232,12 @@ export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user })
   const played = useRef(new Set());
   const scroll = useRef(null);
   const nearBottom = useRef(true);
+  const localPending = locals.find(turn => turn.conversation_id === cid
+    && (queuedOrProcessing(turn) || turn.status === 'unconfirmed'));
+  const pendingReceipt = useRef(null);
+  const requestRefresh = useRef(null);
   current.current = cid;
+  pendingReceipt.current = localPending;
   useEffect(() => {
     const available = () => setUpdateAvailable(true);
     window.addEventListener('talky:update-available', available);
@@ -239,36 +249,100 @@ export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user })
     setData(null); setError(''); setLoading(Boolean(cid));
     setTitle(null); setTitleError('');
     if (!cid) return;
-    let alive = true, timer, controller;
-    let waitingForTranscript = false;
+    let alive = true, timer, controller, snapshot;
+    let lastDetailAt = 0, detailRequested = false;
+    function activeTurn() {
+      const local = pendingReceipt.current;
+      return snapshot?.turns.find(queuedOrProcessing)
+        || (local && !snapshot?.turns.some(turn => turn.id === local.id) ? local : null);
+    }
+    function schedule(delay) {
+      clearTimeout(timer);
+      timer = setTimeout(refresh, delay);
+    }
+    function refreshNow() {
+      detailRequested = true;
+      if (!controller) schedule(0);
+    }
+    function onVisibility() {
+      if (!document.hidden) refreshNow();
+    }
+    async function refreshDetail() {
+      lastDetailAt = Date.now();
+      const revision = titleRevision.current;
+      const next = await api(`/conversations/${cid}`, { signal: controller.signal });
+      if (!alive) return;
+      snapshot = next;
+      if (revision === titleRevision.current) {
+        setData(next);
+        onTitleChange?.(cid, next.title);
+      } else {
+        setData(old => ({ ...next, title: old?.title ?? next.title }));
+      }
+      const received = new Set(next.turns.map(turn => turn.id));
+      setLocals(old => old.some(turn => received.has(turn.id)) ? old.filter(turn => !received.has(turn.id)) : old);
+    }
     async function refresh() {
       controller = new AbortController();
-      const revision = titleRevision.current;
+      const turn = activeTurn();
+      const needsDetail = detailRequested || !turn || !snapshot || hasPublishedMessages(turn)
+        || Date.now() - lastDetailAt >= idleRefreshMs;
+      detailRequested = false;
+      let failed = false;
       try {
-        const next = await api(`/conversations/${cid}`, { signal: controller.signal });
-        if (!alive) return;
-        waitingForTranscript = next.turns.some(turn => turn.has_input_audio && !turn.input_text
-          && ['queued', 'processing'].includes(turn.status));
-        if (revision === titleRevision.current) {
-          setData(next);
-          onTitleChange?.(cid, next.title);
+        if (needsDetail) {
+          await refreshDetail();
         } else {
-          setData(old => ({ ...next, title: old?.title ?? next.title }));
+          const receipt = await api(`/turns/${turn.id}`, { signal: controller.signal }).catch(err => {
+            if (err.status !== 404) throw err;
+            return null;
+          });
+          if (!alive) return;
+          // Once messages exist, their translation, correction and title can change independently of the receipt.
+          if (receipt?.conversation_id === cid && queuedOrProcessing(receipt) && !hasPublishedMessages(receipt)) {
+            if (JSON.stringify(turn) !== JSON.stringify(receipt) || !snapshot.turns.some(t => t.id === receipt.id)) {
+              const turns = mergeTurns(snapshot.turns.map(t => t.id === receipt.id ? receipt : t), [receipt]);
+              snapshot = { ...snapshot, turns };
+              setData(old => ({ ...old, turns }));
+              setLocals(old => old.filter(t => t.id !== receipt.id));
+            }
+          } else if (receipt || turn.status !== 'unconfirmed') {
+            await refreshDetail();
+          }
         }
-        setError(''); setLoading(false);
-        const received = new Set(next.turns.map(turn => turn.id));
-        setLocals(old => old.filter(turn => !received.has(turn.id)));
+        if (alive) { setError(''); setLoading(false); }
       } catch (err) {
-        waitingForTranscript = false;
+        failed = true;
         if (alive && err.name !== 'AbortError') { setError(err.message); setLoading(false); }
-      }
-      if (alive) {
-        timer = setTimeout(refresh, waitingForTranscript ? 400 : 1500);
+      } finally {
+        controller = null;
+        if (alive) {
+          const next = activeTurn();
+          const delay = next || !snapshot ? turnRefreshMs(failed ? null : next) : idleRefreshMs;
+          schedule(detailRequested ? 0 : delay);
+        }
       }
     }
+    requestRefresh.current = (detail = false) => {
+      if (detail) return refreshNow();
+      const turn = activeTurn();
+      if (!controller && !detailRequested && turn) schedule(turnRefreshMs(turn));
+    };
+    window.addEventListener('focus', refreshNow);
+    window.addEventListener('online', refreshNow);
+    document.addEventListener('visibilitychange', onVisibility);
     void refresh();
-    return () => { alive = false; clearTimeout(timer); controller?.abort(); };
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      controller?.abort();
+      requestRefresh.current = null;
+      window.removeEventListener('focus', refreshNow);
+      window.removeEventListener('online', refreshNow);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [cid, user.id, onTitleChange]);
+  useEffect(() => { if (localPending) requestRefresh.current?.(); }, [localPending]);
   async function saveTitle(event) {
     event.preventDefault();
     const value = title?.trim();
@@ -323,6 +397,7 @@ export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user })
       }
       const received = await api(`/conversations/${destination}/turns/${rid}${voice ? '/voice' : topic ? '/starter' : ''}`, voice ? { method: 'PUT', body: content } : json('PUT', topic ? { topic } : { text: content }));
       setLocals(old => old.map(t => t.id === rid ? { ...received, preview } : t));
+      if (current.current === destination && !queuedOrProcessing(received)) requestRefresh.current?.(true);
       const draftKey = `talky:draft:${user.id}:${cid || 'new'}`;
       if (!voice && sessionStorage.getItem(draftKey) === content) sessionStorage.removeItem(draftKey);
       if (!voice && current.current === destination) setDraft(value => value === content ? '' : value);
@@ -344,7 +419,14 @@ export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user })
   }
   async function end() {
     setEnding(true); setError('');
-    try { const report = await api(`/conversations/${cid}/report`, { method: 'POST' }); if (current.current === cid) setData(old => ({ ...old, report, ended_at: new Date().toISOString() })); void onRefresh(); }
+    try {
+      const report = await api(`/conversations/${cid}/report`, { method: 'POST' });
+      if (current.current === cid) {
+        setData(old => ({ ...old, report, ended_at: new Date().toISOString() }));
+        requestRefresh.current?.(true);
+      }
+      void onRefresh();
+    }
     catch (err) { setError(err.message); }
     finally { setEnding(false); }
   }
