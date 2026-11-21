@@ -1,5 +1,6 @@
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -7,6 +8,7 @@ from sqlalchemy import func, select
 
 from app import conversation as queue
 from app.db import repo
+from app.db.job_notifications import CHANNEL, JobListener
 from app.db.models import Conversation, ConversationTurn, GraphSyncEvent, Message, User
 
 
@@ -43,6 +45,24 @@ def test_concurrent_retry_is_idempotent_and_owner_scoped(chat, pg_db):
         queue.get_turn(rid, str(uuid.uuid4()))
     with pytest.raises(ValueError, match='이전 응답'):
         submit(chat)
+
+
+def test_committed_turn_wakes_both_listeners_but_only_one_can_claim(chat, pg_db):
+    with closing(JobListener()) as first, closing(JobListener()) as second:
+        first.subscribe()
+        second.subscribe()
+        submitted = submit(chat)
+        for listener in (first, second):
+            notifications = list(listener.connection.notifies(timeout=1, stop_after=1))
+            assert [event.channel for event in notifications] == [CHANNEL]
+        with ThreadPoolExecutor(2) as pool:
+            with pg_db[1]() as session:
+                session.get(ConversationTurn, uuid.UUID(submitted['id']), with_for_update=True)
+                assert list(pool.map(lambda _: queue.claim_turn(), range(2))) == [None, None]
+            jobs = list(pool.map(lambda _: queue.claim_turn(), range(2)))
+        assert [job['id'] for job in jobs if job] == [submitted['id']]
+        submit(chat, submitted['id'])
+        assert list(first.connection.notifies(timeout=0.05)) == []
 
 
 def test_lease_recovery_fences_old_attempt_and_commits_only_once(chat, pg_db):
@@ -198,6 +218,7 @@ def test_user_quota_preserves_other_users_capacity(chat, pg_db, monkeypatch):
 
 def test_permanent_failure_stops_and_transient_failure_waits(chat, pg_db):
     from datetime import datetime, timezone
+    from app.mock_exam.worker import _idle_timeout
     first = submit(chat)
     claimed = queue.claim_turn()
     queue.fail_turn(claimed, ValueError('invalid input'))
@@ -207,6 +228,7 @@ def test_permanent_failure_stops_and_transient_failure_waits(chat, pg_db):
     queue.fail_turn(claimed, TimeoutError('temporary'))
     assert queue.get_turn(second['id'], chat[0])['status'] == 'queued'
     assert queue.claim_turn() is None
+    assert _idle_timeout() == 0.5
     with pg_db[1]() as session:
         session.get(ConversationTurn, uuid.UUID(second['id'])).lease_until = datetime.now(timezone.utc)
     assert queue.claim_turn()['attempt'] == 2

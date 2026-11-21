@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_, func, select, text, update
 
 from app.audio.validation import validate_audio
+from app.db.job_notifications import notify_jobs
 from app.db.models import ConversationTurn, PendingAudioDeletion, Message
 from app.db.postgres import session_scope
 from app.db.repo import _owned_conversation, _to_uuid, load_messages
@@ -86,6 +87,7 @@ def submit_turn(*, request_id, conversation_id, user_id, user_text=None, audio_b
                 audio_expires_at=now+timedelta(hours=cfg.MOCK_EXAM_AUDIO_TTL_HOURS))
             session.add(row)
             session.flush()
+            notify_jobs(session)
             result=_record(row)
         accepted=True
         log.info(json.dumps({'event': 'accepted', 'kind': 'conversation'}))

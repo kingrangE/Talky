@@ -6,12 +6,14 @@ import time
 import uuid
 import wave
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import event, func, select
 
 from app.audio.validation import decode_audio_upload, validate_audio
+from app.db.job_notifications import CHANNEL, JobListener
 from app.db.models import (
     MockExamDailyAggregate, MockExamReport, MockExamResponse, MockExamSession,
     PendingAudioDeletion,
@@ -137,17 +139,72 @@ def test_last_response_and_scoring_enqueue_commit_together(exam, pg_db, monkeypa
     def fail_enqueue(*_args):
         raise RuntimeError("injected enqueue failure")
 
-    event.listen(MockExamReport, "before_insert", fail_enqueue)
-    try:
-        with pytest.raises(RuntimeError):
-            repo.complete_response(rid, status="scored", transcript="hello", audio_metrics={})
-    finally:
-        event.remove(MockExamReport, "before_insert", fail_enqueue)
-    assert repo.list_responses(sid)[0]["status"] == "processing"
-    assert repo.get_session(sid)["status"] == "active"
-    repo.complete_response(rid, status="scored", transcript="hello", audio_metrics={})
-    assert repo.get_session(sid)["status"] == "scoring"
-    assert repo.claim_job()["kind"] == "report"
+    with closing(JobListener()) as listener:
+        listener.subscribe()
+        event.listen(MockExamReport, "before_insert", fail_enqueue)
+        try:
+            with pytest.raises(RuntimeError):
+                repo.complete_response(rid, status="scored", transcript="hello", audio_metrics={})
+        finally:
+            event.remove(MockExamReport, "before_insert", fail_enqueue)
+        assert list(listener.connection.notifies(timeout=0.05)) == []
+        assert repo.list_responses(sid)[0]["status"] == "processing"
+        assert repo.get_session(sid)["status"] == "active"
+        repo.complete_response(rid, status="scored", transcript="hello", audio_metrics={})
+        notices = list(listener.connection.notifies(timeout=1, stop_after=1))
+        assert [notice.channel for notice in notices] == [CHANNEL]
+        assert repo.get_session(sid)["status"] == "scoring"
+        assert repo.claim_job()["kind"] == "report"
+
+
+@pytest.mark.parametrize("disconnect", [False, True])
+def test_worker_checks_committed_work_without_a_wakeup(exam, pg_db, monkeypatch, disconnect):
+    sid, _ = exam
+    engine, scope = pg_db
+    expires_at = repo.get_session(sid)["expires_at"]
+
+    class Finished(BaseException):
+        pass
+
+    class Channel:
+        def send(self, _event):
+            pass
+
+    with closing(JobListener()) as listener:
+        wait = listener.wait
+        old_pid = None
+        queued_id = None
+
+        def enqueue_during_wait(timeout):
+            nonlocal old_pid, queued_id
+            assert 0.5 < timeout <= 2
+            old_pid = listener.connection.info.backend_pid
+            if disconnect:
+                with engine.begin() as connection:
+                    assert connection.scalar(select(func.pg_terminate_backend(old_pid, 1000)))
+                queued_id = repo.create_response(session_id=sid, question_number=1,
+                                                 encrypted_audio_path="fixture", client_metrics={})
+            else:
+                # A previous app version can commit a queued response without NOTIFY.
+                with scope() as session:
+                    row = MockExamResponse(session_id=uuid.UUID(sid), question_number=1,
+                                           encrypted_audio_path="fixture", expires_at=expires_at)
+                    session.add(row)
+                    session.flush()
+                    queued_id = str(row.id)
+            wait(timeout)
+            assert (listener.connection is None) == disconnect
+
+        def process(job):
+            assert job["id"] == queued_id
+            assert (listener.connection.info.backend_pid != old_pid) == disconnect
+            assert worker._idle_timeout() == 0.5  # An in-flight lease retains the existing cadence.
+            raise Finished
+
+        monkeypatch.setattr(listener, "wait", enqueue_during_wait)
+        monkeypatch.setattr(worker, "_process_job", process)
+        with pytest.raises(Finished):
+            worker._run_jobs(Channel(), listener)
 
 
 def test_cleanup_commits_metadata_then_retries_failed_file_deletions(pg_db, tmp_path):
