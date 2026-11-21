@@ -156,7 +156,7 @@ python -m app.evaluate --suite all --judge-model exaone3.5:7.8b --replay-dir .da
 
 - `--limit`를 빼면 해당 영역 전체를 실행한다. `--cases ko-01,en-01`처럼 항목을 지정할 수도 있다. 소량 실행은 앞 파일에만 치우치지 않도록 유형별로 순환 선택한다. `--suite all`은 표현·기억·대화를 순서대로 실행하고, `--limit`는 각 영역에 적용된다.
 - `--judge-model`은 명시적으로 지정한다. 작은 모델도 채점 대상과 참고 정답을 혼동하거나 의미 오류를 문법 오류로 함께 처리할 수 있다. 사전 예시의 일치도와 판정 이유를 확인하고 자동 점수를 잠정 결과로 취급한다. 작성된 calibration 라벨도 사람 검수 전 초안이다.
-- Langfuse의 Experiments에서 `talky-expression-v2`, `talky-memory-v2`, `talky-dialogue-v2`, `talky-calibration-v2`를 확인한다. 실행 종료 시 직접 열 수 있는 실험 URL도 출력한다. 각 항목의 trace에서 실제 생성 입력·출력, judge 입력·출력, 항목별 점수와 이유를 확인한다.
+- 원문을 기록하는 평가와 `langfuse_smoke.py`는 합성 데이터와 운영과 분리된 Langfuse 프로젝트 자격 증명으로 실행한다. Langfuse의 Experiments에서 `talky-expression-v2`, `talky-memory-v2`, `talky-dialogue-v2`, `talky-calibration-v2`를 확인한다. 실행 종료 시 직접 열 수 있는 실험 URL도 출력한다. 각 항목의 trace에서 실제 생성 입력·출력, judge 입력·출력, 항목별 점수와 이유를 확인한다.
 - `.data/evaluations/<실행 ID>/`에는 고정 프롬프트 참조·코드 commit·작업 트리 변경 여부·runner 해시를 기록한 `run.json`, 생성과 채점의 JSONL, 문항별 trace 링크를 담은 summary JSON이 남는다. 이 경로는 Git에서 제외된다.
 - judge 점수는 허용 범위와 적용 여부를 검증한다. 적용되지 않는 항목은 출력 스키마에서 `null`로 제한하고 점수로 보내지 않는다. 모델 응답 실패와 채점 오류는 로그에 남기며, 채점 오류는 `judge_success=0`으로 기록한다. 검색 장애를 정상적인 검색 결과 없음으로 바꾸지 않는다.
 - `review_required=1`은 자동 판정을 다시 읽어야 한다는 표시다. 정답 표현이 답변에 보이지 않는데 정답 점수를 받았거나, 종료 답변에 물음표가 있는데 대화 흐름이 만점인 경우 표시한다. 문자열 검사이므로 동등 표현이나 인용문 때문에 표시될 수도 있다. 원래 점수를 덮어쓰거나 자동 오답으로 처리하지 않는다. `closing_question_mark`는 종료 답변의 물음표 유무이며 의미 기반 질문 판정은 아니다.

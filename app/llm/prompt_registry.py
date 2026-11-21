@@ -163,7 +163,7 @@ def publish_user_prompt(user_id: str, content: str, *, record_id: str) -> dict:
     return reference
 
 
-def invoke_with_prompt(llm, messages: list, state: dict, name: str):
+def invoke_with_prompt(llm, messages: list, state: dict, name: str, *, capture_content: bool = False):
     """Telemetry failures cannot retry, suppress or replace the actual LLM call."""
     generation = None
     try:
@@ -172,18 +172,18 @@ def invoke_with_prompt(llm, messages: list, state: dict, name: str):
             reference = state.get("common_prompt_refs", {}).get(name)
             prompt = remote_prompt(reference["name"], version=reference["version"]) if reference and reference["source"] == "langfuse" and not get_settings().PROMPT_CACHE_ENABLED else None
             cfg = get_settings()
+            metadata = {"common_prompt_ref": reference}
+            content = {}
+            if capture_content:
+                metadata["system_prompt_ref"] = state.get("system_prompt_ref")
+                content["input"] = [{"role": {"human": "user", "ai": "assistant"}.get(m.type, m.type), "content": m.content} for m in messages]
             generation = client.start_observation(
                 name=name, as_type="generation", prompt=prompt,
                 trace_context={"trace_id": state["trace_id"]} if state.get("trace_id") else None,
                 model=cfg.llm_model,
                 model_parameters={"temperature": 0.7, "max_output_tokens": cfg.LLM_MAX_OUTPUT_TOKENS},
-                input=[{"role": {"human": "user", "ai": "assistant"}.get(m.type, m.type), "content": m.content} for m in messages],
-                metadata={
-                    "conversation_id": state.get("conversation_id"),
-                    "db_prompt_id": state.get("prompt_version_id"),
-                    "system_prompt_ref": state.get("system_prompt_ref"),
-                    "common_prompt_ref": reference,
-                },
+                metadata=metadata,
+                **content,
             )
     except Exception as exc:
         log.warning("Langfuse trace setup failed (%s)", type(exc).__name__)
@@ -194,13 +194,15 @@ def invoke_with_prompt(llm, messages: list, state: dict, name: str):
         raise
     else:
         try:
-            output = result.model_dump(mode="json") if hasattr(result, "model_dump") else str(result)
             usage = getattr(result, "usage_metadata", None) or {}
-            _update_generation(generation, output=output, usage_details={
+            content = {}
+            if generation is not None and capture_content:
+                content["output"] = result.model_dump(mode="json") if hasattr(result, "model_dump") else str(result)
+            _update_generation(generation, usage_details={
                 key: usage[source] for key, source in (("input", "input_tokens"), ("output", "output_tokens"), ("total", "total_tokens")) if source in usage
-            } or None)
+            } or None, **content)
         except Exception as exc:
-            log.warning("Langfuse output recording failed (%s)", type(exc).__name__)
+            log.warning("Langfuse generation recording failed (%s)", type(exc).__name__)
         return result
     finally:
         if generation is not None:

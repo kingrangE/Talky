@@ -375,7 +375,7 @@ export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user })
           <summary aria-label="대화 관리"><Icon name="more"/></summary>
           <div className="conversation-menu-panel">
             <button type="button" className="danger" onClick={async () => {
-              if (!window.confirm(`‘${data.title || '새로운 대화'}’ 대화와 학습 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+              if (!window.confirm(`‘${data.title || '새로운 대화'}’ 대화와 학습 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다. 과거 외부 모니터링에 저장된 사본은 별도 보관 정책에 따라 남을 수 있습니다.`)) return;
               try { await api(`/conversations/${cid}`, { method: 'DELETE' }); onCreated(null); await onRefresh(); }
               catch (err) { setError(err.message); }
             }}>대화 삭제</button>

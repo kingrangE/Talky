@@ -112,17 +112,36 @@ def test_user_upload_verifies_body_and_reuses_same_record(cloud):
     assert registry.read_reference(first) == "English tutor for Alice"
 
 
-def test_generation_links_the_selected_version_and_records_tokens(cloud):
+@pytest.mark.parametrize("capture_content", [False, True])
+def test_generation_links_the_selected_version_and_records_tokens(cloud, capture_content):
     reference = registry.resolve_reference("talky/en-reply")
-    state = {"common_prompt_refs": {"talky/en-reply": reference}, "prompt_version_id": "db-prompt-1", "trace_id": "1" * 32}
+    state = {
+        "common_prompt_refs": {"talky/en-reply": reference},
+        "system_prompt_ref": {"source": "langfuse", "name": "talky/users/test-user/system", "version": 1},
+        "conversation_id": "conversation-1",
+        "prompt_version_id": "db-prompt-1",
+        "trace_id": "1" * 32,
+    }
     answer = AIMessage(content="Hello!", usage_metadata={"input_tokens": 10, "output_tokens": 2, "total_tokens": 12})
-    result = registry.invoke_with_prompt(SimpleNamespace(invoke=lambda _messages: answer), [HumanMessage(content="Hi")], state, "talky/en-reply")
+    result = registry.invoke_with_prompt(
+        SimpleNamespace(invoke=lambda _messages: answer), [HumanMessage(content="Hi")],
+        state, "talky/en-reply", **({"capture_content": True} if capture_content else {}),
+    )
     assert result is answer
     observed = cloud.observations[0]
     assert observed["start"]["prompt"].version == 1
-    assert observed["start"]["metadata"]["db_prompt_id"] == "db-prompt-1"
+    assert observed["start"]["trace_context"] == {"trace_id": state["trace_id"]}
     assert observed["usage_details"] == {"input": 10, "output": 2, "total": 12}
     assert observed["ended"] is True
+    metadata = {"common_prompt_ref": reference}
+    if capture_content:
+        assert observed["start"]["input"] == [{"role": "user", "content": "Hi"}]
+        assert observed["output"]["content"] == "Hello!"
+        metadata["system_prompt_ref"] = state["system_prompt_ref"]
+    else:
+        assert "input" not in observed["start"]
+        assert "output" not in observed
+    assert observed["start"]["metadata"] == metadata
 
 
 def test_trace_failure_does_not_retry_or_lose_the_llm_result(cloud, monkeypatch):
@@ -144,10 +163,11 @@ def test_llm_error_is_recorded_and_propagated_once(cloud):
         registry.invoke_with_prompt(SimpleNamespace(invoke=unavailable), [], {}, "talky/en-reply")
     assert calls == [1]
     assert cloud.observations[0]["level"] == "ERROR"
+    assert cloud.observations[0]["status_message"] == "TimeoutError"
     assert cloud.observations[0]["ended"] is True
 
 
-def test_sdk_generation_export_works_without_langchain_callback():
+def test_sdk_exports_default_generation_without_content(monkeypatch):
     from langfuse import Langfuse
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -155,14 +175,27 @@ def test_sdk_generation_export_works_without_langchain_callback():
     exporter = InMemorySpanExporter()
     client = Langfuse(public_key="pk-test-prompt-link", secret_key="sk-test-prompt-link", tracer_provider=TracerProvider(), span_exporter=exporter)
     prompt = TextPromptClient(Prompt_Text(type="text", name="talky/en-reply", version=4, prompt="Reply in English", labels=[], config={}, tags=[]))
+    monkeypatch.setattr(registry, "get_client", lambda: client)
+    monkeypatch.setattr(registry, "remote_prompt", lambda *args, **kwargs: prompt)
     try:
-        generation = client.start_observation(name="test-generation", as_type="generation", prompt=prompt)
-        generation.update(output="Hello!")
-        generation.end()
+        answer = AIMessage(content="private model reply", usage_metadata={"input_tokens": 10, "output_tokens": 2, "total_tokens": 12})
+        registry.invoke_with_prompt(
+            SimpleNamespace(invoke=lambda _: answer), [HumanMessage(content="private user message")],
+            {"common_prompt_refs": {"talky/en-reply": {"source": "langfuse", "name": "talky/en-reply", "version": 4}}},
+            "talky/en-reply",
+        )
         client.flush()
         spans = exporter.get_finished_spans()
         assert len(spans) == 1
-        assert spans[0].attributes["langfuse.observation.prompt.name"] == "talky/en-reply"
-        assert spans[0].attributes["langfuse.observation.prompt.version"] == 4
+        span = spans[0]
+        assert span.end_time > span.start_time
+        assert span.attributes["langfuse.observation.prompt.name"] == "talky/en-reply"
+        assert span.attributes["langfuse.observation.prompt.version"] == 4
+        assert "langfuse.observation.input" not in span.attributes
+        assert "langfuse.observation.output" not in span.attributes
+        assert "langfuse.observation.usage_details" in span.attributes
+        assert all(value not in str(span.attributes) for value in (
+            "private user message", "private model reply", "Reply in English",
+        ))
     finally:
         client.shutdown()

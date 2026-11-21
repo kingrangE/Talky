@@ -129,8 +129,16 @@ def test_expression_evaluation_serializes_structured_learning_notes(monkeypatch)
         'explanations':[{'pattern':'have been ~ing', 'explanation':'최근부터 지금까지 이어지는 행동을 말해요.'}],
     })
     monkeypatch.setattr(evaluate, 'get_structured_llm', lambda _: object())
-    monkeypatch.setattr(evaluate, 'invoke_with_prompt', lambda *_: output)
-    monkeypatch.setattr(evaluate, 'prepare_rewrite', lambda state: ProtectedRewrite(state, {}, []))
+    def invoke(*_, capture_content):
+        assert capture_content is True
+        return output
+
+    def prepare(state, *, capture_content):
+        assert capture_content is True
+        return ProtectedRewrite(state, {}, [])
+
+    monkeypatch.setattr(evaluate, 'invoke_with_prompt', invoke)
+    monkeypatch.setattr(evaluate, 'prepare_rewrite', prepare)
     benchmark = Benchmark.__new__(Benchmark)
     benchmark.prompts = {'talky/system':SimpleNamespace(prompt='A conversational tutor.')}
     benchmark.refs = {'talky/system':{}}

@@ -12,7 +12,11 @@ TERMS = ['LLM', 'TOKII', 'language, language series or something']
 def prepare(monkeypatch, state, names=TERMS, repairs=()):
     plan = protection.SourceProtection(names=names, speech_repairs=list(repairs))
     monkeypatch.setattr(protection, 'get_structured_llm', lambda *_a, **_kw: object())
-    monkeypatch.setattr(protection, 'invoke_with_prompt', lambda *_: plan)
+    def invoke(*_, capture_content):
+        assert capture_content is False
+        return plan
+
+    monkeypatch.setattr(protection, 'invoke_with_prompt', invoke)
     return protection.prepare_rewrite(state)
 
 

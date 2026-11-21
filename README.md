@@ -273,11 +273,11 @@ LANGFUSE_PROMPT_VERSIONS={"talky/system":1,"talky/ko-coach":1,"talky/en-reply":1
 
 이 설정의 system 버전은 기본 system을 쓰는 사용자에게 적용되며 기존 개인 버전을
 덮어쓰지 않습니다. 비교 실험에서는 같은 사용자 system 참조도 별도로 고정합니다.
-generation은 공통 프롬프트에 직접 연결하고, 사용자 system 참조는 metadata에 기록합니다.
-실제 모델 입력·출력도 Cloud trace에 기록되므로 합성 데이터로 먼저 확인하세요.
-현재 직접 계측하는 호출은 한국어 코칭·영어 답변·영어 교정이며, 토픽 추출·종료 보고서·
-프롬프트 개선 모델 등 나머지 호출의 trace는 포함하지 않습니다. 구조화 출력 호출은
-현재 팩토리에서 토큰 사용량을 반환하지 않으므로 그 호출의 토큰·비용은 미측정입니다.
+운영 generation에는 호출 이름, 모델과 생성 설정, 시작·종료 시각, 사용량을 반환하는 모델의 토큰 수, 실패 시 예외 유형, 무작위 trace ID, 공통 프롬프트 참조를 기록합니다. 사용자 발화·전사·대화 이력·모델 답변·대화 ID·개인 프롬프트 참조는 운영 trace에 보내지 않습니다. 직접 계측하는 호출은 한국어 코칭, 영어 답변, 영어 교정, 교정 전 원문 보호입니다. 구조화 호출은 현재 팩토리가 토큰 수를 반환하지 않아 사용량이 표시되지 않습니다.
+
+대화를 삭제하면 앱의 대화와 연결된 학습 기록을 삭제하고 그래프 메모리와 저장된 음성을 비동기로 정리합니다. 이전 버전이 Langfuse에 보낸 사본은 앱에서 대화를 삭제한 뒤에도 프로젝트 정책에 따라 남을 수 있습니다. Langfuse에서 따로 관리하는 개인화 프롬프트 버전은 대화 삭제 범위에 포함되지 않습니다.
+
+운영자는 활성 Langfuse 프로젝트의 접근 권한과 [데이터 보관 설정](https://langfuse.com/docs/administration/data-retention)을 확인해야 합니다. 화면에서 조회 가능한 기간은 자동 삭제 시점과 별개입니다. 기존 원문 trace는 배포 이전 기간과 대화 ID 등의 기존 메타데이터로 대상을 확인한 뒤 [Langfuse의 trace 삭제 절차](https://langfuse.com/docs/administration/data-deletion)로 정리할 수 있습니다. 이전 앱 버전으로 롤백하면 원문과 대화 식별자가 다시 기록될 수 있으므로, 롤백 전에 실행 프로세스에 `LANGFUSE_TRACING_ENABLED=false`를 적용해 trace 전송을 차단합니다. 프롬프트 조회에 필요한 `LANGFUSE_ENABLED`와 프로젝트 연결은 유지합니다.
 
 LangChain 0.3 계열을 유지하고 Langfuse 5.2 SDK의 수동 generation 기록을 사용합니다.
 최신 LangChain callback을 추가하지 않습니다. Cloud에서 프롬프트 게시에 성공한 뒤

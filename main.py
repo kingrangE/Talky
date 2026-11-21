@@ -198,7 +198,8 @@ with st.sidebar:
                     if st.button("Rename", key=f"edit_btn_{cid}", use_container_width=True):
                         st.session_state.editing_conv_id = cid
                         st.rerun()
-                    if st.button("Delete", key=f"del_{cid}", use_container_width=True):
+                    if st.button("Delete", key=f"del_{cid}", use_container_width=True,
+                                 help="Copies previously sent to external monitoring may remain under its retention policy."):
                         delete_conversation(cid, USER_ID)
                         if st.session_state.conversation_id == cid:
                             st.session_state.conversation_id = None

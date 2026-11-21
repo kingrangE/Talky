@@ -320,10 +320,10 @@ class Benchmark:
             name, schema, builder = 'talky/ko-coach', ko_coach.KoCoachOutput, ko_coach._build_messages
         else:
             name, schema, builder = 'talky/en-reply', None, en_reply._build_messages
-        prepared = prepare_rewrite(state) if schema else None
+        prepared = prepare_rewrite(state, capture_content=True) if schema else None
         messages = bounded_messages(builder(prepared.state if prepared else state))
         llm = get_structured_llm(schema) if schema else get_chat_llm(streaming=False)
-        value = invoke_with_prompt(llm, messages, state, name)
+        value = invoke_with_prompt(llm, messages, state, name, capture_content=True)
         if prepared:
             value = restore_rewrite(value, prepared)
         candidate = value.model_dump() if schema else {'reply': value.content}

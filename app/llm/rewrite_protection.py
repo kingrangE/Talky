@@ -33,12 +33,12 @@ class ProtectedRewrite:
     repairs: list[SpeechRepair]
 
 
-def prepare_rewrite(state):
+def prepare_rewrite(state, *, capture_content: bool = False):
     original = state['user_text']
     plan = invoke_with_prompt(get_structured_llm(SourceProtection, temperature=0),
         bounded_messages([SystemMessage(content=SOURCE_PROMPT), HumanMessage(content=json.dumps({
             'source':original, 'speech':bool(state.get('audio_bytes'))}, ensure_ascii=False))]),
-        state, 'talky/rewrite-source-protection')
+        state, 'talky/rewrite-source-protection', capture_content=capture_content)
     if any(not name.strip() or name not in original for name in plan.names):
         raise ValueError('protected name is not an original substring')
     terms = sorted(set(plan.names), key=lambda name: (-len(name), name))
