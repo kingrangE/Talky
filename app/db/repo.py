@@ -286,16 +286,20 @@ def get_report(conversation_id: str, user_id: str | uuid.UUID) -> dict[str, Any]
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
         _owned_conversation(s, cid, user_id)
-        row = s.scalars(select(Report).where(Report.conversation_id == cid)).first()
-        if row is None:
-            return None
-        return {
-            "summary": row.summary,
-            "strengths": (row.strengths or {}).get("items", []),
-            "weaknesses": (row.weaknesses or {}).get("items", []),
-            "vocab_learned": (row.vocab_learned or {}).get("items", []),
-            "created_at": row.created_at.isoformat() if row.created_at else None,
-        }
+        return _read_report(s, cid)
+
+
+def _read_report(session, cid: uuid.UUID) -> dict[str, Any] | None:
+    row = session.scalars(select(Report).where(Report.conversation_id == cid)).first()
+    if row is None:
+        return None
+    return {
+        "summary": row.summary,
+        "strengths": (row.strengths or {}).get("items", []),
+        "weaknesses": (row.weaknesses or {}).get("items", []),
+        "vocab_learned": (row.vocab_learned or {}).get("items", []),
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
 
 
 def save_rating(
@@ -342,10 +346,14 @@ def get_rating(conversation_id: str, user_id: str | uuid.UUID) -> dict[str, Any]
     cid = _to_uuid(conversation_id)
     with session_scope() as s:
         _owned_conversation(s, cid, user_id)
-        row = s.scalars(select(Rating).where(Rating.conversation_id == cid)).first()
-        if row is None:
-            return None
-        return {"stars": row.stars, "comment": row.comment}
+        return _read_rating(s, cid)
+
+
+def _read_rating(session, cid: uuid.UUID) -> dict[str, Any] | None:
+    row = session.scalars(select(Rating).where(Rating.conversation_id == cid)).first()
+    if row is None:
+        return None
+    return {"stars": row.stars, "comment": row.comment}
 
 
 def count_unconsumed_ratings(

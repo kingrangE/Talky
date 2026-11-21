@@ -66,12 +66,12 @@ test('conversation checks sooner while speech is untranscribed and restores the 
   let requests = 0;
   let inputText = null;
   globalThis.fetch = async url => {
-    assert.equal(url, '/api/conversations/c1');
-    requests++;
-    return json({ messages: [], turns: [{
+    assert.equal(url, requests++ ? '/api/turns/voice-1' : '/api/conversations/c1');
+    const turn = {
       id:'voice-1', conversation_id:'c1', status:'processing',
       has_input_audio:true, input_text:inputText, result:{},
-    }] });
+    };
+    return json(url === '/api/turns/voice-1' ? turn : { messages: [], turns: [turn] });
   };
   await React.act(async () => root.render(React.createElement(Conversation, {
     cid:'c1', user:{ id:'u1' }, onRefresh() {}, onCreated() {},

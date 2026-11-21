@@ -35,6 +35,8 @@ test('selecting a topic starts with an assistant message and leaves manual input
       rid = url.split('/').at(-2); topic = JSON.parse(options.body).topic;
       return response({ id: rid, conversation_id: 'c1', status: 'queued', starter_topic: topic, result: {} });
     }
+    if (url === `/api/turns/${rid}`) return response({ id: rid, conversation_id: 'c1', status: 'completed', starter_topic: topic,
+      result: { assistant_message_id: 'opening' } });
     return response({ id: 'c1', title: '주제 대화', messages: rid ? [{ id: 'opening', role: 'assistant', content: 'Where would you like to go next?' }] : [],
       turns: rid ? [{ id: rid, conversation_id: 'c1', status: 'completed', starter_topic: topic,
         result: { user_message_id: null, assistant_message_id: 'opening' } }] : [] });
@@ -141,6 +143,127 @@ test('failed voice message explains the cause and next action', async () => {
   assert.match(document.querySelector('.user-message').textContent, /목소리를 인식하지 못했어요/);
   assert.match(document.querySelector('.user-message').textContent, /마이크를 확인하고 다시 녹음/);
   assert.doesNotMatch(document.querySelector('.user-message').textContent, /문장을 인식하고 있어요/);
+});
+
+test('idle conversations reconcile other-tab changes on a 15s timer, focus and visibility', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const advance = ms => React.act(async () => t.mock.timers.tick(ms));
+  const calls = [];
+  const snapshot = { id: 'c1', title: '첫 제목', messages: [], turns: [] };
+  globalThis.fetch = async url => { calls.push(url); return response(snapshot); };
+  await React.act(async () => root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' } })));
+  for (let i = 0; i < 3; i++) {
+    await advance(14999);
+    assert.equal(calls.length, i + 1);
+    await advance(1);
+  }
+  assert.deepEqual(calls, Array(4).fill('/api/conversations/c1'));
+  snapshot.title = '다른 탭에서 바꾼 제목';
+  window.dispatchEvent(new Event('focus'));
+  await advance(0);
+  assert.equal(calls.length, 5);
+  assert.equal(document.querySelector('h1').textContent, snapshot.title);
+
+  snapshot.messages = [{ id: 'tab-message', role: 'assistant', content: 'A reply from another tab.' }];
+  Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+  try {
+    document.dispatchEvent(new Event('visibilitychange'));
+    await advance(0);
+  } finally {
+    delete document.hidden;
+  }
+  assert.equal(calls.length, 6);
+  assert.match(document.querySelector('.assistant-message').textContent, /A reply from another tab/);
+});
+
+test('voice polls only the turn at 400ms until transcription and reconciles later stages', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const advance = ms => React.act(async () => t.mock.timers.tick(ms));
+  const detailPath = '/api/conversations/c1', turnPath = '/api/turns/voice';
+  const calls = [];
+  let turn = { id: 'voice', conversation_id: 'c1', status: 'processing', has_input_audio: true, input_text: null, result: {} };
+  const snapshot = { id: 'c1', title: '새로운 대화', messages: [] };
+  globalThis.fetch = async url => {
+    calls.push(url);
+    return response(url === turnPath ? turn : { ...snapshot, turns: [turn] });
+  };
+  await React.act(async () => root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' } })));
+  for (let i = 0; i < 4; i++) await advance(400);
+  assert.deepEqual(calls, [detailPath, ...Array(4).fill(turnPath)]);
+  assert.match(document.querySelector('.user-bubble').textContent, /인식하고 있어요/);
+  turn = { ...turn, input_text: 'I heard my transcript.' };
+  await advance(399);
+  assert.equal(calls.length, 5);
+  await advance(1);
+  assert.equal(calls.at(-1), turnPath);
+  assert.match(document.querySelector('.user-bubble').textContent, /I heard my transcript/);
+  assert.equal(document.querySelector('.assistant-message'), null);
+
+  turn = { ...turn, result: { user_message_id: 'u', assistant_message_id: 'a' } };
+  snapshot.messages = [
+    { id: 'u', role: 'user', content: turn.input_text },
+    { id: 'a', role: 'assistant', content: 'Here is my reply.' },
+  ];
+  await advance(1500);
+  assert.deepEqual(calls.slice(-2), [turnPath, detailPath]);
+  assert.match(document.querySelector('.assistant-message').textContent, /Here is my reply/);
+
+  snapshot.messages[0].better_expression = 'I heard the transcript.';
+  snapshot.messages[1].korean_translation = '여기 내 답변이야.';
+  snapshot.title = '자동으로 붙은 제목';
+  turn = { ...turn, has_output_audio: true };
+  await advance(1500);
+  assert.equal(calls.at(-1), detailPath);
+  assert.equal(document.querySelector('h1').textContent, snapshot.title);
+  assert.match(document.querySelector('.expression-feedback').textContent, /I heard the transcript/);
+  const translation = [...document.querySelectorAll('.assistant-message details')].find(d => d.querySelector('summary').textContent === '한국어로 확인하기');
+  await React.act(async () => { translation.open = true; translation.dispatchEvent(new Event('toggle')); });
+  assert.match(translation.textContent, /여기 내 답변이야/);
+  assert.ok(document.querySelector('[aria-label="답변 음성 재생"]'));
+
+  turn = { ...turn, status: 'completed' };
+  await advance(1500);
+  assert.equal(calls.at(-1), detailPath);
+  await advance(14999);
+  assert.equal(calls.length, 10);
+});
+
+test('a missing receipt stays retryable and reconnect reconciles it without a second submission', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const advance = ms => React.act(async () => t.mock.timers.tick(ms));
+  const calls = [];
+  let rid;
+  let turn;
+  let checks = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push([options.method || 'GET', url]);
+    if (options.method === 'PUT') {
+      rid = url.split('/').at(-1);
+      throw new TypeError('connection lost after submission');
+    }
+    if (url === `/api/turns/${rid}`) {
+      if (++checks === 1) throw new TypeError('still offline');
+      return turn ? response(turn) : response({}, 404);
+    }
+    return response({ id: 'c1', title: '연습', messages: [], turns: turn ? [turn] : [] });
+  };
+  sessionStorage.setItem('talky:draft:u1:c1', 'I just sent this.');
+  await React.act(async () => root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'u1' } })));
+  await React.act(async () => document.querySelector('form.text-composer').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  await advance(1500);
+  assert.match(document.querySelector('[role="alert"]').textContent, /서버에 연결하지 못했어요/);
+  await advance(1500);
+  assert.deepEqual(calls.at(-1), ['GET', `/api/turns/${rid}`]);
+  assert.match(document.querySelector('.message-status').textContent, /접수 여부/);
+  assert.ok(document.querySelector('.user-message .text-button'));
+  turn = { id: rid, conversation_id: 'c1', status: 'failed', input_text: 'I just sent this.', result: {}, error_message: '시간이 지나 응답하지 못했어요.' };
+  window.dispatchEvent(new Event('online'));
+  await advance(0);
+  assert.deepEqual(calls.at(-1), ['GET', '/api/conversations/c1']);
+  assert.equal(calls.filter(([method]) => method === 'PUT').length, 1);
+  assert.equal(document.querySelectorAll('.user-message').length, 1);
+  assert.equal(document.querySelector('.user-message .text-button'), null);
+  assert.match(document.querySelector('.message-status').textContent, /시간이 지나/);
 });
 
 test('a definitive input rejection shows its cause and allows a corrected submission', async () => {
@@ -332,6 +455,8 @@ test('a newly generated conversation reply plays without clicking the play butto
       rid = url.split('/').at(-1);
       return response({ id: rid, conversation_id: 'c1', status: 'queued', input_text: '자동으로 답변을 듣고 싶어요.', result: {} });
     }
+    if (url === `/api/turns/${rid}`) return response({ id: rid, conversation_id: 'c1', status: 'completed', has_output_audio: true,
+      result: { user_message_id: 'user-new', assistant_message_id: 'assistant-new' } });
     return response({ id: 'c1', title: '자동 재생', messages: rid ? [
       { id: 'user-new', role: 'user', content: '자동으로 답변을 듣고 싶어요.' },
       { id: 'assistant-new', role: 'assistant', content: 'Let’s practice together.' },
@@ -387,7 +512,7 @@ test('automatic title reaches the sidebar and a manual rename updates it without
   await React.act(async () => { await tick(); });
   assert.equal(document.querySelector('.history-list button span').textContent, '새로운 대화');
   serverTitle = '파스타 만들기';
-  await React.act(async () => { await new Promise(resolve => setTimeout(resolve, 1550)); });
+  await React.act(async () => { window.dispatchEvent(new Event('focus')); await tick(); });
   assert.equal(document.querySelector('.history-list button span').textContent, '파스타 만들기');
   await React.act(async () => { document.querySelector('.conversation-title button').click(); });
   const input = document.getElementById('conversation-title');

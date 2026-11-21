@@ -43,12 +43,59 @@ def graph(monkeypatch):
         driver.close()
 
 
-def test_paths_do_not_duplicate_messages_or_mix_users(graph):
-    rows = recall.recall_related(graph, [graph+'/books', graph+'/reading'], raise_errors=True)
-    ids = [row['message_id'] for row in rows]
-    assert len(ids) == len(set(ids)) == 2
-    assert graph+'-private' not in ids
-    assert recall.recall_related(graph, [graph+'/books'], current_conversation_id=graph+'-conversation', raise_errors=True) == []
+@pytest.fixture
+def dense_graph(graph):
+    with recall.get_driver().session() as session:
+        session.run('''
+            MATCH (u:User {id:$scope})-[:HAD]->(:Conversation)-[:ABOUT]->(seed:Topic {name:$scope+'/books'})
+            MATCH (other:Conversation {id:$scope+'-other-conversation'})
+            CREATE (near:Topic {name:$scope+'/z-near', test_scope:$scope}),
+                   (far:Topic {name:$scope+'/a-far', test_scope:$scope}),
+                   (third:Topic {name:$scope+'/third', test_scope:$scope}),
+                   (fourth:Topic {name:$scope+'/fourth', test_scope:$scope}),
+                   (foreign:Topic {name:$scope+'/foreign', test_scope:$scope}),
+                   (near)-[:RELATED_TO]->(far)-[:RELATED_TO]->(third)-[:RELATED_TO]->(fourth),
+                   (other)-[:ABOUT]->(foreign)-[:RELATED_TO]->(fourth),
+                   (u)-[:HAD]->(past:Conversation {id:$scope+'-past', test_scope:$scope}),
+                   (u)-[:HAD]->(deep:Conversation {id:$scope+'-deep', test_scope:$scope}),
+                   (u)-[:HAD]->(beyond:Conversation {id:$scope+'-beyond', test_scope:$scope}),
+                   (past)-[:ABOUT]->(near), (past)-[:ABOUT]->(far),
+                   (deep)-[:ABOUT]->(third), (beyond)-[:ABOUT]->(fourth)
+            WITH seed, near, past, deep, beyond
+            UNWIND [
+                {c:past, id:'tie-b', role:'assistant', day:1},
+                {c:past, id:'tie-a', role:'user', day:1},
+                {c:past, id:'system', role:'system', day:2},
+                {c:deep, id:'third-hop', role:'user', day:2},
+                {c:beyond, id:'fourth-hop', role:'user', day:2}
+            ] AS item
+            WITH seed, near, item, item.c AS c
+            CREATE (c)-[:CONTAINS]->(:Message {id:$scope+'-'+item.id, text:item.id, role:item.role,
+                   lang:'en', ts:datetime({year:2025, month:1, day:item.day}), test_scope:$scope})
+            WITH DISTINCT seed, near
+            UNWIND range(1, 8) AS i
+            CREATE (bridge:Topic {name:$scope+'/bridge-'+toString(i), test_scope:$scope})
+            WITH seed, near, collect(bridge) AS bridges
+            WITH [seed, near] + bridges AS clique
+            UNWIND range(0, size(clique)-2) AS i
+            UNWIND range(i+1, size(clique)-1) AS j
+            WITH clique[i] AS a, clique[j] AS b
+            CREATE (a)-[:RELATED_TO]->(b)
+        ''', scope=graph).consume()
+    return graph
+
+
+def test_dense_paths_keep_minimum_hops_topic_order_and_scope(dense_graph):
+    scope = dense_graph
+    rows = recall.recall_related(
+        scope, [scope+'/books', scope+'/reading', scope+'/foreign'],
+        current_conversation_id=scope+'-conversation', raise_errors=True,
+    )
+    assert [(row['message_id'], row['hops'], row['topic']) for row in rows] == [
+        (scope+'-tie-a', 1, scope+'/a-far'),
+        (scope+'-tie-b', 1, scope+'/a-far'),
+        (scope+'-third-hop', 3, scope+'/third'),
+    ]
 
 
 @pytest.mark.parametrize('question', ['Which neighborhood is Blue Bookshop in?', '파란책방은 어느 동네에 있나요?'])

@@ -1,5 +1,6 @@
 """Durable DB workers, supervised so stuck model work can be killed and recovered."""
 
+from contextlib import closing
 from pathlib import Path
 import logging
 import json
@@ -9,6 +10,11 @@ import signal
 import threading
 import time
 
+from sqlalchemy import or_, select
+
+from app.db.job_notifications import JobListener
+from app.db.models import ConversationTurn, MockExamReport, MockExamResponse
+from app.db.postgres import session_scope
 from app.mock_exam.repository import claim_job, fail_job, recover_jobs
 from app.mock_exam.service import _finalize_report, _process_response
 from app.runtime import ModelBusy, job_budget
@@ -18,12 +24,30 @@ from app.conversation import claim_turn, fail_turn, process_turn
 log = logging.getLogger(__name__)
 
 
+def _idle_timeout() -> float:
+    # Keep the existing cadence while delayed retries, expiry or lease recovery need polling.
+    with session_scope() as session:
+        pending = session.scalar(select(or_(
+            select(ConversationTurn.id).where(ConversationTurn.status.in_(("queued", "processing"))).exists(),
+            select(MockExamResponse.id).where(MockExamResponse.status.in_(("queued", "processing"))).exists(),
+            select(MockExamReport.id).where(MockExamReport.status.in_(("queued", "scoring"))).exists(),
+        )))
+    return 0.5 if pending else min(2.0, get_settings().CONVERSATION_QUEUE_WAIT_SECONDS / 2)
+
+
 def _run_worker(channel) -> None:
     if get_settings().WORKER_WARMUP:
         from app.warmup import warmup
         warmup()
+    with closing(JobListener()) as listener:
+        _run_jobs(channel, listener)
+
+
+def _run_jobs(channel, listener: JobListener) -> None:
     prefer_chat = False
     while True:
+        # Commit LISTEN before checking the tables, including after reconnecting.
+        listener.subscribe()
         recover_jobs()
         channel.send("heartbeat")
         job = None
@@ -53,7 +77,10 @@ def _run_worker(channel) -> None:
         except ModelBusy:
             pass
         if job is None:
-            time.sleep(0.5)
+            if listener.connection is None:
+                time.sleep(0.5)
+            else:
+                listener.wait(_idle_timeout())
 
 
 def _process_job(job):

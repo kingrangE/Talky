@@ -180,7 +180,7 @@ def detail(cid: UUID, uid: str = Depends(user_id)):
                     'english_expression': m.english_expression, 'better_expression': m.better_expression,
                     'korean_translation': m.korean_translation} for m in reversed(messages)],
                 'turns': [public_turn(conversation._record(t)) for t in reversed(turns)],
-                'report': repo.get_report(str(cid), uid), 'rating': repo.get_rating(str(cid), uid)}
+                'report': repo._read_report(session, cid), 'rating': repo._read_rating(session, cid)}
 
 
 @app.post('/api/messages/{mid}/translation')
@@ -237,6 +237,15 @@ async def send_voice(cid: UUID, rid: UUID, request: Request, response: Response,
         f'body;dur={request.state.body_receive_ms:.2f}, '
         f'accept;dur={(monotonic() - started) * 1000:.2f}'
     )
+    return public_turn(turn)
+
+
+@app.get('/api/turns/{rid}')
+def turn_status(rid: UUID, uid: str = Depends(user_id)):
+    try:
+        turn = conversation.get_turn(str(rid), uid)
+    except ValueError:
+        raise HTTPException(404, '요청을 찾을 수 없습니다.') from None
     return public_turn(turn)
 
 

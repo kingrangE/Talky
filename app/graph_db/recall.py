@@ -62,11 +62,12 @@ def recall_related(
                     WITH collect(DISTINCT t) AS seeds
                     UNWIND seeds AS t
                     MATCH path = (t)-[:RELATED_TO*0..3]-(t2:Topic)
+                    WITH t2, min(length(path)) AS topic_hops
                     MATCH (:User {id: $uid})-[:HAD]->(c:Conversation)-[:ABOUT]->(t2)
                     MATCH (c)-[:CONTAINS]->(m:Message)
                     WHERE m.role IN ['user', 'assistant']
                       AND ($current_cid IS NULL OR c.id <> $current_cid)
-                    WITH m, c, min(length(path)) AS hops, min(t2.name) AS topic
+                    WITH m, c, min(topic_hops) AS hops, min(t2.name) AS topic
                     RETURN m.id AS message_id, c.id AS conversation_id, m.text AS text, m.lang AS lang, topic, m.ts AS ts, hops
                     ORDER BY hops ASC, ts DESC, message_id ASC LIMIT $limit
                     """,

@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy import delete, func, or_, select
 
+from app.db.job_notifications import notify_jobs
 from app.db.models import (
     MockExamCalibrationSample,
     MockExamDailyAggregate,
@@ -163,6 +164,7 @@ def create_response(
             existing.task_evaluation = None
             existing.error_code = None
             existing.updated_at = _now()
+            notify_jobs(s)
             return str(existing.id)
         row = MockExamResponse(
             session_id=_uuid(session_id),
@@ -173,6 +175,7 @@ def create_response(
         )
         s.add(row)
         s.flush()
+        notify_jobs(s)
         return str(row.id)
 
 
@@ -244,6 +247,8 @@ def save_report(
         else:
             for key, value in values.items():
                 setattr(row, key, value)
+        if status == "queued":
+            notify_jobs(s)
         if evaluations:
             for evaluation in evaluations:
                 response = s.get(MockExamResponse, _uuid(evaluation["id"]))
@@ -418,6 +423,7 @@ def complete_response(
                 session_id=session.id, status="queued", scoring_version=SCORING_VERSION,
                 scoring_profile=session.scoring_profile, payload={}, expires_at=session.expires_at,
             ))
+            notify_jobs(s)
 
 
 def requeue_report(session_id: str) -> None:
@@ -439,6 +445,7 @@ def requeue_report(session_id: str) -> None:
         report.payload = {}
         report.updated_at = session.updated_at = _now()
         session.status = "scoring"
+        notify_jobs(s)
 
 
 def queue_audio_deletion(path: str) -> None:
