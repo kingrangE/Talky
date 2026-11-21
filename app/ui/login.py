@@ -1,6 +1,6 @@
 import streamlit as st
 
-from app.auth import authenticate, register_user
+from app.auth import LoginRateLimited, authenticate, register_user
 
 
 def require_user() -> str:
@@ -17,7 +17,10 @@ def require_user() -> str:
         name = st.text_input("아이디", max_chars=64)
         password = st.text_input("비밀번호", type="password", max_chars=128)
         if st.form_submit_button("로그인"):
-            authenticated = authenticate(name, password)
+            try:
+                authenticated = authenticate(name, password, client_host=None)
+            except LoginRateLimited:
+                authenticated = None
             if authenticated:
                 st.session_state.clear()
                 st.session_state.auth_user_id = authenticated

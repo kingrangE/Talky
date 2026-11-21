@@ -38,9 +38,18 @@ class User(Base):
     display_name: Mapped[str | None] = mapped_column(String(128))
     login_name: Mapped[str | None] = mapped_column(String(64), unique=True)
     password_hash: Mapped[str | None] = mapped_column(Text)
+    # Older releases still require these columns after an application rollback.
     failed_logins: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class LoginLimit(Base):
+    __tablename__ = "login_limits"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    attempts: Mapped[int] = mapped_column(Integer)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
 class Conversation(Base):

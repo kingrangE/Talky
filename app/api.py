@@ -106,9 +106,14 @@ def register(body: Credentials):
 
 @app.post('/api/auth/login')
 def login(body: Credentials, request: Request, response: Response):
-    uid = auth.authenticate(body.login_name, body.password)
+    try:
+        uid = auth.authenticate(body.login_name, body.password,
+                                client_host=request.client.host if request.client else None)
+    except auth.LoginRateLimited:
+        raise HTTPException(429, '로그인 요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+                            headers={'Retry-After': str(auth.SOURCE_WINDOW_SECONDS)}) from None
     if not uid:
-        raise HTTPException(401, '아이디와 비밀번호를 확인해 주세요. 반복 실패 시 15분 동안 잠깁니다.')
+        raise HTTPException(401, '아이디와 비밀번호를 확인하거나 잠시 후 다시 시도해 주세요.')
     response.set_cookie(COOKIE, sign_recovery_token(f'account:{uid}', ttl_seconds=43200),
                         max_age=43200, httponly=True, secure=request.url.scheme == 'https', samesite='strict')
     return {'id': uid}

@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 import re
@@ -6,10 +7,11 @@ import uuid
 
 from fastapi.testclient import TestClient
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select, update
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app import api, conversation
-from app.db.models import ConversationTurn, User
+from app.db.models import ConversationTurn, LoginLimit, User
 from app.mock_exam.privacy import audio_store, sign_recovery_token
 from app.settings import get_settings
 
@@ -90,15 +92,64 @@ def test_voice_receipt_exposes_body_and_accept_timings(web, monkeypatch):
 
 
 def test_cookie_flags_and_failed_login(web, monkeypatch):
-    monkeypatch.setattr(api.auth, 'authenticate', lambda *_: str(uuid.uuid4()))
+    monkeypatch.setattr(api.auth, 'authenticate', lambda *_, **__: str(uuid.uuid4()))
     response = web.post('/api/auth/login', json={'login_name': 'learner', 'password': 'long-enough-password'})
     cookie = response.headers['set-cookie'].lower()
     assert 'httponly' in cookie and 'samesite=strict' in cookie
     with TestClient(api.app, base_url='https://testserver') as secure:
         response = secure.post('/api/auth/login', json={'login_name': 'learner', 'password': 'long-enough-password'})
         assert 'secure' in response.headers['set-cookie'].lower()
-    monkeypatch.setattr(api.auth, 'authenticate', lambda *_: None)
+    monkeypatch.setattr(api.auth, 'authenticate', lambda *_, **__: None)
     assert web.post('/api/auth/login', json={'login_name': 'learner', 'password': 'wrong'}).status_code == 401
+
+
+def test_login_limits_share_state_and_keep_failures_generic(pg_db, web, monkeypatch, caplog):
+    _, scope = pg_db
+    monkeypatch.setattr(api.auth, 'ITERATIONS', 1)
+    password = 'test-only-password'
+    api.auth.register_user('learner', password)
+    trusted_proxy = ProxyHeadersMiddleware(api.app, trusted_hosts='192.0.2.2')
+    path = '/api/auth/login'
+
+    with (
+        TestClient(trusted_proxy, client=('192.0.2.2', 1000)) as first,
+        TestClient(trusted_proxy, client=('192.0.2.2', 2000)) as second,
+    ):
+        headers = {'x-forwarded-for': '198.51.100.1', 'x-forwarded-proto': 'https'}
+        for index in range(6):
+            client = (first, second)[index % 2]
+            known = client.post(path, headers=headers, json={'login_name': 'Learner', 'password': 'test-typo'})
+            unknown = client.post(path, headers=headers, json={'login_name': 'missing', 'password': 'test-typo'})
+            assert known.status_code == unknown.status_code == 401
+            assert known.content == unknown.content
+            assert 'set-cookie' not in known.headers and 'set-cookie' not in unknown.headers
+
+        good = {'login_name': 'learner', 'password': password}
+        outside = headers | {'x-forwarded-for': '198.51.100.2'}
+        response = second.post(path, headers=outside, json=good)
+        assert response.status_code == 200
+        assert 'secure' in response.headers['set-cookie'].lower()
+
+    verified = []
+    monkeypatch.setattr(api.auth, 'verify_password', lambda *_: verified.append(True) or False)
+    with TestClient(trusted_proxy, client=('198.51.100.3', 1000)) as direct:
+        def attempt(index):
+            return direct.post(path, headers={'x-forwarded-for': f'203.0.113.{index + 1}'},
+                               json={'login_name': f'test-{index}', 'password': password})
+
+        with ThreadPoolExecutor(max_workers=8) as workers:
+            responses = list(workers.map(attempt, range(32)))
+        assert sorted(result.status_code for result in responses) == [401] * 30 + [429] * 2
+        assert all(result.headers['retry-after'] == '60' for result in responses if result.status_code == 429)
+        assert len(verified) == 30
+        limited = direct.post(path, json=good)
+        assert limited.status_code == 429 and 'set-cookie' not in limited.headers
+        with scope() as session:
+            session.execute(update(LoginLimit)
+                            .where(LoginLimit.key == api.auth._limit_key('source', '198.51.100.3'))
+                            .values(expires_at=func.now() - timedelta(seconds=1)))
+        assert attempt(32).status_code == 401
+    assert password not in caplog.text and 'test-typo' not in caplog.text
 
 
 def test_reply_translation_requires_login_and_checks_ownership(pg_db, web, monkeypatch):

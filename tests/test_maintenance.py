@@ -1,4 +1,11 @@
+from datetime import timedelta
+from threading import Event
+from types import SimpleNamespace
+
+from sqlalchemy import func, select
+
 from app import maintenance
+from app.db.models import LoginLimit
 
 
 def test_sweep_is_bounded_and_resumes_without_deleting_referenced_paths(monkeypatch):
@@ -24,3 +31,18 @@ def test_only_one_cleanup_owner_and_lock_recovers_on_disconnect(pg_db):
         first.execute(text('SELECT pg_advisory_unlock(:key)'), {'key': maintenance.CLEANUP_LOCK})
         assert second.scalar(sql, {'key': maintenance.CLEANUP_LOCK})
         second.execute(text('SELECT pg_advisory_unlock(:key)'), {'key': maintenance.CLEANUP_LOCK})
+
+
+def test_maintenance_removes_only_expired_login_limits(pg_db, monkeypatch):
+    _, scope = pg_db
+    with scope() as session:
+        session.add_all([
+            LoginLimit(key='expired', attempts=1, expires_at=func.now() - timedelta(minutes=1)),
+            LoginLimit(key='active', attempts=1, expires_at=func.now() + timedelta(minutes=1)),
+        ])
+    stop = Event()
+    monkeypatch.setattr(maintenance, 'run_expiry_cleanup', lambda **_: stop.set())
+    monkeypatch.setattr(maintenance, 'audio_store', lambda: SimpleNamespace(older_than=lambda _: ()))
+    maintenance.run(stop)
+    with scope() as session:
+        assert session.scalars(select(LoginLimit.key)).all() == ['active']

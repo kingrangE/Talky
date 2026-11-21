@@ -5,15 +5,23 @@ import hmac
 import re
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+from ipaddress import IPv6Address, ip_address, ip_network
 
-from sqlalchemy import select
+from sqlalchemy import case, delete, func, or_, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
-from app.db.models import User
+from app.db.models import LoginLimit, User
 from app.db.postgres import session_scope
+from app.settings import get_settings
 
 ITERATIONS = 600000
+SOURCE_WINDOW_SECONDS = 60
+
+
+class LoginRateLimited(Exception):
+    pass
 
 
 def _login_name(value: str) -> str:
@@ -68,29 +76,56 @@ def register_user(login_name: str, password: str, *, existing_user_id: str | Non
         raise ValueError("사용할 수 없는 아이디입니다.") from exc
 
 
-def authenticate(login_name: str, password: str) -> str | None:
+def _limit_key(scope: str, source: str, name: str = "") -> str:
+    return hmac.digest(
+        get_settings().MOCK_EXAM_FINGERPRINT_SALT.encode(),
+        f"login:{scope}:{source}:{name}".encode(),
+        "sha256",
+    ).hex()
+
+
+def _consume(session, key: str, limit: int, seconds: int) -> bool:
+    now = func.statement_timestamp()
+    expiry = now + timedelta(seconds=seconds)
+    expired = LoginLimit.expires_at <= now
+    claim = insert(LoginLimit).values(key=key, attempts=1, expires_at=expiry)
+    claim = claim.on_conflict_do_update(
+        index_elements=[LoginLimit.key],
+        set_=dict(
+            attempts=case((expired, 1), else_=LoginLimit.attempts + 1),
+            expires_at=case((expired, expiry), else_=LoginLimit.expires_at),
+        ),
+        where=or_(expired, LoginLimit.attempts < limit),
+    ).returning(LoginLimit.attempts)
+    return session.scalar(claim) is not None
+
+
+def authenticate(login_name: str, password: str, *, client_host: str | None) -> str | None:
+    try:
+        address = ip_address(client_host)
+        if isinstance(address, IPv6Address) and address.ipv4_mapped:
+            address = address.ipv4_mapped
+        source = str(ip_network(f"{address}/64", strict=False)) if address.version == 6 else str(address)
+    except ValueError:
+        source = "unknown"
+    with session_scope() as session:
+        if not _consume(session, _limit_key("source", source), 30, SOURCE_WINDOW_SECONDS):
+            raise LoginRateLimited
     try:
         name = _login_name(login_name)
     except ValueError:
         verify_password(password, None)
         return None
-    now = datetime.now(timezone.utc)
+    key = _limit_key("pair", source, name)
     with session_scope() as session:
-        user = session.scalars(select(User).where(User.login_name == name).with_for_update()).first()
+        # Hold the pair row until verification finishes so concurrent failures count once each.
+        if not _consume(session, key, 5, 15 * 60):
+            return None
+        user = session.scalar(select(User).where(User.login_name == name))
         valid = verify_password(password, user.password_hash if user else None)
-        if user is None:
-            return None
-        locked_until = user.locked_until
-        if locked_until and (locked_until if locked_until.tzinfo else locked_until.replace(tzinfo=timezone.utc)) > now:
-            return None
-        if valid:
-            user.failed_logins = 0
-            user.locked_until = None
+        if user and user.password_hash and valid:
+            session.execute(delete(LoginLimit).where(LoginLimit.key == key))
             return str(user.id)
-        user.failed_logins += 1
-        if user.failed_logins >= 5:
-            user.locked_until = now + timedelta(minutes=15)
-            user.failed_logins = 0
         return None
 
 

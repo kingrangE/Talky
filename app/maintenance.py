@@ -2,7 +2,8 @@
 import logging
 import threading
 from itertools import islice
-from sqlalchemy import text
+from sqlalchemy import delete, func, text
+from app.db.models import LoginLimit
 from app.db.postgres import get_engine
 from app.mock_exam.service import run_expiry_cleanup
 from app.mock_exam.privacy import audio_store
@@ -34,7 +35,7 @@ def run(stop):
                 try:
                     iterator = None
                     while not stop.is_set():
-                        connection.execute(text('SELECT 1'))
+                        connection.execute(delete(LoginLimit).where(LoginLimit.expires_at <= func.now()))
                         connection.commit()
                         run_expiry_cleanup(sweep=False)
                         if iterator is None:

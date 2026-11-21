@@ -1,16 +1,18 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import sys
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, update
 
 from app import auth
 from app.agents import evolve_graph
 from app.db import repo
-from app.db.models import Message, PromptVersion, Rating, User
+from app.db.models import LoginLimit, Message, PromptVersion, Rating, User
 from app.runtime import ModelBusy, bounded_history, bounded_messages, format_memory, inference_slot
 
 PASSWORD = "test-only-long-password"
+SOURCE = "192.0.2.10"
 
 
 @pytest.mark.parametrize('length', [7, 8, 24, 25])
@@ -43,22 +45,44 @@ def test_password_hashes_are_salted_and_verified():
         auth.hash_password("short")
 
 
-def test_accounts_persist_lockout_and_keep_identities_separate(pg_db):
+def test_accounts_limit_failures_to_the_login_name_and_source(pg_db, monkeypatch):
     _, scope = pg_db
+    monkeypatch.setattr(auth, "ITERATIONS", 1)
     alice = auth.register_user("Alice", PASSWORD)
     bob = auth.register_user("bob", PASSWORD)
     assert alice != bob
-    assert auth.authenticate(" ALICE ", PASSWORD) == alice
-    with pytest.raises(ValueError):
-        auth.register_user("alice", PASSWORD)
-    for _ in range(5):
-        assert auth.authenticate("alice", "wrong-password") is None
-    assert auth.authenticate("alice", PASSWORD) is None
-    assert auth.authenticate("bob", PASSWORD) == bob
     with scope() as session:
         user = session.get(User, repo._to_uuid(alice))
-        user.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
-    assert auth.authenticate("alice", PASSWORD) == alice
+        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+    assert auth.authenticate(" ALICE ", PASSWORD, client_host=SOURCE) == alice
+    with pytest.raises(ValueError):
+        auth.register_user("alice", PASSWORD)
+
+    verified = []
+    verify = auth.verify_password
+
+    def count_verification(password, encoded):
+        verified.append(True)
+        return verify(password, encoded)
+
+    monkeypatch.setattr(auth, "verify_password", count_verification)
+    with ThreadPoolExecutor(max_workers=8) as workers:
+        results = list(workers.map(
+            lambda _: auth.authenticate(" ALICE ", "test-typo", client_host=SOURCE), range(8)
+        ))
+    assert results == [None] * 8
+    assert len(verified) == 5
+    assert auth.authenticate("alice", PASSWORD, client_host=SOURCE) is None
+    assert len(verified) == 5
+    assert auth.authenticate("bob", PASSWORD, client_host=SOURCE) == bob
+    assert auth.authenticate("alice", PASSWORD, client_host="192.0.2.20") == alice
+    with scope() as session:
+        session.execute(update(LoginLimit)
+                        .where(LoginLimit.key == auth._limit_key("pair", SOURCE, "alice"))
+                        .values(expires_at=func.now() - timedelta(seconds=1)))
+    assert auth.authenticate("alice", PASSWORD, client_host=SOURCE) == alice
+    with scope() as session:
+        assert session.get(LoginLimit, auth._limit_key("pair", SOURCE, "alice")) is None
 
 
 def test_legacy_data_requires_explicit_admin_account_link(pg_db):
@@ -72,7 +96,7 @@ def test_legacy_data_requires_explicit_admin_account_link(pg_db):
     newcomer = auth.register_user("newcomer", PASSWORD)
     assert repo.list_conversations(newcomer) == []
     assert auth.register_user("owner", PASSWORD, existing_user_id=legacy_id) == legacy_id
-    assert repo.list_conversations(auth.authenticate("owner", PASSWORD))[0]["id"] == cid
+    assert repo.list_conversations(auth.authenticate("owner", PASSWORD, client_host=SOURCE))[0]["id"] == cid
     with pytest.raises(ValueError):
         auth.register_user("another", PASSWORD, existing_user_id=legacy_id)
 
