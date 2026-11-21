@@ -9,7 +9,8 @@ export function Notice({ children }) {
   return children ? <div className="notice" role="alert">{children}</div> : null;
 }
 
-function EnglishExpression({ value, original }) {
+function EnglishExpression({ value, feedback, original }) {
+  if (feedback) return <ExpressionFeedback value={feedback} title="영어로는 이렇게 말해요"/>;
   const normalize = text => text.trim().replace(/\s+/g, ' ');
   if (!value?.trim() || normalize(value) === normalize(original)) return null;
   return <details className="message-disclosure">
@@ -18,13 +19,13 @@ function EnglishExpression({ value, original }) {
   </details>;
 }
 
-function ExpressionFeedback({ value, original }) {
+function ExpressionFeedback({ value, original, title = '표현 다듬기' }) {
   if (!value) return null;
   const legacy = value.match(/^\*\*Try:\*\* ([\s\S]*?)\n\n\*([\s\S]*)\*$/);
   const parts = legacy || value.match(/^\*\*([^\n]+)\*\*\n\n([\s\S]*)$/);
   const normalize = text => text.trim().replace(/[.!?]+$/, '').trim();
-  if (parts && normalize(parts[1]) === normalize(original)) return null;
-  return <details className="message-disclosure expression-feedback"><summary>표현 다듬기</summary>
+  if (parts && original !== undefined && normalize(parts[1]) === normalize(original)) return null;
+  return <details className="message-disclosure expression-feedback"><summary>{title}</summary>
     {parts ? <><p lang="en"><strong>{parts[1]}</strong></p>{legacy ? <p lang="ko">{parts[2]}</p> : <ul lang="ko">{parts[2].split(/\r?\n|\s+-\s+/).map(line => line.trim().replace(/^[-*]\s+/, '')).filter(Boolean).map((line, index) => <li key={index}>{line}</li>)}</ul>}</> : <p>{value}</p>}
   </details>;
 }
@@ -481,7 +482,7 @@ export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user })
         const turn = turns.find(t => t.result?.[message.role === 'user' ? 'user_message_id' : 'assistant_message_id'] === message.id);
         const reply = turn ? messages.find(m => m.id === turn.result?.assistant_message_id) : messages[index + 1]?.role === 'assistant' ? messages[index + 1] : null;
         const correction = message.better_expression || turn?.result?.better_expression || reply?.better_expression;
-        return message.role === 'user' ? <article key={message.id} className="message user-message"><span className="message-label">나</span><div className="user-bubble">{message.content}</div><EnglishExpression value={message.english_expression} original={message.content}/><ExpressionFeedback value={correction} original={message.content}/></article>
+        return message.role === 'user' ? <article key={message.id} className="message user-message"><span className="message-label">나</span><div className="user-bubble">{message.content}</div><EnglishExpression value={message.english_expression} feedback={message.english_expression && correction} original={message.content}/>{!message.english_expression && <ExpressionFeedback value={correction} original={message.content}/>}</article>
         : <article key={message.id} className="message assistant-message"><span className="message-label"><Mark/>Talky</span>{turn ? <AudioReply turn={turn} autoPlay={autoIds.current.has(turn.id) && !played.current.has(turn.id)} onPlayed={id => played.current.add(id)}/> : <p className="muted">저장된 답변</p>}<details className="message-disclosure"><summary>자막 보기</summary><p lang="en">{message.content}</p></details><KoreanReply message={message} generating={['queued', 'processing'].includes(turn?.status)}/></article>;
       })}
       {pendingTurns(turns).map(pending)}

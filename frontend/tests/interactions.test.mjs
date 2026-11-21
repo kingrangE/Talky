@@ -396,14 +396,25 @@ test('the English expression hides a repeated transcript and shows a real rewrit
     { id: 'u1', role: 'user', content: "I feel tired and I'm not happy.", english_expression: " I feel tired and I'm not happy. " },
     { id: 'a1', role: 'assistant', content: 'Oh no. What happened?' },
     { id: 'u2', role: 'user', content: '일이 너무 많았어요.', english_expression: 'I had too much work.' },
+    { id: 'u3', role: 'user', content: '라면을 좋아해요.', english_expression: 'I like ramen.',
+      better_expression: '**I like ramen.**\n\n- 저는 라면을 좋아해요.' },
+    { id: 'u4', role: 'user', content: '요즘 11시쯤 일어나요.', english_expression: "I've been getting up around 11 lately.",
+      better_expression: "**I've been getting up around 11 lately.**\n\n- 요즘 11시쯤 일어나요.\n- have been ~ing: 요즘 반복되는 일을 나타내요." },
   ] });
   await React.act(async () => {
     root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} }));
     await tick();
   });
-  const [repeated, rewritten] = document.querySelectorAll('.user-message');
+  const [repeated, rewritten, simple, withGrammar] = document.querySelectorAll('.user-message');
   assert.equal(repeated.querySelector('details'), null);
   assert.equal(rewritten.querySelector('details p').textContent, 'I had too much work.');
+  assert.equal(simple.querySelectorAll('details').length, 1);
+  assert.equal(simple.querySelector('summary').textContent, '영어로는 이렇게 말해요');
+  assert.equal(simple.querySelector('strong').textContent, 'I like ramen.');
+  assert.deepEqual([...simple.querySelectorAll('li')].map(item => item.textContent), ['저는 라면을 좋아해요.']);
+  assert.deepEqual([...withGrammar.querySelectorAll('li')].map(item => item.textContent), [
+    '요즘 11시쯤 일어나요.', 'have been ~ing: 요즘 반복되는 일을 나타내요.',
+  ]);
 });
 
 test('opening during generation uses the polled translation without a duplicate request', async () => {

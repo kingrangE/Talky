@@ -23,7 +23,7 @@ class SourceProtection(BaseModel):
 
 SOURCE_PROMPT = """Prepare a learner's utterance for rewriting, without rewriting it. Copy names and technical-name spans exactly as heard, including unfamiliar or incorrectly recognized names. Preserve an unclear technical list as one span if necessary. These spans will be protected during editing and restored literally, so never identify a better-known technology. Include names/acronyms and short uncertain technical-name phrases, not complete sentences or surrounding verbs. For example, preserve 'language, language series or something' as written when it is a technical list; do not decode it.
 
-For speech input only, separately propose high-confidence ordinary-English sound-alike repairs supported by immediate context. In an educational English-conversation service with no jogging context, running can plausibly mean learning. In a service for runners or group runs, running is valid and must stay. Use an exact, uniquely occurring source span. Never apply a repair to a protected name or uncertain technical term. For typed text, speech_repairs must be empty. Return only literal names and these separate ordinary-word repairs; do not add facts or guess expertise."""
+For speech input only, separately propose high-confidence ordinary-English sound-alike repairs supported by immediate context. Both source and replacement must be in English, without Korean words or characters. In an educational English-conversation service with no jogging context, running can plausibly mean learning. In a service for runners or group runs, running is valid and must stay. Use an exact, uniquely occurring source span. Never apply a repair to a protected name or uncertain technical term. For typed text, speech_repairs must be empty. Return only literal names and these separate ordinary-word repairs; do not add facts or guess expertise."""
 
 
 @dataclass
@@ -45,7 +45,9 @@ def prepare_rewrite(state):
     source = original
     repairs = []
     for repair in plan.speech_repairs if state.get('audio_bytes') else []:
-        if (source.count(repair.source) != 1 or any(
+        spans = (repair.source, repair.replacement)
+        if (any(not re.search(r'[A-Za-z]', span) or re.search(r'[가-힣ㄱ-ㆎᄀ-ᇿ]', span) for span in spans)
+                or source.count(repair.source) != 1 or any(
                 name in repair.source or repair.source in name for name in terms)):
             continue
         source = source.replace(repair.source, repair.replacement, 1)

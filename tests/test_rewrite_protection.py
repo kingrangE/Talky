@@ -87,7 +87,7 @@ def test_real_nodes_publish_restored_names_without_clarification_gate(monkeypatc
         assert 'Mandatory copy counts' in messages[0].content
         assert 'Do not turn repeated named subjects into pronouns' in messages[0].content
         english = messages[-1].content.replace('I made ', 'I built ')
-        return correction(english) if module is better_expr else ko_coach.KoCoachOutput(reply='What did you enjoy building?', english_expression=english)
+        return correction(english) if module is better_expr else ko_coach.KoCoachOutput(reply='What did you enjoy building?', english_expression=english, note={'translation': '전체 문장 해석.', 'explanations': []})
     monkeypatch.setattr(module, 'invoke_with_prompt', invoke)
     result = module.better_expr_node(state) if module is better_expr else module.ko_coach_node(state)
     english = result['better_expression'] if module is better_expr else result['english_expression']
@@ -112,3 +112,12 @@ def test_literal_key_or_mixed_markers_are_valid_only_with_exact_original_names(m
     assert protection.restore_rewrite(correction(mixed), prepared).suggestion == SOURCE
     with pytest.raises(ValueError):
         protection.restore_rewrite(correction(SOURCE.replace('language, language series or something', 'LangGraph and LangSeries')), prepared)
+
+
+def test_ordinary_english_repair_cannot_change_a_korean_phrase(monkeypatch):
+    state = {'user_text': '라면을 좋아해요. 안 배가 고파요.', 'audio_bytes': b'fixture'}
+    prepared = prepare(monkeypatch, state, [], repairs=[
+        {'source': '안 배가 고파요', 'replacement': '않 배가 고파요'},
+    ])
+    assert prepared.repairs == []
+    assert prepared.state['user_text'] == state['user_text']

@@ -166,7 +166,7 @@ def test_agent_loads_own_rdb_prompt_before_calling_llm(db, monkeypatch, user_tex
 
     monkeypatch.setattr(en_reply, "get_chat_llm", lambda: FakeLLM(SimpleNamespace(content="Hello!")))
     monkeypatch.setattr(ko_coach, "get_structured_llm",
-                        lambda schema: FakeLLM(schema(reply="Hello!", english_expression="Hello")))
+                        lambda schema: FakeLLM(schema(reply="Hello!", english_expression="Hello", note={"translation": "안녕!", "explanations": []})))
     monkeypatch.setattr(ko_coach, "prepare_rewrite", lambda state: ProtectedRewrite(state, {}, []))
     for name in ("memory_recall_node", "better_expr_node", "tts_node", "persist_node", "persist_correction_node"):
         monkeypatch.setattr(conversation_graph, name, lambda _state: {})

@@ -7,11 +7,12 @@ import json
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from app.agents.nodes.better_expr import ExpressionNote
 from app.agents.state import GraphState
 from app.llm.factory import get_structured_llm
 from app.llm.prompt_registry import builtin_text, invoke_with_prompt
 from app.llm.conversation_style import FRIENDLY_REPLY_STYLE, NATIVE_ENGLISH_STYLE, rewrite_fidelity
-from app.llm.rewrite_protection import prepare_rewrite, restore_rewrite
+from app.llm.rewrite_protection import prepare_rewrite, repair_notes, restore_rewrite
 from app.runtime import bounded_messages, format_memory
 
 KO_COACH_SUFFIX = builtin_text("talky/ko-coach")
@@ -24,6 +25,7 @@ class KoCoachOutput(BaseModel):
     english_expression: str = Field(
         description="The user's ENTIRE latest message rewritten in natural English, including both English and Korean portions. Preserve all supported facts, subjects, comparisons, time, quantity, negation and uncertainty. Never invent technical names or skills to replace unclear fragments. Copy protected name markers exactly; do not infer their meaning."
     )
+    note: ExpressionNote = Field(description='Full Korean translation of english_expression, with optional learning points.')
 
 
 def _build_messages(state: GraphState) -> list:
@@ -32,6 +34,7 @@ def _build_messages(state: GraphState) -> list:
     system += '\n\nFor english_expression, rewrite the ENTIRE latest user message as natural spoken English, including every English and Korean portion in its original order. Correct grammar and improve phrasing in the existing English as well as translating the Korean. Never omit an English sentence merely because it is already English. Preserve all facts, events, quantities, time relationships, negation, intensity and intent; use history only as context, not extra text to rewrite. Before returning, check that each clause of the latest message is represented. Keep this full rewrite separate from reply, which continues the conversation.'
     system += format_memory(state.get("retrieved_memory") or [], MEMORY_HEADER)
     system += NATIVE_ENGLISH_STYLE + FRIENDLY_REPLY_STYLE
+    system += "\n\nReturn a separate note object even if an older prompt lists only two fields. Its translation must be the natural Korean meaning of the entire english_expression. Its explanations may be empty if there is no useful learning point. Otherwise briefly explain meaningful patterns from the actual English wording in Korean, prioritizing tense, aspect and voice."
     system += rewrite_fidelity(speech=bool(state.get('audio_bytes')))
     if state.get('_rewrite_names'):
         system += '\nLiteral name key (for grammar and pronunciation only): ' + json.dumps(state['_rewrite_names'], ensure_ascii=False)
@@ -54,10 +57,11 @@ def ko_coach_node(state: GraphState) -> dict:
     llm = get_structured_llm(KoCoachOutput)
     out: KoCoachOutput = invoke_with_prompt(llm, bounded_messages(_build_messages(prepared.state)), state, "talky/ko-coach")
     out = restore_rewrite(out, prepared)
+    feedback = f"**{out.english_expression}**\n\n{out.note.as_bullets()}"
     if prepared.repairs:
-        assumptions = ' '.join(f'I interpreted "{repair.source}" as "{repair.replacement}" from the context.' for repair in prepared.repairs)
-        out.reply = assumptions + ' Please let me know if you meant something else. ' + out.reply
+        feedback += "\n" + repair_notes(prepared)
     return {
         "ai_reply": out.reply,
         "english_expression": out.english_expression,
+        "better_expression": feedback,
     }
