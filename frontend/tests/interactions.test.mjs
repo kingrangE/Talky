@@ -391,6 +391,21 @@ test('natural user messages have no correction disclosure', async () => {
   assert.doesNotMatch(document.querySelector('.user-message').textContent, /표현 다듬기/);
 });
 
+test('the English expression hides a repeated transcript and shows a real rewrite', async () => {
+  globalThis.fetch = async () => response({ id: 'c1', title: '일상 대화', turns: [], messages: [
+    { id: 'u1', role: 'user', content: "I feel tired and I'm not happy.", english_expression: " I feel tired and I'm not happy. " },
+    { id: 'a1', role: 'assistant', content: 'Oh no. What happened?' },
+    { id: 'u2', role: 'user', content: '일이 너무 많았어요.', english_expression: 'I had too much work.' },
+  ] });
+  await React.act(async () => {
+    root.render(React.createElement(Conversation, { cid: 'c1', user: { id: 'user' }, onCreated() {}, onRefresh() {} }));
+    await tick();
+  });
+  const [repeated, rewritten] = document.querySelectorAll('.user-message');
+  assert.equal(repeated.querySelector('details'), null);
+  assert.equal(rewritten.querySelector('details p').textContent, 'I had too much work.');
+});
+
 test('opening during generation uses the polled translation without a duplicate request', async () => {
   let calls = 0;
   globalThis.fetch = async () => { calls++; return response({ translation: 'unexpected' }); };

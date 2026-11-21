@@ -9,6 +9,15 @@ export function Notice({ children }) {
   return children ? <div className="notice" role="alert">{children}</div> : null;
 }
 
+function EnglishExpression({ value, original }) {
+  const normalize = text => text.trim().replace(/\s+/g, ' ');
+  if (!value?.trim() || normalize(value) === normalize(original)) return null;
+  return <details className="message-disclosure">
+    <summary>영어로는 이렇게 말해요</summary>
+    <p lang="en">{value}</p>
+  </details>;
+}
+
 function ExpressionFeedback({ value, original }) {
   if (!value) return null;
   const legacy = value.match(/^\*\*Try:\*\* ([\s\S]*?)\n\n\*([\s\S]*)\*$/);
@@ -472,7 +481,7 @@ export function Conversation({ cid, onRefresh, onCreated, onTitleChange, user })
         const turn = turns.find(t => t.result?.[message.role === 'user' ? 'user_message_id' : 'assistant_message_id'] === message.id);
         const reply = turn ? messages.find(m => m.id === turn.result?.assistant_message_id) : messages[index + 1]?.role === 'assistant' ? messages[index + 1] : null;
         const correction = message.better_expression || turn?.result?.better_expression || reply?.better_expression;
-        return message.role === 'user' ? <article key={message.id} className="message user-message"><span className="message-label">나</span><div className="user-bubble">{message.content}</div>{message.english_expression && <details className="message-disclosure"><summary>영어로는 이렇게 말해요</summary><p lang="en">{message.english_expression}</p></details>}<ExpressionFeedback value={correction} original={message.content}/></article>
+        return message.role === 'user' ? <article key={message.id} className="message user-message"><span className="message-label">나</span><div className="user-bubble">{message.content}</div><EnglishExpression value={message.english_expression} original={message.content}/><ExpressionFeedback value={correction} original={message.content}/></article>
         : <article key={message.id} className="message assistant-message"><span className="message-label"><Mark/>Talky</span>{turn ? <AudioReply turn={turn} autoPlay={autoIds.current.has(turn.id) && !played.current.has(turn.id)} onPlayed={id => played.current.add(id)}/> : <p className="muted">저장된 답변</p>}<details className="message-disclosure"><summary>자막 보기</summary><p lang="en">{message.content}</p></details><KoreanReply message={message} generating={['queued', 'processing'].includes(turn?.status)}/></article>;
       })}
       {pendingTurns(turns).map(pending)}
