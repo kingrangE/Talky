@@ -58,6 +58,8 @@ class Conversation(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    __table_args__ = (Index("ix_conversations_user_started_id", user_id, started_at.desc(), id),)
+
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan"
     )
@@ -336,6 +338,7 @@ class ConversationTurn(Base):
         Index('ix_conversation_audio_expiry', 'audio_expires_at',
               postgresql_where='input_audio_path IS NOT NULL OR output_audio_path IS NOT NULL'),
         Index('ix_conversation_turn_queue', 'status', 'queue_deadline', 'created_at'),
+        Index('ix_conversation_turns_conversation_created_id', 'conversation_id', 'created_at', 'id'),
         Index('one_active_conversation_turn', 'conversation_id', unique=True,
               postgresql_where="status IN ('queued','processing')"),
     )
