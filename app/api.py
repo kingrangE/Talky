@@ -1,5 +1,6 @@
 """Same-origin web API; workers continue to own durable inference jobs."""
 from datetime import datetime, timezone
+from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from time import monotonic
 from uuid import UUID
@@ -32,6 +33,24 @@ WEB_BUILD = _asset.group(1) if _asset else ''
 
 @app.middleware('http')
 async def boundary(request: Request, call_next):
+    cfg = get_settings()
+    alb_subnets = cfg.ALB_SUBNET_CIDRS
+    peer = ip_address(request.client.host) if alb_subnets and request.client else None
+    if peer is not None and any(peer in subnet for subnet in alb_subnets):
+        # The HTTPS-only ALB appends the address of its immediate client.
+        request.scope['scheme'] = 'https'
+        if request.url.path != '/api/health':
+            forwarded = request.headers.getlist('x-forwarded-for')
+            address = forwarded[0].rsplit(',', 1)[-1].strip() if len(forwarded) == 1 else ''
+            try:
+                client = ip_address(address)
+                if isinstance(client, IPv6Address):
+                    if client.scope_id:
+                        raise ValueError('scoped address')
+                    client = client.ipv4_mapped or client
+            except ValueError:
+                return JSONResponse({'detail': '방문자 주소를 확인할 수 없습니다.'}, status_code=400)
+            request.scope['client'] = (str(client), 0)
     if request.url.path.startswith('/api/'):
         if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
             origin = request.headers.get('origin')
@@ -42,7 +61,7 @@ async def boundary(request: Request, call_next):
             data = bytearray()
             async for part in request.stream():
                 data.extend(part)
-                if len(data) > get_settings().MAX_AUDIO_BYTES + 32768:
+                if len(data) > cfg.MAX_AUDIO_BYTES + 32768:
                     return JSONResponse({'detail': '업로드가 너무 큽니다.'}, status_code=413)
             request._body = bytes(data)
             request.state.body_receive_ms = (monotonic() - receive_started) * 1000

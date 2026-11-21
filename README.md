@@ -116,7 +116,7 @@ Postgres / Neo4j / Ollama 가 외부에 떠 있는 환경:
 ```bash
 pip install -r requirements-dev.txt
 alembic upgrade head
-uvicorn app.api:app --host 127.0.0.1 --port 8501 --reload
+uvicorn app.api:app --host 127.0.0.1 --port 8501 --reload --no-proxy-headers
 ```
 
 다른 터미널에서 `python -m app.mock_exam.worker`를 실행해야 시험 제출이 처리됩니다.

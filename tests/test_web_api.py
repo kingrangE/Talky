@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 import re
-from types import SimpleNamespace
 import uuid
 
 from fastapi.testclient import TestClient
@@ -39,8 +38,9 @@ def test_auth_required_cookie_purpose_and_cross_origin_write(web):
 
 
 def test_upload_boundary_and_validation_do_not_echo_secrets(web, monkeypatch):
-    monkeypatch.setattr(api, 'get_settings', lambda: SimpleNamespace(MAX_AUDIO_BYTES=128))
-    assert web.put(f'/api/conversations/{uuid.uuid4()}/turns/{uuid.uuid4()}/voice', content=b'x' * 33000).status_code == 413
+    monkeypatch.setenv('MAX_AUDIO_BYTES', '1024')
+    get_settings.cache_clear()
+    assert web.put(f'/api/conversations/{uuid.uuid4()}/turns/{uuid.uuid4()}/voice', content=b'x' * 34000).status_code == 413
     secret = 'do-not-echo-this-password'
     response = web.post('/api/auth/login', json={'login_name': 'x' * 100, 'password': secret})
     assert response.status_code == 422

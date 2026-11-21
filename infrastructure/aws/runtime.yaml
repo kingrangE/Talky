@@ -6,6 +6,9 @@ Parameters:
   PublicSubnets:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Two public subnets in distinct AZs
+  AlbSubnetCidrs:
+    Type: CommaDelimitedList
+    Description: IPv4 CIDR blocks of the subnets in PublicSubnets
   PrivateSubnets:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Two private subnets in distinct AZs, with NAT or required VPC endpoints
@@ -283,6 +286,10 @@ Resources:
       SecurityGroups:
       - Ref: AlbSecurity
       LoadBalancerAttributes:
+      - Key: routing.http.xff_header_processing.mode
+        Value: append
+      - Key: routing.http.xff_client_port.enabled
+        Value: 'false'
       - Key: idle_timeout.timeout_seconds
         Value: '300'
       - Key: deletion_protection.enabled
@@ -348,6 +355,12 @@ Resources:
         - bash
         - docker/app-entrypoint.sh
         Environment:
+        - Name: ALB_SUBNET_CIDRS
+          Value:
+            Fn::Sub:
+            - '["${Cidrs}"]'
+            - Cidrs:
+                Fn::Join: ['","', {Ref: AlbSubnetCidrs}]
         - Name: POSTGRES_HOST
           Value:
             Fn::GetAtt:

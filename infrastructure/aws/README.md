@@ -55,6 +55,14 @@ python infrastructure/aws/migrate.py --stack TALKY_STACK --image ECR_IMAGE_WITH_
 
 Compose도 이제 `migrate` 일회성 서비스가 성공해야 웹을 시작한다. 웹 컨테이너마다 DDL을 동시에 실행하지 않는다. 웹 준비 상태는 `/api/health`의 응답과 스키마 호환성을 확인하고, 작업자 준비 상태는 실제 처리 루프가 갱신하는 heartbeat를 확인한다. 프로세스가 살아 있는 것과 업무 처리가 가능한 것을 구분한다.
 
+## ALB 뒤의 모의고사 방문자 한도
+
+`AlbSubnetCidrs`에는 `PublicSubnets`에 지정한 두 ALB 서브넷의 IPv4 CIDR만 전달한다. ALB 서브넷을 바꿀 때 두 파라미터를 함께 갱신한다. 웹 태스크는 private subnet에 공인 IP 없이 배치되며, `AppSecurity`는 ALB의 전용 `AlbSecurity` 보안 그룹에서 오는 TCP 8501 연결만 허용한다. 템플릿 구성에서 ALB를 거치지 않고 웹 포트에 직접 접근할 수 없다. 동일 서브넷의 다른 워크로드에 `AlbSecurity`를 부여하거나 웹 태스크에 추가 인바운드 규칙을 연결하면 신뢰 경계가 달라진다.
+
+ALB는 `X-Forwarded-For` 끝에 접속 주소를 포트 없이 추가한다. ECS에서는 Uvicorn의 전달 헤더 처리를 끄고, 앱이 소켓 주소가 ALB 서브넷에 속하는 경우에만 헤더 하나의 마지막 항목을 IPv4 또는 IPv6 주소로 검증하고 정규화한다. 이 주소의 해시를 모의고사 한도 조회와 시험 시작에 공통으로 사용한다. 헤더가 없거나 중복되거나 마지막 항목이 유효하지 않으면 400을 반환한다. `/api/health`는 전달 주소 없이 동작하며, 외부 스킴은 ALB의 HTTPS 전용 리스너 구성에서 결정한다. 기본 Compose와 문서의 로컬 Uvicorn 명령은 소켓 주소를 사용한다. [AWS ALB 전달 헤더 규칙](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html)
+
+일일 한도는 주소별이고, 동시 시험 한도는 전체 방문자에게 적용된다. NAT 등으로 실제 접속 주소를 공유하면 일일 한도도 공유한다. 주소 식별이 ALB 주소에서 방문자 주소로 바뀌는 첫날에는 이전 키로 시작한 시험이 새 방문자 키의 일일 집계에 포함되지 않을 수 있다. 이 동작은 단일 ALB의 소스 구성과 격리 테스트로 검증하며, 실제 배포에서는 변경 세트의 서브넷 CIDR·보안 그룹·ALB 속성·ECS 실행 설정을 확인해야 한다.
+
 ## 복구와 용량 검증 기준
 
 | 실험 | 확인할 결과 | 현재 확인 범위 |

@@ -17,4 +17,7 @@ sys.exit(1)
 PY
 
 echo "[talky] starting React web and Python API..."
+if [[ -n "${ALB_SUBNET_CIDRS:-}" ]]; then
+    exec uvicorn app.api:app --host 0.0.0.0 --port 8501 --no-access-log --no-proxy-headers
+fi
 exec uvicorn app.api:app --host 0.0.0.0 --port 8501 --no-access-log

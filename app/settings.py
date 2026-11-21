@@ -2,13 +2,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, IPvAnyNetwork
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    ALB_SUBNET_CIDRS: list[IPvAnyNetwork] = Field(default_factory=list)
 
     LLM_PROVIDER: Literal["ollama", "openai", "nvidia"] = "ollama"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
